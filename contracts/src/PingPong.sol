@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.30;
+
+import { IPingPong } from "@ssv/src/interfaces/IPingPong.sol";
+import { IMailbox } from "@ssv/src/interfaces/IMailbox.sol";
+
+/**
+ * @title PingPong
+ * @notice The PingPong Contract to send "PING" and "PONG" messages via CIRC/Espresso.
+ *
+ * **************
+ * ** GLOSSARY **
+ * **************
+ * @dev The following terms are used throughout the contract:
+ *
+ *
+ * *************
+ * ** AUTHORS **
+ * *************
+ * @author
+ * SSV Labs
+ */
+contract PingPong is IPingPong {
+    /// @notice the CIRC Mailbox contract
+    IMailbox public mailbox;
+
+    /// @notice constructor to initialize the authorized mailbox
+    /// @param _mailbox the address of the mailbox
+    constructor(address _mailbox) {
+        mailbox = IMailbox(_mailbox);
+    }
+
+    error PingMessageEmpty();
+    error PongMessageEmpty();
+
+    /// @notice sends a PING message and reads a PONG
+    /// @dev messages from the inbox can be read by any contract any number of times.
+    /// @param otherChain identifier of the destination chain
+    /// @param sessionId identifier of the user session
+    /// @param data the data to write
+    /// @return pongMessage the message data
+    function ping(
+        uint256 otherChain,
+        address pongSender,
+        address pingReceiver,
+        uint256 sessionId,
+        bytes calldata data
+    ) external returns (bytes memory pongMessage) {
+        IMailbox(mailbox).write(otherChain, pingReceiver, sessionId, "PING", data);
+        pongMessage = IMailbox(mailbox).read(
+            otherChain,
+            pongSender, // read message from sender addr to this contract
+            sessionId,
+            "PONG"
+        );
+        if (pongMessage.length == 0) {
+            revert PongMessageEmpty();
+        }
+    }
+
+    /// @notice sends a PONG message and reads a PING
+    /// @dev any contract can write to the outbox but the source is populated automatically using msg.sender.
+    /// @param otherChain identifier of the source chain
+    /// @param sessionId identifier of the user session
+    /// @param data the data to write
+    /// @return pingMessage the message data
+    function pong(
+        uint256 otherChain,
+        address pingSender,
+        address pongReceiver,
+        uint256 sessionId,
+        bytes calldata data
+    ) external returns (bytes memory pingMessage) {
+        pingMessage = IMailbox(mailbox).read(
+            otherChain,
+            pingSender,  // read message from sender addr to this contract
+            sessionId,
+            "PING"
+        );
+        if (pingMessage.length == 0) {
+            revert PingMessageEmpty();
+        }
+        // write message to other chain, sender is this address
+        IMailbox(mailbox).write(otherChain, pongReceiver, sessionId, "PONG", data);
+    }
+}
