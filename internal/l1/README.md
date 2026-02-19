@@ -63,7 +63,7 @@ The L1 network is orchestrated through Kurtosis:
 
 ## Observability
 
-When observability is enabled, the L1 command also starts a Docker-based monitoring stack. See the [observability README](../observability/README.md) for details.
+When observability is enabled, the L1 command aso starts a Docker-based monitoring stack. See the [observability README](../observability/README.md) for details.
 
 ## Stopping Services
 

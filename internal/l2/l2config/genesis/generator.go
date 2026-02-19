@@ -260,9 +260,34 @@ func (g *Generator) ensureOpGethImage(ctx context.Context, imageName string) err
 		return fmt.Errorf("failed to resolve host path for root dir: %w", err)
 	}
 
+	networksHostPath, err := path.GetHostPath(g.networksDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve host path for networks dir: %w", err)
+	}
+
+	rollupAConfigPath := filepath.Join(networksHostPath, "rollup-a")
+	rollupBConfigPath := filepath.Join(networksHostPath, "rollup-b")
+
+	for _, cfgPath := range []string{rollupAConfigPath, rollupBConfigPath} {
+		if err := os.MkdirAll(cfgPath, 0755); err != nil {
+			return fmt.Errorf("failed to create rollup config path %s: %w", cfgPath, err)
+		}
+
+		runtimeEnvPath := filepath.Join(cfgPath, "runtime.env")
+		if _, err := os.Stat(runtimeEnvPath); os.IsNotExist(err) {
+			if err := os.WriteFile(runtimeEnvPath, []byte(""), 0644); err != nil {
+				return fmt.Errorf("failed to create placeholder runtime.env at %s: %w", runtimeEnvPath, err)
+			}
+		}
+	}
+
 	env := map[string]string{
-		"ROOT_DIR":     rootHostPath,
-		"OP_GETH_PATH": g.opGethPath,
+		"ROOT_DIR":                       rootHostPath,
+		"OP_GETH_PATH":                   g.opGethPath,
+		"ROLLUP_A_CONFIG_PATH":           rollupAConfigPath,
+		"ROLLUP_B_CONFIG_PATH":           rollupBConfigPath,
+		"ROLLUP_A_CONFIG_PATH_CONTAINER": rollupAConfigPath,
+		"ROLLUP_B_CONFIG_PATH_CONTAINER": rollupBConfigPath,
 	}
 
 	g.logger.With("op_geth_path", g.opGethPath, "root_dir", rootHostPath, "docker_file", dockerPath).Info("building op-geth image")

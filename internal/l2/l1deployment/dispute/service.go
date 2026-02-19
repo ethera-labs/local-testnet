@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -114,7 +116,7 @@ func (s *Service) generateNetworksToml() error {
 
 	data := templateData{
 		NetworkName:                     s.cfg.Dispute.NetworkName,
-		RpcURL:                          s.cfg.L1ElURL,
+		RpcURL:                          hostAccessibleRPCURL(s.cfg.L1ElURL),
 		ChainID:                         s.cfg.L1ChainID,
 		ExplorerURL:                     s.cfg.Dispute.ExplorerURL,
 		ExplorerAPIURL:                  s.cfg.Dispute.ExplorerAPIURL,
@@ -140,6 +142,28 @@ func (s *Service) generateNetworksToml() error {
 	}
 
 	return nil
+}
+
+// hostAccessibleRPCURL rewrites Docker host aliases to localhost for commands
+// that execute directly on the host machine (e.g. just/forge in dispute deploy).
+func hostAccessibleRPCURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+
+	if parsed.Hostname() != "host.docker.internal" {
+		return raw
+	}
+
+	port := parsed.Port()
+	if port == "" {
+		parsed.Host = "127.0.0.1"
+		return parsed.String()
+	}
+
+	parsed.Host = net.JoinHostPort("127.0.0.1", port)
+	return parsed.String()
 }
 
 // generateEnvFile creates .env file from template

@@ -179,6 +179,8 @@ github.com/kurtosis-tech/kurtosis-portal/api/golang v0.0.0-20231031173452-349f1e
 github.com/kurtosis-tech/kurtosis-portal/api/golang v0.0.0-20231031173452-349f1ec9a443/go.mod h1:bWSMQK3WHVTGHX9CjxPAb/LtzcmfOxID2wdzakSWQxo=
 github.com/kurtosis-tech/kurtosis/api/golang v1.14.1 h1:qtvPsEqZPrniisi1tGVxzEO9ZUxUIAjSfdY4mie7qug=
 github.com/kurtosis-tech/kurtosis/api/golang v1.14.1/go.mod h1:7jsreUn/zOtlJbNJcGPfjXsh7GWMgDd08Vn4ypUN78o=
+github.com/kurtosis-tech/kurtosis/api/golang v1.15.1 h1:wKa0QB2/xT7Qe//x0zDx+pVcDEmzWvH8wvzn0VZX4zM=
+github.com/kurtosis-tech/kurtosis/api/golang v1.15.1/go.mod h1:7jsreUn/zOtlJbNJcGPfjXsh7GWMgDd08Vn4ypUN78o=
 github.com/kurtosis-tech/kurtosis/contexts-config-store v0.0.0-20250605165712-fe35eee5452c h1:gKJOaAGkaUei4zrp7D1nM1M0zdDrZtMqM8/kJcwJGr4=
 github.com/kurtosis-tech/kurtosis/contexts-config-store v0.0.0-20250605165712-fe35eee5452c/go.mod h1:hNsMq03seFWQ2ONZqvsjT6oflMx/oStdvBKZ6bmkUCo=
 github.com/kurtosis-tech/kurtosis/grpc-file-transfer/golang v0.0.0-20250605165712-fe35eee5452c h1:iNZbOTmton3QNRR3h9EHK5YNnXvUTOsFZ8NllC+4ioE=

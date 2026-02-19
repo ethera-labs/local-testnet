@@ -6,7 +6,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/ethereum/go-ethereum v1.16.7
-	github.com/kurtosis-tech/kurtosis/api/golang v1.14.1
+	github.com/kurtosis-tech/kurtosis/api/golang v1.15.1
 	github.com/moby/go-archive v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )

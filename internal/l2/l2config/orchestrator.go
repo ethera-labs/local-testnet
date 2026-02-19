@@ -75,6 +75,34 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		runtimeGen   = runtime.NewGenerator()
 	)
 
+	l1GenesisConfig := map[string]any{
+		"config": map[string]any{
+			"chainId":                 cfg.L1ChainID,
+			"homesteadBlock":          0,
+			"eip150Block":             0,
+			"eip155Block":             0,
+			"eip158Block":             0,
+			"byzantiumBlock":          0,
+			"constantinopleBlock":     0,
+			"petersburgBlock":         0,
+			"istanbulBlock":           0,
+			"berlinBlock":             0,
+			"londonBlock":             0,
+			"mergeNetsplitBlock":      0,
+			"terminalTotalDifficulty": 0,
+			"shanghaiTime":            0,
+			"cancunTime":              0,
+			"depositContractAddress":  "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+			"blobSchedule": map[string]any{
+				"cancun": map[string]any{
+					"target":                3,
+					"max":                   6,
+					"baseFeeUpdateFraction": 3338477,
+				},
+			},
+		},
+	}
+
 	for chainName, chainConfig := range cfg.ChainConfigs {
 		configPath := filepath.Join(o.networksDir, string(chainName))
 
@@ -127,6 +155,10 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		// rather than our own implementation of it.
 		if err := runtimeGen.Generate(deploymentState.DisputeGameFactoryImplAddressOP, configPath); err != nil {
 			return fmt.Errorf("failed to generate runtime file, %w", err)
+		}
+
+		if err := writer.WriteJSON(filepath.Join(configPath, "l1-genesis.json"), l1GenesisConfig); err != nil {
+			return fmt.Errorf("failed to generate l1 genesis config for chain %d: %w", chainConfig.ID, err)
 		}
 	}
 

@@ -3,10 +3,10 @@
 network:
   participants:
   - el_type: geth
-    el_image: ethereum/client-go:v1.15.10
+    el_image: ethpandaops/geth:master
     cl_type: lighthouse
     cl_image: sigp/lighthouse:v7.0.0
-    validator_count: 32
+    validator_count: 128
     count: 2
 
   additional_services:
@@ -18,17 +18,17 @@ network:
     deneb_fork_epoch: 0
     electra_fork_epoch: 0
     fulu_fork_epoch: 100000000
-    perfect_peerdas_enabled: true
+    perfect_peerdas_enabled: false
     
     # 74 = 32 validators * 2(number of el/cl nodes) + 10 (running on SSV/Anchor nodes)
     # aligns with validator_count configuration under participants section
-    preregistered_validator_count: 74
+    preregistered_validator_count: 266  # 128*2 + 10
     # NOTE: changes the number of slots in the epoch and potentially some other network settings.
     # docs: https://github.com/ethpandaops/ethereum-package/blob/main/README.md#configuration
     # preset: minimal
 
 monitor:
-  enabled: true
+  enabled: false
 
 nodes:
   ssv:
