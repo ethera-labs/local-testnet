@@ -23,9 +23,33 @@ network:
     # 74 = 32 validators * 2(number of el/cl nodes) + 10 (running on SSV/Anchor nodes)
     # aligns with validator_count configuration under participants section
     preregistered_validator_count: 266  # 128*2 + 10
+    # Fund local-testnet L2 deployer wallet used by configs/config.yaml.
+    prefunded_accounts: '{"0xa139a1776e60f9645533a9ad419461818d6839a1":{"balance":"1000000000ETH"}}'
+    # Required by op-deployer live strategy (phase 1 in make run-l2).
+    # Preload Arachnid deterministic deployment proxy at 0x4e59... in genesis.
+    additional_preloaded_contracts: |
+      {
+        "0x4e59b44847b379578588920cA78FbF26c0B4956C": {
+          "balance": "0ETH",
+          "code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",
+          "storage": {},
+          "nonce": "1"
+        }
+      }
     # NOTE: changes the number of slots in the epoch and potentially some other network settings.
     # docs: https://github.com/ethpandaops/ethereum-package/blob/main/README.md#configuration
     # preset: minimal
+
+  # Publish deterministic host ports so L2 can reliably reach L1 endpoints.
+  # EL RPC uses offset +3 from el.public_port_start => 63816
+  # CL HTTP uses offset +1 from cl.public_port_start => 63831
+  port_publisher:
+    el:
+      enabled: true
+      public_port_start: 63813
+    cl:
+      enabled: true
+      public_port_start: 63830
 
 monitor:
   enabled: false
@@ -39,7 +63,7 @@ nodes:
 # Docker images configuration
 images:
   ssv: "node/ssv"
-  anchor: "sigp/anchor:v0.3.1" # if you want to use locally build anchor change to `node/anchor`
+  anchor: "sigp/anchor:v1.2.0" # if you want to use locally build anchor change to `node/anchor`
   monitor: "monitor"
   redis: "redis:7.4.2"
   postgres: "postgres:15"
