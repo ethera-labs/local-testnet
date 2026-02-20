@@ -94,6 +94,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		coordinatorAddress,
 		cfg.L1ChainID,
 		cfg.ChainConfigs,
+		cfg.AltDA,
 	); err != nil {
 		return deploymentState, fmt.Errorf("failed to write intent: %w", err)
 	}

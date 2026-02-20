@@ -9,8 +9,9 @@ network:
     validator_count: 128
     count: 2
 
-  additional_services:
-    - dora # Helps to see validators are working
+  # Keep empty by default to reduce host resource requirements.
+  # Add "dora" manually if you need validator dashboard services.
+  additional_services: []
 
   network_params:
     # this is 'kurtosis' network ID, which is a default network. With this configuration CL /spec endpoint will return CONFIG_NAME=testnet

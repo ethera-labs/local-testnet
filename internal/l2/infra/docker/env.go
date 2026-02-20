@@ -106,6 +106,24 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_NODE_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpNode].Tag
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
 
+	env["ALTDA_ENABLED"] = fmt.Sprintf("%t", cfg.AltDA.Enabled)
+	env["ALTDA_DA_SERVER"] = cfg.AltDA.DAServer
+	env["ALTDA_VERIFY_ON_READ"] = fmt.Sprintf("%t", cfg.AltDA.VerifyOnRead)
+	env["ALTDA_DA_SERVICE"] = fmt.Sprintf("%t", cfg.AltDA.DAService)
+	env["ALTDA_PUT_TIMEOUT"] = cfg.AltDA.PutTimeout
+	if env["ALTDA_PUT_TIMEOUT"] == "" {
+		env["ALTDA_PUT_TIMEOUT"] = "0s"
+	}
+	env["ALTDA_GET_TIMEOUT"] = cfg.AltDA.GetTimeout
+	if env["ALTDA_GET_TIMEOUT"] == "" {
+		env["ALTDA_GET_TIMEOUT"] = "0s"
+	}
+	maxConcurrentRequests := cfg.AltDA.MaxConcurrentDARequests
+	if maxConcurrentRequests == 0 {
+		maxConcurrentRequests = 1
+	}
+	env["ALTDA_MAX_CONCURRENT_DA_REQUESTS"] = fmt.Sprintf("%d", maxConcurrentRequests)
+
 	if ma := b.readMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
 		env["MAILBOX_A"] = ma
 	}

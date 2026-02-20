@@ -27,6 +27,22 @@ l2:
     # Override locally with SIDECAR_PATH=/path/to/sidecar.
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
+  frontend:
+    enabled: false  # requires flashblocks and sidecar
+    port: 3000
+  alt-da:
+    enabled: false
+    da-server: http://host.docker.internal:3100
+    verify-on-read: true
+    da-service: true
+    put-timeout: 0s
+    get-timeout: 0s
+    max-concurrent-da-requests: 1
+    da-commitment-type: GenericCommitment
+    da-challenge-window: 100
+    da-resolve-window: 100
+    da-bond-size: 0
+    da-resolver-refund-percentage: 0
   chain-configs:
     rollup-a: 
       id: 77777

@@ -30,4 +30,13 @@ l2ContractsLocator = "embedded"
     batcher = "{{$.Wallet}}"
     proposer = "{{$.Wallet}}"
     challenger = "{{$.Wallet}}"
+{{if $.AltDA.Enabled}}
+  [chains.dangerousAltDAConfig]
+    useAltDA = true
+    daCommitmentType = "{{$.AltDA.DACommitmentType}}"
+    daChallengeWindow = {{$.AltDA.DAChallengeWindow}}
+    daResolveWindow = {{$.AltDA.DAResolveWindow}}
+    daBondSize = {{$.AltDA.DABondSize}}
+    daResolverRefundPercentage = {{$.AltDA.DAResolverRefundPercentage}}
+{{end}}
 {{end}}
