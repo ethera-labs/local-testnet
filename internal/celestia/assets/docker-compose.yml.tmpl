@@ -1,0 +1,171 @@
+services:
+  celestia:
+    image: {{ .Images.CelestiaApp }}
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/bootstrap-local-celestia.sh"]
+    environment:
+      CHAIN_ID: {{ .ChainID }}
+      MONIKER: local-validator
+      KEY_NAME: validator
+      KEYRING_BACKEND: test
+      GENESIS_BALANCE: 1000000000000utia
+      SELF_DELEGATION: 500000000utia
+      GENTX_FEES: 1utia
+    ports:
+      - "26656:26656"
+      - "26657:26657"
+      - "1317:1317"
+      - "9090:9090"
+      - "9091:9091"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:26657/status | grep -q '\"latest_block_height\":\"[1-9]' && nc -z 127.0.0.1 9090"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 5s
+    volumes:
+      - {{ .DataDir }}/celestia-app:/home/celestia/.celestia-app
+      - {{ .ScriptsDir }}/bootstrap-local-celestia.sh:/opt/bootstrap-local-celestia.sh:ro
+    networks:
+      - celestia-da
+
+  bridge:
+    image: {{ .Images.CelestiaNode }}
+    restart: unless-stopped
+    depends_on:
+      celestia:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/opt/bootstrap-bridge.sh"]
+    environment:
+      NODE_STORE: /home/celestia
+      P2P_NETWORK: {{ .ChainID }}
+      CORE_IP: celestia
+      CORE_PORT: "9090"
+      RPC_ADDR: 0.0.0.0
+      RPC_PORT: "26658"
+      KEYRING_BACKEND: test
+    ports:
+      - "26658:26658"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -X POST http://127.0.0.1:26658 -H 'Content-Type: application/json' --data '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"node.Info\",\"params\":[]}' | grep -q '\"jsonrpc\":\"2.0\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 50
+      start_period: 10s
+    volumes:
+      - {{ .DataDir }}/celestia-node:/home/celestia
+      - {{ .ScriptsDir }}/bootstrap-bridge.sh:/opt/bootstrap-bridge.sh:ro
+    networks:
+      - celestia-da
+
+  op-alt-da:
+    image: {{ .Images.OpAltDA }}
+    restart: unless-stopped
+    depends_on:
+      celestia:
+        condition: service_healthy
+      bridge:
+        condition: service_healthy
+    command: ["--config=/etc/op-alt-da/config.toml"]
+    ports:
+      - "3100:3100"
+      - "6061:6060"
+    healthcheck:
+      disable: true
+    volumes:
+      - {{ .ConfigsDir }}/op-alt-da.local.toml:/etc/op-alt-da/config.toml:ro
+      - {{ .DataDir }}/celestia-node/keys:/home/optda/keys
+    networks:
+      celestia-da:
+{{- if .AttachToL2Network }}
+      localnet-l2:
+        aliases:
+          - op-alt-da
+{{- end }}
+
+{{- if .CeleniumEnabled }}
+  celenium-db:
+    image: {{ .Images.CeleniumDB }}
+    restart: unless-stopped
+    command:
+      - -cshared_preload_libraries=timescaledb,pg_stat_statements
+      - -cpg_stat_statements.track=all
+    environment:
+      POSTGRES_HOST: celenium-db
+      POSTGRES_USER: celenium
+      POSTGRES_DB: celestia
+      POSTGRES_PASSWORD: celenium
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U celenium -d celestia"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - {{ .DataDir }}/celenium-db:/home/postgres/pgdata/data
+    networks:
+      - celestia-da
+
+  celenium-indexer:
+    build:
+      context: {{ .CeleniumIndexerPath }}
+      dockerfile: build/indexer/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - {{ .ConfigsDir }}/celenium.local.env
+    depends_on:
+      celestia:
+        condition: service_healthy
+      bridge:
+        condition: service_healthy
+      celenium-db:
+        condition: service_healthy
+    networks:
+      - celestia-da
+
+  celenium-api:
+    build:
+      context: {{ .CeleniumIndexerPath }}
+      dockerfile: build/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - {{ .ConfigsDir }}/celenium.local.env
+    depends_on:
+      celenium-db:
+        condition: service_healthy
+      celenium-indexer:
+        condition: service_started
+    ports:
+      - "9876:9876"
+    networks:
+      - celestia-da
+
+  celenium-interface:
+    build:
+      context: {{ .CeleniumInterfacePath }}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      celenium-api:
+        condition: service_started
+    environment:
+      NUXT_PUBLIC_API_DEV: http://localhost:9876/v1
+      NUXT_API_INTERNAL_DEV: http://celenium-api:9876/v1
+      NUXT_PUBLIC_WSS_DEV: ws://localhost:9876/v1/ws
+      NUXT_PUBLIC_SELFHOSTED: "true"
+    ports:
+      - "3000:3000"
+    networks:
+      - celestia-da
+{{- end }}
+
+networks:
+  celestia-da:
+    name: {{ .ProjectName }}-net
+{{- if .AttachToL2Network }}
+  localnet-l2:
+    external: true
+    name: localnet-l2
+{{- end }}
+

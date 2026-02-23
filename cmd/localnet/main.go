@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/celestia"
 	"github.com/ethera-labs/local-testnet/internal/l1"
 	"github.com/ethera-labs/local-testnet/internal/l2"
 	"github.com/ethera-labs/local-testnet/internal/logger"
@@ -19,7 +20,7 @@ const appName = "local-testnet"
 
 var rootCmd = &cobra.Command{
 	Use:   appName,
-	Short: "CLI for managing local L1 and L2 network",
+	Short: "CLI for managing local L1 and L2 stacks",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		logger.Initialize(slog.LevelDebug)
 
@@ -64,6 +65,7 @@ func main() {
 
 	rootCmd.AddCommand(l1.CMD)
 	rootCmd.AddCommand(l2.CMD)
+	rootCmd.AddCommand(celestia.CMD)
 	rootCmd.AddCommand(observability.CMD)
 
 	if err := rootCmd.Execute(); err != nil {
