@@ -18,10 +18,10 @@ core_grpc_addr = "celestia:9090"
 core_grpc_auth_token = ""
 core_grpc_tls_enabled = false
 
-# Signer key config (uses bridge node keyring volume)
+# Signer key config (uses Celestia app keyring volume)
 keyring_backend = "test"
 keyring_path = "/home/optda/keys"
-default_key_name = "my_celes_key"
+default_key_name = "validator"
 p2p_network = "{{ .ChainID }}"
 tx_worker_accounts = 0
 
@@ -39,4 +39,3 @@ port = 6060
 
 [fallback]
 enabled = false
-

@@ -74,7 +74,7 @@ services:
       disable: true
     volumes:
       - {{ .ConfigsDir }}/op-alt-da.local.toml:/etc/op-alt-da/config.toml:ro
-      - {{ .DataDir }}/celestia-node/keys:/home/optda/keys
+      - {{ .DataDir }}/celestia-app:/home/optda/keys
     networks:
       celestia-da:
 {{- if .AttachToL2Network }}
@@ -168,4 +168,3 @@ networks:
     external: true
     name: localnet-l2
 {{- end }}
-
