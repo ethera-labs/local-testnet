@@ -34,7 +34,11 @@ run: build ## Build and run the localnet binary
 clean: clean-observability clean-celestia clean-l2 clean-l1 ## Clean all resources (L1, L2, Celestia, observability)
 
 .PHONY: stop
-stop: stop-observability stop-celestia stop-l2 stop-l1 ## Stop all services (L1, L2, Celestia, observability)
+stop: ## Stop all services gracefully (observability, L2, Celestia, L1)
+	@$(MAKE) stop-observability
+	@$(MAKE) stop-l2
+	@$(MAKE) stop-celestia
+	@$(MAKE) stop-l1
 
 .PHONY: test
 test: ## Run all Go tests
