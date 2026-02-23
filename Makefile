@@ -31,10 +31,10 @@ run: build ## Build and run the localnet binary
 	${BINARY_PATH}
 
 .PHONY: clean
-clean: clean-observability clean-l2 clean-l1 ## Clean all resources (L1, L2, observability)
+clean: clean-observability clean-celestia clean-l2 clean-l1 ## Clean all resources (L1, L2, Celestia, observability)
 
 .PHONY: stop
-stop: stop-observability stop-l2 stop-l1 ## Stop all services (L1, L2, observability)
+stop: stop-observability stop-celestia stop-l2 stop-l1 ## Stop all services (L1, L2, Celestia, observability)
 
 .PHONY: test
 test: ## Run all Go tests
@@ -154,6 +154,25 @@ SERVICE?=all
 .PHONY: run-l2-deploy
 run-l2-deploy: build ## Deploy L2 services (usage: make run-l2-deploy SERVICE=op-geth)
 	${BINARY_PATH} l2 deploy $(SERVICE)
+
+######
+
+### Celestia ###
+.PHONY: run-celestia
+run-celestia: build ## Run the Celestia stack (app, bridge, op-alt-da, celenium)
+	${BINARY_PATH} celestia
+
+.PHONY: show-celestia
+show-celestia: build ## Show Celestia Docker containers
+	${BINARY_PATH} celestia show
+
+.PHONY: stop-celestia
+stop-celestia: build ## Stop Celestia Docker containers
+	${BINARY_PATH} celestia stop || true
+
+.PHONY: clean-celestia
+clean-celestia: build ## Clean Celestia Docker containers and volumes
+	${BINARY_PATH} celestia clean || true
 
 ######
 

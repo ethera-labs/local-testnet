@@ -2,6 +2,26 @@ l1:
 
 observability:
 
+celestia:
+  project-name: celestia-node
+  runtime-dir: .localnet/celestia
+  data-dir: .localnet/celestia/data
+  chain-id: private
+  attach-to-l2-network: true
+  celenium-enabled: true
+  celenium-indexer-start-height: 1
+  celenium-indexer:
+    url: https://github.com/ayaz-ssvlabs/celestia-indexer.git
+    branch: ssv-indexer-a06ad9f
+  celenium-interface:
+    url: https://github.com/ayaz-ssvlabs/celenium-interface.git
+    branch: ssv-interface-05162fe
+  images:
+    celestia-app: ghcr.io/celestiaorg/celestia-app:latest
+    celestia-node: ghcr.io/celestiaorg/celestia-node:latest
+    op-alt-da: ghcr.io/celestiaorg/op-alt-da:0.12.0
+    celenium-db: timescale/timescaledb-ha:pg15.8-ts2.17.0-all
+
 l2:
   l1-chain-id: 1
   l1-el-url: http://127.0.0.1:8080
