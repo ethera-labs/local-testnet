@@ -182,8 +182,8 @@ func prepareRuntime(ctx context.Context, rootDir string, cfg configs.Celestia) (
 			rootDir,
 			servicesDir,
 			cfg.CeleniumIndexer,
-			defaultCeleniumIndexerURL,
-			defaultCeleniumIndexerRef,
+			defaultCelestiaConfig.CeleniumIndexer.URL,
+			defaultCelestiaConfig.CeleniumIndexer.Branch,
 			"celenium-indexer",
 		)
 		if err != nil {
@@ -195,8 +195,8 @@ func prepareRuntime(ctx context.Context, rootDir string, cfg configs.Celestia) (
 			rootDir,
 			servicesDir,
 			cfg.CeleniumInterface,
-			defaultCeleniumInterfaceURL,
-			defaultCeleniumInterfaceRef,
+			defaultCelestiaConfig.CeleniumInterface.URL,
+			defaultCelestiaConfig.CeleniumInterface.Branch,
 			"celenium-interface",
 		)
 		if err != nil {
@@ -263,42 +263,42 @@ func composeRun(ctx context.Context, composeFilePath, projectName string, args .
 
 func applyDefaults(cfg *configs.Celestia) {
 	if cfg.ProjectName == "" {
-		cfg.ProjectName = defaultProjectName
+		cfg.ProjectName = defaultCelestiaConfig.ProjectName
 	}
 	if cfg.RuntimeDir == "" {
-		cfg.RuntimeDir = defaultRuntimeDir
+		cfg.RuntimeDir = defaultCelestiaConfig.RuntimeDir
 	}
 	if cfg.DataDir == "" {
-		cfg.DataDir = defaultDataDir
+		cfg.DataDir = defaultCelestiaConfig.DataDir
 	}
 	if cfg.ChainID == "" {
-		cfg.ChainID = defaultChainID
+		cfg.ChainID = defaultCelestiaConfig.ChainID
 	}
 
 	if cfg.Images.CelestiaApp == "" {
-		cfg.Images.CelestiaApp = defaultCelestiaAppImage
+		cfg.Images.CelestiaApp = defaultCelestiaConfig.Images.CelestiaApp
 	}
 	if cfg.Images.CelestiaNode == "" {
-		cfg.Images.CelestiaNode = defaultCelestiaNodeImage
+		cfg.Images.CelestiaNode = defaultCelestiaConfig.Images.CelestiaNode
 	}
 	if cfg.Images.OpAltDA == "" {
-		cfg.Images.OpAltDA = defaultOpAltDAImage
+		cfg.Images.OpAltDA = defaultCelestiaConfig.Images.OpAltDA
 	}
 	if cfg.Images.CeleniumDB == "" {
-		cfg.Images.CeleniumDB = defaultCeleniumDBImage
+		cfg.Images.CeleniumDB = defaultCelestiaConfig.Images.CeleniumDB
 	}
 
 	if cfg.CeleniumIndexerStartHeight == 0 {
-		cfg.CeleniumIndexerStartHeight = defaultCeleniumIndexerStartHeight
+		cfg.CeleniumIndexerStartHeight = defaultCelestiaConfig.CeleniumIndexerStartHeight
 	}
 
 	if cfg.CeleniumEnabled && cfg.CeleniumIndexer.URL == "" && cfg.CeleniumIndexer.LocalPath == "" {
-		cfg.CeleniumIndexer.URL = defaultCeleniumIndexerURL
-		cfg.CeleniumIndexer.Branch = defaultCeleniumIndexerRef
+		cfg.CeleniumIndexer.URL = defaultCelestiaConfig.CeleniumIndexer.URL
+		cfg.CeleniumIndexer.Branch = defaultCelestiaConfig.CeleniumIndexer.Branch
 	}
 	if cfg.CeleniumEnabled && cfg.CeleniumInterface.URL == "" && cfg.CeleniumInterface.LocalPath == "" {
-		cfg.CeleniumInterface.URL = defaultCeleniumInterfaceURL
-		cfg.CeleniumInterface.Branch = defaultCeleniumInterfaceRef
+		cfg.CeleniumInterface.URL = defaultCelestiaConfig.CeleniumInterface.URL
+		cfg.CeleniumInterface.Branch = defaultCelestiaConfig.CeleniumInterface.Branch
 	}
 }
 
