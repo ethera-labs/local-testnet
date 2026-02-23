@@ -50,13 +50,21 @@ func (i *IntentWriter) WriteIntent(
 	intentPath := filepath.Join(i.stateDir, intentFileName)
 
 	chains := make([]struct {
-		ChainID string
+		ChainID  string
+		L1Sender string
 	}, 0, len(l2Chains))
 	for _, chainConfig := range l2Chains {
+		l1SenderAddress := walletAddress
+		if chainConfig.L1Sender.Address != "" {
+			l1SenderAddress = chainConfig.L1Sender.Address
+		}
+
 		chains = append(chains, struct {
-			ChainID string
+			ChainID  string
+			L1Sender string
 		}{
-			ChainID: chainIDToHex(chainConfig.ID),
+			ChainID:  chainIDToHex(chainConfig.ID),
+			L1Sender: strings.ToLower(l1SenderAddress),
 		})
 	}
 
@@ -65,7 +73,8 @@ func (i *IntentWriter) WriteIntent(
 		Wallet    string
 		Sequencer string
 		Chains    []struct {
-			ChainID string
+			ChainID  string
+			L1Sender string
 		}
 		AltDA configs.AltDAConfig
 	}{

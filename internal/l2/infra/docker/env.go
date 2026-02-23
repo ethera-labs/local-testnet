@@ -84,6 +84,13 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["ROLLUP_B_CONFIG_PATH"] = rollupBHost
 	env["ROLLUP_B_CONFIG_PATH_CONTAINER"] = rollupBConfigPath
 
+	rollupAL1Sender := resolveRollupL1Sender(cfg, configs.L2ChainNameRollupA)
+	rollupBL1Sender := resolveRollupL1Sender(cfg, configs.L2ChainNameRollupB)
+	env["ROLLUP_A_L1_SENDER_PRIVATE_KEY"] = rollupAL1Sender.PrivateKey
+	env["ROLLUP_A_L1_SENDER_ADDRESS"] = rollupAL1Sender.Address
+	env["ROLLUP_B_L1_SENDER_PRIVATE_KEY"] = rollupBL1Sender.PrivateKey
+	env["ROLLUP_B_L1_SENDER_ADDRESS"] = rollupBL1Sender.Address
+
 	env["FLASHBLOCKS_ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.Flashblocks.RollupARPCPort)
 	env["FLASHBLOCKS_ROLLUP_B_RPC_PORT"] = fmt.Sprintf("%d", cfg.Flashblocks.RollupBRPCPort)
 
@@ -208,4 +215,19 @@ func expandUserHome(p string) string {
 		return home
 	}
 	return filepath.Join(home, p[2:])
+}
+
+func resolveRollupL1Sender(cfg configs.L2, chainName configs.L2ChainName) configs.Wallet {
+	chainCfg, ok := cfg.ChainConfigs[chainName]
+	if !ok {
+		return cfg.Wallet
+	}
+	sender := cfg.Wallet
+	if chainCfg.L1Sender.PrivateKey != "" {
+		sender.PrivateKey = chainCfg.L1Sender.PrivateKey
+	}
+	if chainCfg.L1Sender.Address != "" {
+		sender.Address = chainCfg.L1Sender.Address
+	}
+	return sender
 }

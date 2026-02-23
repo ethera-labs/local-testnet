@@ -27,8 +27,8 @@ l2ContractsLocator = "embedded"
     l2ProxyAdminOwner = "{{$.Wallet}}"
     systemConfigOwner = "{{$.Wallet}}"
     unsafeBlockSigner = "{{$.Wallet}}"
-    batcher = "{{$.Wallet}}"
-    proposer = "{{$.Wallet}}"
+    batcher = "{{.L1Sender}}"
+    proposer = "{{.L1Sender}}"
     challenger = "{{$.Wallet}}"
 {{if $.AltDA.Enabled}}
   [chains.dangerousAltDAConfig]

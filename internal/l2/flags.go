@@ -29,6 +29,10 @@ var (
 		{"wallet-private-key", "l2.wallet.private-key", "", "Deployer wallet private key"},
 		{"wallet-address", "l2.wallet.address", "", "Deployer wallet address"},
 		{"coordinator-private-key", "l2.coordinator-private-key", "", "Coordinator private key"},
+		{"rollup-a-l1-sender-private-key", "l2.chain-configs.rollup-a.l1-sender.private-key", "", "Rollup A L1 sender private key for batcher/proposer (falls back to wallet key)"},
+		{"rollup-a-l1-sender-address", "l2.chain-configs.rollup-a.l1-sender.address", "", "Rollup A L1 sender address for batcher/proposer (falls back to wallet address)"},
+		{"rollup-b-l1-sender-private-key", "l2.chain-configs.rollup-b.l1-sender.private-key", "", "Rollup B L1 sender private key for batcher/proposer (falls back to wallet key)"},
+		{"rollup-b-l1-sender-address", "l2.chain-configs.rollup-b.l1-sender.address", "", "Rollup B L1 sender address for batcher/proposer (falls back to wallet address)"},
 
 		// Deployment
 		{"deployment-target", "l2.deployment-target", "live", "Deployment target (live or calldata)"},

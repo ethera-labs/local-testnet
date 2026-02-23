@@ -67,9 +67,19 @@ l2:
     rollup-a: 
       id: 77777
       rpc-port: 18545
+      # Optional per-rollup L1 sender for batcher/proposer.
+      # If omitted, falls back to l2.wallet.
+      l1-sender:
+        private-key: ""
+        address: ""
     rollup-b: 
       id: 88888
       rpc-port: 28545
+      # Optional per-rollup L1 sender for batcher/proposer.
+      # If omitted, falls back to l2.wallet.
+      l1-sender:
+        private-key: ""
+        address: ""
   deployment-target: live  # "live" or "calldata"
   genesis-balance-wei: "100000000000000000000000"  # 100_000 ETH for funded accounts
   # curl https://us-docker.pkg.dev/v2/oplabs-tools-artifacts/images/{REPOSITORY_NAME}/tags/list to fetch list of available tags

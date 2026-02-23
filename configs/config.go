@@ -118,8 +118,9 @@ type (
 	}
 
 	Chain struct {
-		ID      int `mapstructure:"id"`
-		RPCPort int `mapstructure:"rpc-port"`
+		ID       int    `mapstructure:"id"`
+		RPCPort  int    `mapstructure:"rpc-port"`
+		L1Sender Wallet `mapstructure:"l1-sender"`
 	}
 
 	Repository struct {
@@ -225,6 +226,12 @@ func (c *L2) Validate() error {
 		if rollupA.RPCPort == 0 {
 			errs = append(errs, errors.New("l2.chain-configs.rollup-a.rpc-port is required"))
 		}
+		if rollupA.L1Sender.PrivateKey != "" && rollupA.L1Sender.Address == "" {
+			errs = append(errs, errors.New("l2.chain-configs.rollup-a.l1-sender.address is required when private-key is set"))
+		}
+		if rollupA.L1Sender.Address != "" && rollupA.L1Sender.PrivateKey == "" {
+			errs = append(errs, errors.New("l2.chain-configs.rollup-a.l1-sender.private-key is required when address is set"))
+		}
 	}
 
 	if !hasRollupB {
@@ -235,6 +242,12 @@ func (c *L2) Validate() error {
 		}
 		if rollupB.RPCPort == 0 {
 			errs = append(errs, errors.New("l2.chain-configs.rollup-b.rpc-port is required"))
+		}
+		if rollupB.L1Sender.PrivateKey != "" && rollupB.L1Sender.Address == "" {
+			errs = append(errs, errors.New("l2.chain-configs.rollup-b.l1-sender.address is required when private-key is set"))
+		}
+		if rollupB.L1Sender.Address != "" && rollupB.L1Sender.PrivateKey == "" {
+			errs = append(errs, errors.New("l2.chain-configs.rollup-b.l1-sender.private-key is required when address is set"))
 		}
 	}
 

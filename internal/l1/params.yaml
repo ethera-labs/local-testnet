@@ -24,8 +24,8 @@ network:
     # 74 = 32 validators * 2(number of el/cl nodes) + 10 (running on SSV/Anchor nodes)
     # aligns with validator_count configuration under participants section
     preregistered_validator_count: 266  # 128*2 + 10
-    # Fund local-testnet L2 deployer wallet used by configs/config.yaml.
-    prefunded_accounts: '{"0xa139a1776e60f9645533a9ad419461818d6839a1":{"balance":"1000000000ETH"}}'
+    # Fund local-testnet L2 sender wallets used by configs/config.yaml.
+    prefunded_accounts: '{"0xa139a1776e60f9645533a9ad419461818d6839a1":{"balance":"1000000000ETH"},"0xc9b3bf6c11161eba2445d657193e69203b5dab92":{"balance":"1000000000ETH"}}'
     # Required by op-deployer live strategy (phase 1 in make run-l2).
     # Preload Arachnid deterministic deployment proxy at 0x4e59... in genesis.
     additional_preloaded_contracts: |
