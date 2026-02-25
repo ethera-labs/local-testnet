@@ -24,10 +24,11 @@ Orchestrator coordinates Phase 1: L1 deployment
 */
 type (
 	DeploymentState struct {
-		DisputeGameFactoryAddress       common.Address
-		DisputeGameFactoryImplAddressOP common.Address //TODO: Determine the necessity of this variable's usage.
-		StartBlocks                     map[configs.L2ChainName]StartBlock
-		SystemConfigProxyAddresses      map[configs.L2ChainName]common.Address
+		DisputeGameFactoryAddress        common.Address
+		DisputeGameFactoryImplAddressOP  common.Address //TODO: Determine the necessity of this variable's usage.
+		DisputeGameFactoryProxyAddresses map[configs.L2ChainName]common.Address
+		StartBlocks                      map[configs.L2ChainName]StartBlock
+		SystemConfigProxyAddresses       map[configs.L2ChainName]common.Address
 	}
 
 	StartBlock struct {
@@ -119,6 +120,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 
 	startBlocks := make(map[configs.L2ChainName]StartBlock)
 	systemConfigProxyAddresses := make(map[configs.L2ChainName]common.Address)
+	disputeGameFactoryProxyAddresses := make(map[configs.L2ChainName]common.Address)
 	for _, opChain := range opState.OpChainDeployments {
 		chainIDInt, err := strconv.ParseInt(opChain.ID, 0, 64)
 		if err != nil {
@@ -132,16 +134,18 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 					Number: opChain.StartBlock.Number,
 				}
 				systemConfigProxyAddresses[chainName] = common.HexToAddress(opChain.SystemConfigProxy)
+				disputeGameFactoryProxyAddresses[chainName] = common.HexToAddress(opChain.DisputeGameFactoryProxy)
 				break
 			}
 		}
 	}
 
 	deploymentState = DeploymentState{
-		DisputeGameFactoryAddress:       gameFactoryAddr,
-		DisputeGameFactoryImplAddressOP: common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
-		StartBlocks:                     startBlocks,
-		SystemConfigProxyAddresses:      systemConfigProxyAddresses,
+		DisputeGameFactoryAddress:        gameFactoryAddr,
+		DisputeGameFactoryImplAddressOP:  common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
+		DisputeGameFactoryProxyAddresses: disputeGameFactoryProxyAddresses,
+		StartBlocks:                      startBlocks,
+		SystemConfigProxyAddresses:       systemConfigProxyAddresses,
 	}
 
 	return deploymentState, nil

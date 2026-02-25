@@ -60,6 +60,20 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		return nil, fmt.Errorf("failed to resolve host path for rootDir: %w", err)
 	}
 
+	opSuccinctPath := rootHost
+	if cfg.AnyOpSuccinctChainEnabled() {
+		opSuccinctRepo, exists := cfg.Repositories[configs.RepositoryNameOpSuccinct]
+		opSuccinctConfigured := exists && (opSuccinctRepo.LocalPath != "" || opSuccinctRepo.URL != "" || opSuccinctRepo.Branch != "")
+		if !opSuccinctConfigured {
+			return nil, fmt.Errorf("op-succinct is enabled but l2.repositories.%s is not configured", configs.RepositoryNameOpSuccinct)
+		}
+
+		opSuccinctPath, err = b.ResolveRepoPath(opSuccinctRepo, configs.RepositoryNameOpSuccinct)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve op-succinct path: %w", err)
+		}
+	}
+
 	env["ROOT_DIR"] = rootHost
 	env["WALLET_PRIVATE_KEY"] = cfg.Wallet.PrivateKey
 	env["WALLET_ADDRESS"] = cfg.Wallet.Address
@@ -73,6 +87,9 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
+	env["OP_SUCCINCT_PATH"] = opSuccinctPath
+	env["OP_SUCCINCT_ENV_FILE_A"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-a.env")
+	env["OP_SUCCINCT_ENV_FILE_B"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-b.env")
 
 	env["ROLLUP_A_CHAIN_ID"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].ID)
 	env["ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].RPCPort)

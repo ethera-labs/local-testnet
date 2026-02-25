@@ -50,6 +50,11 @@ l2:
   frontend:
     enabled: false  # requires flashblocks and sidecar
     port: 3000
+  op-succinct:
+    rollup-a:
+      enabled: true
+    rollup-b:
+      enabled: true
   alt-da:
     enabled: false
     da-server: http://host.docker.internal:3100
@@ -114,6 +119,12 @@ l2:
       branch: main
       # For local development:
       # local-path: ~/projects/publisher
+    ethera-contracts:
+    op-succinct:
+      url: https://github.com/succinctlabs/op-succinct.git
+      branch: main
+      # For local development:
+      # local-path: ~/projects/op-succinct
     ethera-contracts:
       url: https://github.com/contracts.git
       branch: main

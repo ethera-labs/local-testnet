@@ -125,8 +125,9 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.sidecar.yml ]; then docker compose -f .localnet/docker-compose.sidecar.yml down -v 2>/dev/null || true; fi
 	-if [ -f .localnet/docker-compose.frontend.yml ]; then docker compose -f .localnet/docker-compose.frontend.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
-	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console 2>/dev/null || true
-	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder)" | xargs -r docker volume rm
+	docker ps -aq --filter "name=op-succinct" | xargs -r docker rm -f
+	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console op-succinct-a op-succinct-b op-succinct-db-a op-succinct-db-b 2>/dev/null || true
+	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct-db)" | xargs -r docker volume rm
 	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
 .PHONY: clean-l2-full
@@ -134,6 +135,7 @@ clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images
 	rm -rf ./.localnet/services
 	docker images -q "local/publisher" | xargs -r docker rmi -f
 	docker images -q "local/op-geth" | xargs -r docker rmi -f
+	docker images -q "local/op-succinct" | xargs -r docker rmi -f
 	docker images -q "local/op-rbuilder" | xargs -r docker rmi -f
 	docker images -q "local/sidecar" | xargs -r docker rmi -f
 	docker images -q "local/ethera-console" | xargs -r docker rmi -f

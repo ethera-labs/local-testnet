@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/genesis"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/secrets"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
@@ -25,7 +26,7 @@ import (
 //   - Starts initial services (publisher, op-geth)
 //   - Deploys L2 helper contracts
 //   - Restarts services to pick up contract addresses
-//   - Starts final services (op-node, batcher, proposer)
+//   - Runs op-succinct setup calls and starts op-succinct services
 type Orchestrator struct {
 	rootDir     string
 	localnetDir string
@@ -45,9 +46,10 @@ func NewOrchestrator(rootDir, localnetDir, networksDir, servicesDir string) *Orc
 	}
 }
 
-// Execute runs Phase 3: Build images, start services, deploy contracts
-func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
+// Execute runs Phase 3: Build images, start services, deploy contracts.
+func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentState l1deployment.DeploymentState) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
 	o.logger.Info("Phase 3: Starting L2 runtime operations")
+	gameFactoryAddr := deploymentState.DisputeGameFactoryAddress
 
 	publisherConfig := registry.NewConfigurator()
 	if err := publisherConfig.SetupRegistry(o.localnetDir, cfg, gameFactoryAddr); err != nil {
@@ -65,9 +67,23 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, err
 	}
 
-	o.logger.With("env", envVars).Info("environment variables were constructed. Building docker services")
-	if err := o.buildComposeServices(ctx, dockerPath, envVars, cfg); err != nil {
-		return nil, fmt.Errorf("failed to build docker services: %w", err)
+	enabledOpSuccinctChains := cfg.EnabledOpSuccinctChains()
+	opSuccinctEnabled := isOpSuccinctEnabled(cfg, enabledOpSuccinctChains)
+	opSuccinctPath := envVars["OP_SUCCINCT_PATH"]
+	if opSuccinctEnabled {
+		if opSuccinctPath == "" {
+			return nil, fmt.Errorf("OP_SUCCINCT_PATH is empty")
+		}
+		if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, deploymentState.DisputeGameFactoryProxyAddresses, opSuccinctPath); err != nil {
+			return nil, fmt.Errorf("failed to prepare op-succinct env files: %w", err)
+		}
+	} else {
+		o.logger.With("enabled_chains", enabledOpSuccinctChains).Info("op-succinct is disabled or repository is not configured; skipping op-succinct setup and services")
+	}
+
+	o.logger.With("env", envVars).Info("environment variables were constructed. Building compose services")
+	if err := o.buildComposeServices(ctx, dockerPath, envVars, cfg, opSuccinctBuildServiceName(enabledOpSuccinctChains, opSuccinctEnabled)); err != nil {
+		return nil, fmt.Errorf("failed to build compose services: %w", err)
 	}
 
 	o.logger.Info("docker services built successfully")
@@ -121,7 +137,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	}
 
 	if err := serviceManager.StartAll(ctx, envVars); err != nil {
-		return nil, fmt.Errorf("failed to start L2 services: %w", err)
+		return nil, fmt.Errorf("failed to start base L2 services: %w", err)
 	}
 
 	// When flashblocks is enabled, use op-rbuilder RPC ports for contract deployment
@@ -148,6 +164,19 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		o.logger.Info("restarting sidecar services to apply mailbox configuration")
 		if err := o.restartSidecar(ctx, dockerPath, flashblocksDockerPath, sidecarDockerPath, envVars); err != nil {
 			return nil, fmt.Errorf("failed to restart sidecar services after contract deployment: %w", err)
+		}
+	}
+
+	if opSuccinctEnabled {
+		if err := o.setupOpSuccinct(ctx, cfg, opSuccinctPath, envVars); err != nil {
+			return nil, fmt.Errorf("failed to run op-succinct setup calls: %w", err)
+		}
+		if err := o.finalizeOpSuccinctRuntimeEnvFiles(cfg, envVars); err != nil {
+			return nil, fmt.Errorf("failed to finalize op-succinct runtime env files: %w", err)
+		}
+
+		if err := serviceManager.StartOpSuccinct(ctx, envVars, enabledOpSuccinctChains); err != nil {
+			return nil, fmt.Errorf("failed to start op-succinct services: %w", err)
 		}
 	}
 
@@ -268,15 +297,18 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 	return nil
 }
 
-// buildDockerServices builds services using docker-compose
-func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, cfg configs.L2) error {
+// buildComposeServices builds services that are sourced locally.
+func (o *Orchestrator) buildComposeServices(ctx context.Context, composeFilePath string, env map[string]string, cfg configs.L2, opSuccinctBuildService string) error {
 	services := []string{
 		"publisher",
 		"op-geth-a",
 		"op-geth-b",
 	}
+	if opSuccinctBuildService != "" {
+		services = append(services, opSuccinctBuildService)
+	}
 
-	dockerFiles := []string{dockerFilePath}
+	dockerFiles := []string{composeFilePath}
 
 	// Sidecar requires flashblocks, so add flashblocks docker file first
 	if cfg.Sidecar.Enabled {
@@ -299,7 +331,7 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 			return fmt.Errorf("failed to build docker services: %w", err)
 		}
 	} else {
-		if err := docker.ComposeBuild(ctx, dockerFilePath, env, services...); err != nil {
+		if err := docker.ComposeBuild(ctx, composeFilePath, env, services...); err != nil {
 			return fmt.Errorf("failed to build docker services: %w", err)
 		}
 	}
@@ -327,4 +359,34 @@ func (o *Orchestrator) getFlashblocksChainConfigs(cfg configs.L2) map[configs.L2
 	}
 
 	return result
+}
+
+func isOpSuccinctEnabled(cfg configs.L2, enabledChains []configs.L2ChainName) bool {
+	if len(enabledChains) == 0 {
+		return false
+	}
+
+	repo, exists := cfg.Repositories[configs.RepositoryNameOpSuccinct]
+	if !exists {
+		return false
+	}
+
+	return repo.LocalPath != "" || repo.URL != "" || repo.Branch != ""
+}
+
+func opSuccinctBuildServiceName(enabledChains []configs.L2ChainName, opSuccinctEnabled bool) string {
+	if !opSuccinctEnabled {
+		return ""
+	}
+
+	for _, chain := range enabledChains {
+		switch chain {
+		case configs.L2ChainNameRollupA:
+			return "op-succinct-a"
+		case configs.L2ChainNameRollupB:
+			return "op-succinct-b"
+		}
+	}
+
+	return ""
 }

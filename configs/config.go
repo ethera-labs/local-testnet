@@ -62,6 +62,7 @@ type (
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
+		OpSuccinct            OpSuccinctConfig              `mapstructure:"op-succinct"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 	}
 
@@ -86,6 +87,15 @@ type (
 		Enabled        bool `mapstructure:"enabled"`
 		RollupAAPIPort int  `mapstructure:"rollup-a-api-port"`
 		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
+	}
+
+	OpSuccinctConfig struct {
+		RollupA OpSuccinctInstanceConfig `mapstructure:"rollup-a"`
+		RollupB OpSuccinctInstanceConfig `mapstructure:"rollup-b"`
+	}
+
+	OpSuccinctInstanceConfig struct {
+		Enabled *bool `mapstructure:"enabled"`
 	}
 
 	AltDAConfig struct {
@@ -146,6 +156,7 @@ const (
 	RepositoryNameOpGeth          RepositoryName = "op-geth"
 	RepositoryNamePublisher       RepositoryName = "publisher"
 	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
+	RepositoryNameOpSuccinct      RepositoryName = "op-succinct"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -158,6 +169,37 @@ const (
 	AltDACommitmentTypeKeccak  = "KeccakCommitment"
 	AltDACommitmentTypeGeneric = "GenericCommitment"
 )
+
+func (c L2) IsOpSuccinctChainEnabled(chain L2ChainName) bool {
+	defaultEnabled := false
+	if repo, exists := c.Repositories[RepositoryNameOpSuccinct]; exists {
+		defaultEnabled = isRepositoryConfigured(repo)
+	}
+
+	switch chain {
+	case L2ChainNameRollupA:
+		return isOpSuccinctEnabled(c.OpSuccinct.RollupA.Enabled, defaultEnabled)
+	case L2ChainNameRollupB:
+		return isOpSuccinctEnabled(c.OpSuccinct.RollupB.Enabled, defaultEnabled)
+	default:
+		return false
+	}
+}
+
+func (c L2) EnabledOpSuccinctChains() []L2ChainName {
+	chains := make([]L2ChainName, 0, 2)
+	if c.IsOpSuccinctChainEnabled(L2ChainNameRollupA) {
+		chains = append(chains, L2ChainNameRollupA)
+	}
+	if c.IsOpSuccinctChainEnabled(L2ChainNameRollupB) {
+		chains = append(chains, L2ChainNameRollupB)
+	}
+	return chains
+}
+
+func (c L2) AnyOpSuccinctChainEnabled() bool {
+	return len(c.EnabledOpSuccinctChains()) > 0
+}
 
 func (c *L2) Validate() error {
 	var errs []error
@@ -199,6 +241,16 @@ func (c *L2) Validate() error {
 		}
 		if hasLocal && hasRemote {
 			errs = append(errs, fmt.Errorf("l2.repositories.%s cannot set both local-path and url+branch (choose one)", name))
+		}
+	}
+
+	// op-succinct repository is required only when at least one op-succinct chain is enabled.
+	if c.AnyOpSuccinctChainEnabled() {
+		repo, exists := c.Repositories[RepositoryNameOpSuccinct]
+		if !exists || !isRepositoryConfigured(repo) {
+			errs = append(errs, fmt.Errorf("l2.repositories.%s must set either local-path or url+branch when any l2.op-succinct.*.enabled is true", RepositoryNameOpSuccinct))
+		} else if err := validateRepository(repo, fmt.Sprintf("l2.repositories.%s", RepositoryNameOpSuccinct)); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -395,4 +447,16 @@ func validateRepository(repo Repository, key string) error {
 		return fmt.Errorf("%s cannot set both local-path and url+branch (choose one)", key)
 	}
 	return nil
+}
+
+func isRepositoryConfigured(repo Repository) bool {
+	return repo.LocalPath != "" || repo.URL != "" || repo.Branch != ""
+}
+
+func isOpSuccinctEnabled(enabled *bool, defaultEnabled bool) bool {
+	if enabled == nil {
+		// Backward compatibility: when unset, inherit from repository configuration.
+		return defaultEnabled
+	}
+	return *enabled
 }

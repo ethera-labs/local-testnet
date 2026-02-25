@@ -51,6 +51,8 @@ var (
 		{"publisher-branch", "l2.repositories.publisher.branch", "", "publisher repository branch"},
 		{"ethera-contracts-url", "l2.repositories.ethera-contracts.url", "", "ethera-contracts repository URL"},
 		{"ethera-contracts-branch", "l2.repositories.ethera-contracts.branch", "", "ethera-contracts repository branch"},
+		{"op-succinct-url", "l2.repositories.op-succinct.url", "", "op-succinct repository URL"},
+		{"op-succinct-branch", "l2.repositories.op-succinct.branch", "", "op-succinct repository branch"},
 
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},

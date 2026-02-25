@@ -1,6 +1,6 @@
 package celestia
 
-import "github.com/compose-network/local-testnet/configs"
+import "github.com/ethera-labs/local-testnet/configs"
 
 var defaultCelestiaConfig = configs.MustDefaultConfig().Celestia
 

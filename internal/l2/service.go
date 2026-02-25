@@ -27,7 +27,7 @@ type (
 		Execute(ctx context.Context, cfg configs.L2, state l1deployment.DeploymentState) error
 	}
 	l2RuntimeOrchestrator interface {
-		Execute(ctx context.Context, cfg configs.L2, disputeGameFactory common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error)
+		Execute(ctx context.Context, cfg configs.L2, deploymentState l1deployment.DeploymentState) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error)
 	}
 	blockscoutService interface {
 		Run(ctx context.Context, rollupConfigs []blockscout.RollupConfig, l1RPCURL string, l1BeaconURL string) error
@@ -89,7 +89,7 @@ func (s *Service) Deploy(ctx context.Context, cfg configs.L2) error {
 	}
 
 	s.logger.Info("running phase 3 - L2 launch")
-	deployedContracts, err := s.l2RuntimeOrchestrator.Execute(ctx, cfg, deploymentState.DisputeGameFactoryAddress)
+	deployedContracts, err := s.l2RuntimeOrchestrator.Execute(ctx, cfg, deploymentState)
 	if err != nil {
 		return fmt.Errorf("phase 3 failed: %w", err)
 	}
@@ -172,7 +172,29 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			continue
 		}
 
-		if repo.URL != "" {
+		hasLocal := repo.LocalPath != ""
+		hasRemote := repo.URL != "" && repo.Branch != ""
+		hasAny := repo.LocalPath != "" || repo.URL != "" || repo.Branch != ""
+
+		if name == configs.RepositoryNameOpSuccinct {
+			if !cfg.AnyOpSuccinctChainEnabled() {
+				s.logger.With("name", name).Info("op-succinct is disabled in config; skipping clone")
+				continue
+			}
+			if !hasAny {
+				s.logger.With("name", name).Info("op-succinct repository is not configured; skipping clone")
+				continue
+			}
+		}
+
+		if !hasLocal && !hasRemote {
+			return fmt.Errorf("repository %s has neither URL+branch nor local-path set", name)
+		}
+		if hasLocal && hasRemote {
+			return fmt.Errorf("repository %s has both URL+branch and local-path set; choose one", name)
+		}
+
+		if hasRemote {
 			repos = append(repos, git.Repository{
 				Name: string(name),
 				URL:  repo.URL,
@@ -181,7 +203,7 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			continue
 		}
 
-		if repo.LocalPath != "" {
+		if hasLocal {
 			absPath, err := filepath.Abs(repo.LocalPath)
 			if err != nil {
 				return fmt.Errorf("failed to resolve absolute path for local repository %s: %w", name, err)
@@ -189,8 +211,6 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			s.logger.With("name", name, "local_path", repo.LocalPath, "resolved_path", absPath).Info("using local repository path; skipping clone")
 			continue
 		}
-
-		return fmt.Errorf("repository %s has neither URL nor local-path set", name)
 	}
 
 	l2Dir := filepath.Join(s.rootDir, localnetDirName, servicesDirName)

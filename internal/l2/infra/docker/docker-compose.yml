@@ -158,6 +158,7 @@ services:
       OP_NODE_RPC_PORT: "9545"
       OP_NODE_RPC_ENABLE_ADMIN: "true"
       OP_NODE_LOG_LEVEL: "info"
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
       OP_NODE_ALTDA_ENABLED: "${ALTDA_ENABLED}"
       OP_NODE_ALTDA_DA_SERVER: "${ALTDA_DA_SERVER}"
       OP_NODE_ALTDA_VERIFY_ON_READ: "${ALTDA_VERIFY_ON_READ}"
@@ -167,6 +168,7 @@ services:
       OP_NODE_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "${ALTDA_MAX_CONCURRENT_DA_REQUESTS}"
     volumes:
       - rollup-a-opnode:/data
+      - ${ROLLUP_A_CONFIG_PATH:-../../networks/rollup-a}/safedb:/data/safedb
       - ${ROLLUP_A_CONFIG_PATH:-../../networks/rollup-a}:/config:ro
     ports:
       - "19545:9545"
@@ -350,6 +352,7 @@ services:
       OP_NODE_RPC_PORT: "9545"
       OP_NODE_RPC_ENABLE_ADMIN: "true"
       OP_NODE_LOG_LEVEL: "info"
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
       OP_NODE_ALTDA_ENABLED: "${ALTDA_ENABLED}"
       OP_NODE_ALTDA_DA_SERVER: "${ALTDA_DA_SERVER}"
       OP_NODE_ALTDA_VERIFY_ON_READ: "${ALTDA_VERIFY_ON_READ}"
@@ -359,6 +362,7 @@ services:
       OP_NODE_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "${ALTDA_MAX_CONCURRENT_DA_REQUESTS}"
     volumes:
       - rollup-b-opnode:/data
+      - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}/safedb:/data/safedb
       - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}:/config:ro
     ports:
       - "29545:9545"
@@ -418,11 +422,105 @@ services:
     ports:
       - "28560:8560"
 
+  op-succinct-db-a:
+    image: postgres:15
+    container_name: op-succinct-db-a
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      POSTGRES_USER: op-succinct
+      POSTGRES_DB: op-succinct
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - op-succinct-db-a:/var/lib/postgresql/data
+
+  op-succinct-a:
+    build:
+      context: ${OP_SUCCINCT_PATH}
+      dockerfile: ./validity/Dockerfile
+    image: local/op-succinct:dev
+    container_name: op-succinct-a
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      - op-proposer-a
+      - op-proposer-b
+      - op-succinct-db-a
+    env_file:
+      - ${OP_SUCCINCT_ENV_FILE_A}
+    environment:
+      DATABASE_URL: postgres://op-succinct@op-succinct-db-a:5432/op-succinct
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        until psql "$$DATABASE_URL" -tAc "SELECT 1" >/dev/null 2>&1; do
+          sleep 1
+        done
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF to_regclass('public.chain_locks') IS NOT NULL THEN DELETE FROM chain_locks; END IF; END \$\$;"
+        exec /usr/local/bin/validity-proposer
+    volumes:
+      - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
+    restart: unless-stopped
+
+  op-succinct-db-b:
+    image: postgres:15
+    container_name: op-succinct-db-b
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      POSTGRES_USER: op-succinct
+      POSTGRES_DB: op-succinct
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - op-succinct-db-b:/var/lib/postgresql/data
+
+  op-succinct-b:
+    build:
+      context: ${OP_SUCCINCT_PATH}
+      dockerfile: ./validity/Dockerfile
+    image: local/op-succinct:dev
+    container_name: op-succinct-b
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      - op-proposer-a
+      - op-proposer-b
+      - op-succinct-db-b
+    env_file:
+      - ${OP_SUCCINCT_ENV_FILE_B}
+    environment:
+      DATABASE_URL: postgres://op-succinct@op-succinct-db-b:5432/op-succinct
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        until psql "$$DATABASE_URL" -tAc "SELECT 1" >/dev/null 2>&1; do
+          sleep 1
+        done
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF to_regclass('public.chain_locks') IS NOT NULL THEN DELETE FROM chain_locks; END IF; END \$\$;"
+        exec /usr/local/bin/validity-proposer
+    volumes:
+      - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
+    restart: unless-stopped
+
 volumes:
   rollup-a-geth:
   rollup-b-geth:
   rollup-a-opnode:
   rollup-b-opnode:
+  op-succinct-db-a:
+  op-succinct-db-b:
 
 networks:
   localnet-l2:
