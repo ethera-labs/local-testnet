@@ -57,6 +57,7 @@ l2:
       enabled: true
   alt-da:
     enabled: false
+    provider: celestia # celestia | op-alt-da-local
     da-server: http://host.docker.internal:3100
     verify-on-read: true
     da-service: true

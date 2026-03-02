@@ -43,6 +43,10 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve op-geth path: %w", err)
 	}
+	composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve ethera-contracts path: %w", err)
+	}
 
 	rollupAConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupA))
 	rollupBConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupB))
@@ -87,9 +91,20 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
+	env["COMPOSE_CONTRACTS_PATH"] = composeContractsPath
 	env["OP_SUCCINCT_PATH"] = opSuccinctPath
 	env["OP_SUCCINCT_ENV_FILE_A"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-a.env")
 	env["OP_SUCCINCT_ENV_FILE_B"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-b.env")
+	env["OP_SUCCINCT_A_DOCKERFILE"] = "./validity/Dockerfile"
+	env["OP_SUCCINCT_B_DOCKERFILE"] = "./validity/Dockerfile"
+	if cfg.IsCelestiaAltDAEnabled() {
+		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupA) {
+			env["OP_SUCCINCT_A_DOCKERFILE"] = "./validity/Dockerfile.celestia"
+		}
+		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupB) {
+			env["OP_SUCCINCT_B_DOCKERFILE"] = "./validity/Dockerfile.celestia"
+		}
+	}
 
 	env["ROLLUP_A_CHAIN_ID"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].ID)
 	env["ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].RPCPort)
@@ -131,9 +146,17 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
 
 	env["ALTDA_ENABLED"] = fmt.Sprintf("%t", cfg.AltDA.Enabled)
+	env["ALTDA_PROVIDER"] = cfg.AltDA.ProviderName()
 	env["ALTDA_DA_SERVER"] = cfg.AltDA.DAServer
+	env["ALTDA_DA_SERVER_A"] = cfg.AltDA.DAServer
+	env["ALTDA_DA_SERVER_B"] = cfg.AltDA.DAServer
+	if cfg.IsLocalOpAltDAEnabled() {
+		env["ALTDA_DA_SERVER_A"] = "http://op-alt-da-a:3100"
+		env["ALTDA_DA_SERVER_B"] = "http://op-alt-da-b:3100"
+	}
 	env["ALTDA_VERIFY_ON_READ"] = fmt.Sprintf("%t", cfg.AltDA.VerifyOnRead)
 	env["ALTDA_DA_SERVICE"] = fmt.Sprintf("%t", cfg.AltDA.DAService)
+	env["ALTDA_USE_GENERIC_COMMITMENT"] = fmt.Sprintf("%t", cfg.AltDA.DACommitmentType == configs.AltDACommitmentTypeGeneric)
 	env["ALTDA_PUT_TIMEOUT"] = cfg.AltDA.PutTimeout
 	if env["ALTDA_PUT_TIMEOUT"] == "" {
 		env["ALTDA_PUT_TIMEOUT"] = "0s"

@@ -100,6 +100,7 @@ type (
 
 	AltDAConfig struct {
 		Enabled                    bool   `mapstructure:"enabled"`
+		Provider                   string `mapstructure:"provider"`
 		DAServer                   string `mapstructure:"da-server"`
 		VerifyOnRead               bool   `mapstructure:"verify-on-read"`
 		DAService                  bool   `mapstructure:"da-service"`
@@ -168,6 +169,9 @@ const (
 
 	AltDACommitmentTypeKeccak  = "KeccakCommitment"
 	AltDACommitmentTypeGeneric = "GenericCommitment"
+
+	AltDAProviderCelestia     = "celestia"
+	AltDAProviderOpAltDALocal = "op-alt-da-local"
 )
 
 func (c L2) IsOpSuccinctChainEnabled(chain L2ChainName) bool {
@@ -199,6 +203,22 @@ func (c L2) EnabledOpSuccinctChains() []L2ChainName {
 
 func (c L2) AnyOpSuccinctChainEnabled() bool {
 	return len(c.EnabledOpSuccinctChains()) > 0
+}
+
+func (c L2) IsCelestiaAltDAEnabled() bool {
+	return c.AltDA.Enabled && c.AltDA.ProviderName() == AltDAProviderCelestia
+}
+
+func (c L2) IsLocalOpAltDAEnabled() bool {
+	return c.AltDA.Enabled && c.AltDA.ProviderName() == AltDAProviderOpAltDALocal
+}
+
+func (c AltDAConfig) ProviderName() string {
+	provider := strings.TrimSpace(c.Provider)
+	if provider == "" {
+		return AltDAProviderCelestia
+	}
+	return provider
 }
 
 func (c *L2) Validate() error {
@@ -310,6 +330,16 @@ func (c *L2) Validate() error {
 	}
 
 	if c.AltDA.Enabled {
+		switch c.AltDA.ProviderName() {
+		case AltDAProviderCelestia, AltDAProviderOpAltDALocal:
+		default:
+			errs = append(errs, fmt.Errorf(
+				"l2.alt-da.provider must be either %q or %q when l2.alt-da.enabled is true",
+				AltDAProviderCelestia,
+				AltDAProviderOpAltDALocal,
+			))
+		}
+
 		if c.AltDA.DAServer == "" {
 			errs = append(errs, errors.New("l2.alt-da.da-server is required when l2.alt-da.enabled is true"))
 		} else if _, err := url.ParseRequestURI(c.AltDA.DAServer); err != nil {

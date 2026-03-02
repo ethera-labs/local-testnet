@@ -4,6 +4,12 @@ network:
   participants:
   - el_type: geth
     el_image: ethpandaops/geth:master
+    # Force archive EL so historical state / debug queries remain available.
+    el_storage_type: archive
+    # Ensure proof-capable state storage for eth_getProof and similar RPCs.
+    el_extra_params:
+      - --state.scheme=hash
+      - --syncmode=full
     cl_type: lighthouse
     cl_image: sigp/lighthouse:v7.0.0
     validator_count: 128
@@ -43,7 +49,8 @@ network:
 
   # Publish deterministic host ports so L2 can reliably reach L1 endpoints.
   # EL RPC uses offset +3 from el.public_port_start => 63816
-  # CL HTTP uses offset +1 from cl.public_port_start => 63831
+  # CL HTTP uses offset +1 from cl.public_port_start.
+  # With 2 participants this yields 63831 (participant 1) and 63838 (participant 2).
   port_publisher:
     el:
       enabled: true

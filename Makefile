@@ -83,6 +83,14 @@ restart-ssv-nodes: ## Restart SSV node services (default: 4, override with SSV_N
 ### L2 ###
 L2_LABEL=stack=localnet-l2
 L2_ARGS?=
+OP_SUCCINCT_PATH?=$(PWD)/op-succinct
+OP_SUCCINCT_ENV_FILE?=$(PWD)/.localnet/op-succinct/rollup-a.env
+OP_SUCCINCT_CACHE_ROOT?=$(HOME)/.cache/compose-local-testnet/op-succinct
+OP_SUCCINCT_CARGO_HOME?=$(HOME)/.cargo
+OP_SUCCINCT_TARGET_DIR?=$(OP_SUCCINCT_CACHE_ROOT)/target
+OP_SUCCINCT_RUST_LOG?=info
+START?=0
+END?=300
 
 .PHONY: run-l2
 run-l2: build ## Run the L2 localnet (usage: make run-l2 L2_ARGS="--flashblocks-enabled")
@@ -94,19 +102,23 @@ show-l2: ## Show L2 Docker containers
 
 .PHONY: check-l2-altda
 check-l2-altda: ## Check Alt-DA server and verify both rollups are running with Alt-DA enabled
-	@echo "Checking op-alt-da health endpoint..."
-	@curl -fsS http://localhost:3100/health | grep -q '^OK$$'
+	@echo "Checking op-alt-da-a endpoint..."
+	@[ "$$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/get/0x00)" = "404" ]
+	@echo "Checking op-alt-da-b endpoint..."
+	@[ "$$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3101/get/0x00)" = "404" ]
 	@echo "Checking rollup configs include alt_da..."
 	@jq -e '.alt_da != null and .alt_da.da_commitment_type != null' .localnet/networks/rollup-a/rollup.json >/dev/null
 	@jq -e '.alt_da != null and .alt_da.da_commitment_type != null' .localnet/networks/rollup-b/rollup.json >/dev/null
 	@echo "Checking op-node Alt-DA env for both rollups..."
-	@for svc in op-node-a op-node-b; do \
-		docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $$svc | grep -q '^OP_NODE_ALTDA_ENABLED=true$$' || { echo "$$svc missing OP_NODE_ALTDA_ENABLED=true"; exit 1; }; \
-	done
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-node-a | grep -q '^OP_NODE_ALTDA_ENABLED=true$$' || { echo "op-node-a missing OP_NODE_ALTDA_ENABLED=true"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-node-a | grep -q '^OP_NODE_ALTDA_DA_SERVER=http://op-alt-da-a:3100$$' || { echo "op-node-a is not wired to op-alt-da-a"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-node-b | grep -q '^OP_NODE_ALTDA_ENABLED=true$$' || { echo "op-node-b missing OP_NODE_ALTDA_ENABLED=true"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-node-b | grep -q '^OP_NODE_ALTDA_DA_SERVER=http://op-alt-da-b:3100$$' || { echo "op-node-b is not wired to op-alt-da-b"; exit 1; }
 	@echo "Checking op-batcher Alt-DA env for both rollups..."
-	@for svc in op-batcher-a op-batcher-b; do \
-		docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $$svc | grep -q '^OP_BATCHER_ALTDA_ENABLED=true$$' || { echo "$$svc missing OP_BATCHER_ALTDA_ENABLED=true"; exit 1; }; \
-	done
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-batcher-a | grep -q '^OP_BATCHER_ALTDA_ENABLED=true$$' || { echo "op-batcher-a missing OP_BATCHER_ALTDA_ENABLED=true"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-batcher-a | grep -q '^OP_BATCHER_ALTDA_DA_SERVER=http://op-alt-da-a:3100$$' || { echo "op-batcher-a is not wired to op-alt-da-a"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-batcher-b | grep -q '^OP_BATCHER_ALTDA_ENABLED=true$$' || { echo "op-batcher-b missing OP_BATCHER_ALTDA_ENABLED=true"; exit 1; }
+	@docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' op-batcher-b | grep -q '^OP_BATCHER_ALTDA_DA_SERVER=http://op-alt-da-b:3100$$' || { echo "op-batcher-b is not wired to op-alt-da-b"; exit 1; }
 	@echo "Alt-DA checks passed for both rollups."
 
 .PHONY: stop-l2
@@ -126,8 +138,8 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.frontend.yml ]; then docker compose -f .localnet/docker-compose.frontend.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
 	docker ps -aq --filter "name=op-succinct" | xargs -r docker rm -f
-	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console op-succinct-a op-succinct-b op-succinct-db-a op-succinct-db-b 2>/dev/null || true
-	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct-db)" | xargs -r docker volume rm
+	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console op-succinct-a op-succinct-b op-succinct-db-a op-succinct-db-b op-celestia-indexer-a op-celestia-indexer-b op-alt-da-a op-alt-da-b 2>/dev/null || true
+	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct-db|op-celestia-indexer|op-alt-da)" | xargs -r docker volume rm
 	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
 .PHONY: clean-l2-full
@@ -160,6 +172,51 @@ SERVICE?=all
 .PHONY: run-l2-deploy
 run-l2-deploy: build ## Deploy L2 services (usage: make run-l2-deploy SERVICE=op-geth)
 	${BINARY_PATH} l2 deploy $(SERVICE)
+
+.PHONY: run-l2-op-succinct-contracts
+run-l2-op-succinct-contracts: build ## Deploy op-succinct contracts/env only (does not start op-succinct services)
+	${BINARY_PATH} l2 op-succinct-contracts
+
+.PHONY: op-succinct-cache
+op-succinct-cache: ## Warm persistent Cargo cache for op-succinct (avoid repeated pulls)
+	@mkdir -p "$(OP_SUCCINCT_TARGET_DIR)"
+	@echo "Warming cache with CARGO_HOME=$(OP_SUCCINCT_CARGO_HOME)"
+	@cd "$(OP_SUCCINCT_PATH)" && \
+		CARGO_HOME="$(OP_SUCCINCT_CARGO_HOME)" \
+		CARGO_TARGET_DIR="$(OP_SUCCINCT_TARGET_DIR)" \
+		cargo fetch --locked
+
+.PHONY: op-succinct-prove-multi
+op-succinct-prove-multi: ## Run op-succinct multi prover with persistent cache
+	@if [ ! -f "$(OP_SUCCINCT_ENV_FILE)" ]; then \
+		echo "Missing env file: $(OP_SUCCINCT_ENV_FILE)"; \
+		exit 1; \
+	fi
+	@mkdir -p "$(OP_SUCCINCT_TARGET_DIR)"
+	@cd "$(OP_SUCCINCT_PATH)" && \
+		CARGO_HOME="$(OP_SUCCINCT_CARGO_HOME)" \
+		CARGO_TARGET_DIR="$(OP_SUCCINCT_TARGET_DIR)" \
+		RUST_LOG="$(OP_SUCCINCT_RUST_LOG)" \
+		cargo run --release --locked -p op-succinct-prove --bin multi -- \
+			--env-file "$(OP_SUCCINCT_ENV_FILE)" \
+			--start "$(START)" \
+			--end "$(END)"
+
+.PHONY: op-succinct-prove-multi-offline
+op-succinct-prove-multi-offline: ## Run op-succinct multi prover fully offline (after cache warmup)
+	@if [ ! -f "$(OP_SUCCINCT_ENV_FILE)" ]; then \
+		echo "Missing env file: $(OP_SUCCINCT_ENV_FILE)"; \
+		exit 1; \
+	fi
+	@mkdir -p "$(OP_SUCCINCT_TARGET_DIR)"
+	@cd "$(OP_SUCCINCT_PATH)" && \
+		CARGO_HOME="$(OP_SUCCINCT_CARGO_HOME)" \
+		CARGO_TARGET_DIR="$(OP_SUCCINCT_TARGET_DIR)" \
+		RUST_LOG="$(OP_SUCCINCT_RUST_LOG)" \
+		cargo run --release --locked --offline -p op-succinct-prove --bin multi -- \
+			--env-file "$(OP_SUCCINCT_ENV_FILE)" \
+			--start "$(START)" \
+			--end "$(END)"
 
 ######
 

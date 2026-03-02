@@ -82,7 +82,14 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	}
 
 	o.logger.With("env", envVars).Info("environment variables were constructed. Building compose services")
-	if err := o.buildComposeServices(ctx, dockerPath, envVars, cfg, opSuccinctBuildServiceName(enabledOpSuccinctChains, opSuccinctEnabled)); err != nil {
+	if err := o.buildComposeServices(
+		ctx,
+		dockerPath,
+		envVars,
+		cfg,
+		opSuccinctBuildServiceName(enabledOpSuccinctChains, opSuccinctEnabled),
+		cfg.IsLocalOpAltDAEnabled(),
+	); err != nil {
 		return nil, fmt.Errorf("failed to build compose services: %w", err)
 	}
 
@@ -136,7 +143,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		return nil, fmt.Errorf("required network files not ready: %w", err)
 	}
 
-	if err := serviceManager.StartAll(ctx, envVars); err != nil {
+	if err := serviceManager.StartAll(ctx, envVars, cfg.IsLocalOpAltDAEnabled()); err != nil {
 		return nil, fmt.Errorf("failed to start base L2 services: %w", err)
 	}
 
@@ -175,7 +182,12 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 			return nil, fmt.Errorf("failed to finalize op-succinct runtime env files: %w", err)
 		}
 
-		if err := serviceManager.StartOpSuccinct(ctx, envVars, enabledOpSuccinctChains); err != nil {
+		if err := serviceManager.StartOpSuccinct(
+			ctx,
+			envVars,
+			enabledOpSuccinctChains,
+			cfg.IsCelestiaAltDAEnabled(),
+		); err != nil {
 			return nil, fmt.Errorf("failed to start op-succinct services: %w", err)
 		}
 	}
@@ -253,6 +265,44 @@ func (o *Orchestrator) waitForNetworkFiles() error {
 	}
 }
 
+// DeployOpSuccinctContractsOnly deploys op-succinct contracts and updates env files
+// without starting op-succinct runtime services.
+func (o *Orchestrator) DeployOpSuccinctContractsOnly(
+	ctx context.Context,
+	cfg configs.L2,
+	disputeGameFactoryProxyAddresses map[configs.L2ChainName]common.Address,
+) error {
+	enabledOpSuccinctChains := cfg.EnabledOpSuccinctChains()
+	opSuccinctEnabled := isOpSuccinctEnabled(cfg, enabledOpSuccinctChains)
+	if !opSuccinctEnabled {
+		return fmt.Errorf("op-succinct is disabled or repository is not configured")
+	}
+
+	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
+	envVars, err := envBuilder.BuildComposeEnv(cfg, common.Address{})
+	if err != nil {
+		return err
+	}
+
+	opSuccinctPath := envVars["OP_SUCCINCT_PATH"]
+	if opSuccinctPath == "" {
+		return fmt.Errorf("OP_SUCCINCT_PATH is empty")
+	}
+
+	if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, disputeGameFactoryProxyAddresses, opSuccinctPath); err != nil {
+		return fmt.Errorf("failed to prepare op-succinct env files: %w", err)
+	}
+	if err := o.setupOpSuccinct(ctx, cfg, opSuccinctPath, envVars); err != nil {
+		return fmt.Errorf("failed to run op-succinct setup calls: %w", err)
+	}
+	if err := o.syncOpSuccinctMultiEnvFiles(cfg, envVars); err != nil {
+		return fmt.Errorf("failed to synchronize op-succinct multi env files: %w", err)
+	}
+
+	o.logger.Info("op-succinct contract deployment completed without starting op-succinct services")
+	return nil
+}
+
 func (o *Orchestrator) restartOpGeth(ctx context.Context, dockerFilePath string, env map[string]string, deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) error {
 	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameMailbox]
 	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameMailbox]
@@ -298,11 +348,21 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 }
 
 // buildComposeServices builds services that are sourced locally.
-func (o *Orchestrator) buildComposeServices(ctx context.Context, composeFilePath string, env map[string]string, cfg configs.L2, opSuccinctBuildService string) error {
+func (o *Orchestrator) buildComposeServices(
+	ctx context.Context,
+	composeFilePath string,
+	env map[string]string,
+	cfg configs.L2,
+	opSuccinctBuildService string,
+	localAltDAEnabled bool,
+) error {
 	services := []string{
 		"publisher",
 		"op-geth-a",
 		"op-geth-b",
+	}
+	if localAltDAEnabled {
+		services = append(services, "op-alt-da-a", "op-alt-da-b")
 	}
 	if opSuccinctBuildService != "" {
 		services = append(services, opSuccinctBuildService)
