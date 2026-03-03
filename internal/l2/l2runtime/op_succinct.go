@@ -215,11 +215,7 @@ func (o *Orchestrator) setupOpSuccinct(ctx context.Context, cfg configs.L2, opSu
 
 		// Always pass an explicit feature so deploy-oracle rebuilds fetch-l2oo-config for the
 		// currently selected DA path instead of reusing a stale binary from a previous mode.
-		oracleArgs := []string{"deploy-oracle", ".env", "ethereum"}
-		if cfg.IsCelestiaAltDAEnabled() {
-			// For Celestia DA, fetch-l2oo-config must run with the Celestia feature.
-			oracleArgs = []string{"deploy-oracle", ".env", "celestia"}
-		}
+		oracleArgs := []string{"deploy-oracle", ".env", opSuccinctOracleFeature(cfg)}
 		oracleOutput, err := o.runJustCommand(ctx, opSuccinctPath, oracleArgs...)
 		if err != nil {
 			return fmt.Errorf("deploy-oracle failed for %s: %w", instance.chainName, err)
@@ -666,6 +662,16 @@ func opSuccinctRuntimeAltDAServerURL(chainName configs.L2ChainName) (string, err
 	default:
 		return "", fmt.Errorf("unsupported chain for op-succinct runtime AltDA URL: %s", chainName)
 	}
+}
+
+func opSuccinctOracleFeature(cfg configs.L2) string {
+	if cfg.IsCelestiaAltDAEnabled() {
+		return "celestia"
+	}
+	if cfg.IsLocalOpAltDAEnabled() {
+		return "altda"
+	}
+	return "ethereum"
 }
 
 func opSuccinctRuntimeRPCURLs(chainName configs.L2ChainName) (string, string, error) {

@@ -97,12 +97,21 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_SUCCINCT_ENV_FILE_B"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-b.env")
 	env["OP_SUCCINCT_A_DOCKERFILE"] = "./validity/Dockerfile"
 	env["OP_SUCCINCT_B_DOCKERFILE"] = "./validity/Dockerfile"
-	if cfg.IsCelestiaAltDAEnabled() {
+	switch {
+	case cfg.IsCelestiaAltDAEnabled():
 		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupA) {
 			env["OP_SUCCINCT_A_DOCKERFILE"] = "./validity/Dockerfile.celestia"
 		}
 		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupB) {
 			env["OP_SUCCINCT_B_DOCKERFILE"] = "./validity/Dockerfile.celestia"
+		}
+	case cfg.IsLocalOpAltDAEnabled():
+		altDADockerfile := filepath.Join(rootHost, "internal", "l2", "infra", "docker", "op-succinct.altda.Dockerfile")
+		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupA) {
+			env["OP_SUCCINCT_A_DOCKERFILE"] = altDADockerfile
+		}
+		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupB) {
+			env["OP_SUCCINCT_B_DOCKERFILE"] = altDADockerfile
 		}
 	}
 
