@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/moby/go-archive"
 )
 
