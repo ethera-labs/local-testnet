@@ -12,8 +12,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
 )
 

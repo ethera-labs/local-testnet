@@ -19,7 +19,7 @@ Local testnet is a CLI tool for managing local L1 and L2 Ethereum test networks.
 
 ```bash
 # Clone the repo
-git clone https://github.com/compose-network/local-testnet.git
+git clone https://github.com/ethera-labs/local-testnet.git
 
 # Navigate
 cd local-testnet

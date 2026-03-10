@@ -23,7 +23,7 @@ var (
 		// L1 connection
 		{"l1-el-url", "l2.l1-el-url", "", "L1 execution layer RPC URL"},
 		{"l1-cl-url", "l2.l1-cl-url", "", "L1 consensus layer RPC URL"},
-		{"compose-network-name", "l2.compose-network-name", "", "Compose network name for publisher registry"},
+		{"ethera-labs-name", "l2.ethera-labs-name", "", "Compose network name for publisher registry"},
 
 		// Wallet
 		{"wallet-private-key", "l2.wallet.private-key", "", "Deployer wallet private key"},

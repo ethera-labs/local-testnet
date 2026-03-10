@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/compose-network/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/configs"
 )
 
 //go:embed nginx.conf.tmpl

@@ -1,4 +1,4 @@
-module github.com/compose-network/local-testnet
+module github.com/ethera-labs/local-testnet
 
 go 1.25
 

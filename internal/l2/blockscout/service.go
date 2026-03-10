@@ -7,9 +7,9 @@ import (
 	"maps"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/infra/docker"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
 )
 

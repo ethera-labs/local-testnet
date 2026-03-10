@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/internal/l2/infra/filesystem"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem"
 )
 
 type Generator struct {

@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/compose-network/local-testnet/internal/l2/infra/filesystem"
-	"github.com/compose-network/local-testnet/internal/l2/infra/filesystem/json"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem/json"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 )
 
 const rollupConfigFileName = "rollup.json"

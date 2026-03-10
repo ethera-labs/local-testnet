@@ -5,12 +5,12 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/compose-network/local-testnet/internal/observability/alloy"
-	"github.com/compose-network/local-testnet/internal/observability/grafana"
-	"github.com/compose-network/local-testnet/internal/observability/loki"
-	"github.com/compose-network/local-testnet/internal/observability/prometheus"
-	"github.com/compose-network/local-testnet/internal/observability/shared"
-	"github.com/compose-network/local-testnet/internal/observability/tempo"
+	"github.com/ethera-labs/local-testnet/internal/observability/alloy"
+	"github.com/ethera-labs/local-testnet/internal/observability/grafana"
+	"github.com/ethera-labs/local-testnet/internal/observability/loki"
+	"github.com/ethera-labs/local-testnet/internal/observability/prometheus"
+	"github.com/ethera-labs/local-testnet/internal/observability/shared"
+	"github.com/ethera-labs/local-testnet/internal/observability/tempo"
 	"github.com/docker/docker/client"
 )
 

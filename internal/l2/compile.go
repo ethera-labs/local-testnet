@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/infra/git"
-	"github.com/compose-network/local-testnet/internal/l2/l2runtime/contracts"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/git"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
 	"github.com/spf13/cobra"
 )
 

@@ -157,7 +157,7 @@ clean-observability: ## Clean observability Docker containers
 ######
 
 ### Docker ###
-DOCKER_IMAGE_NAME?=compose-network/local-testnet
+DOCKER_IMAGE_NAME?=ethera-labs/local-testnet
 DOCKER_IMAGE_TAG?=latest
 
 .PHONY: docker-build

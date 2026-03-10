@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/compose-network/local-testnet/internal/l2/infra/docker"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 )
 
 // Manager manages L2 service lifecycle via docker-compose

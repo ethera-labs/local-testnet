@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/l2runtime/contracts"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/yaml.v3"
 )

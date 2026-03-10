@@ -7,12 +7,12 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/blockscout"
-	"github.com/compose-network/local-testnet/internal/l2/infra/git"
-	"github.com/compose-network/local-testnet/internal/l2/l1deployment"
-	"github.com/compose-network/local-testnet/internal/l2/l2runtime/contracts"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/blockscout"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/git"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
 )
 

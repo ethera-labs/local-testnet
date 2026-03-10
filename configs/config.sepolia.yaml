@@ -6,7 +6,7 @@ l2:
   l1-chain-id: 11155111
   l1-el-url: https://sepolia.drpc.org
   l1-cl-url: https://eth-sepolia.api.onfinality.io/beacon/public
-  compose-network-name: sepolia-stage # compose network name for publisher registry
+  ethera-labs-name: sepolia-stage # compose network name for publisher registry
   coordinator-private-key: 0x336ff3f15e4a2356201939cbc486d8589585e3e67fb4664ba1912ad21ac1153a
   wallet:
     private-key: 336ff3f15e4a2356201939cbc486d8589585e3e67fb4664ba1912ad21ac1153a
@@ -19,7 +19,7 @@ l2:
     rollup-boost-image-tag: "latest"
     rollup-a-rpc-port: 17545
     rollup-b-rpc-port: 27545
-    # op-rbuilder defaults to compose-network/op-rbuilder#stage; set OP_RBUILDER_PATH to override with local path.
+    # op-rbuilder defaults to ethera-labs/op-rbuilder#stage; set OP_RBUILDER_PATH to override with local path.
   sidecar:
     enabled: true  # requires flashblocks
     rollup-a-api-port: 17090
@@ -52,14 +52,14 @@ l2:
       url: git@github.com:ethereum-optimism/op-geth.git
       branch: v1.101603.4
     publisher:
-      url: git@github.com:compose-network/publisher.git
+      url: git@github.com:ethera-labs/publisher.git
       branch: feature/compose-sidecar
     compose-contracts:
-      url: git@github.com:compose-network/contracts.git
+      url: git@github.com:ethera-labs/contracts.git
       branch: develop
     sidecar:
       # Required when sidecar.enabled: true
-      url: git@github.com:compose-network/sidecar.git
+      url: git@github.com:ethera-labs/sidecar.git
       branch: stage
   dispute:
     network-name: sepolia

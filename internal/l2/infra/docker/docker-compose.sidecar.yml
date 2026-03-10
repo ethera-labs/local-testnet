@@ -3,6 +3,8 @@ services:
     build:
       context: ${SIDECAR_PATH}
       dockerfile: build/Dockerfile
+      ssh:
+        - default
     image: local/sidecar:dev
     container_name: sidecar-a
     labels:
@@ -33,6 +35,8 @@ services:
     build:
       context: ${SIDECAR_PATH}
       dockerfile: build/Dockerfile
+      ssh:
+        - default
     image: local/sidecar:dev
     container_name: sidecar-b
     labels:
