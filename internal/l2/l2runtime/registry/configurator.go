@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -95,6 +96,46 @@ func (c *Configurator) generateEtheraToml(registryNetworkDir string, cfg configs
 	return nil
 }
 
+// UpdateRollupMailboxAddresses updates Mailbox values in generated rollup TOML files.
+// This must run after L2 contracts are deployed, so chain IDs resolve to real mailbox
+// addresses (instead of zero placeholders) in the registry.
+func (c *Configurator) UpdateRollupMailboxAddresses(
+	localnetDir string,
+	networkName string,
+	mailboxByChain map[configs.L2ChainName]common.Address,
+) error {
+	registryNetworkDir := filepath.Join(localnetDir, "registry", "networks", networkName)
+
+	for chainName, mailboxAddr := range mailboxByChain {
+		if mailboxAddr == (common.Address{}) {
+			return fmt.Errorf("mailbox address is zero for chain %s", chainName)
+		}
+
+		rollupTomlPath := filepath.Join(registryNetworkDir, fmt.Sprintf("%s.toml", chainName))
+		raw, err := os.ReadFile(rollupTomlPath)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", rollupTomlPath, err)
+		}
+
+		updated, err := replaceMailboxLine(string(raw), mailboxAddr.Hex())
+		if err != nil {
+			return fmt.Errorf("failed to update mailbox in %s: %w", rollupTomlPath, err)
+		}
+
+		if err := os.WriteFile(rollupTomlPath, []byte(updated), 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %w", rollupTomlPath, err)
+		}
+
+		c.logger.Info("updated chain registry mailbox address",
+			"chain", chainName,
+			"mailbox", mailboxAddr.Hex(),
+			"path", rollupTomlPath,
+		)
+	}
+
+	return nil
+}
+
 func (c *Configurator) generateRollupToml(registryNetworkDir, chainName string, chainCfg configs.Chain) error {
 	rollupFileName := chainName + ".toml"
 
@@ -145,4 +186,28 @@ func (c *Configurator) generateRollupToml(registryNetworkDir, chainName string, 
 	c.logger.Info("created chain registry configuration", "chain", chainName, "chain_id", chainCfg.ID, "rpc_port", chainCfg.RPCPort, "path", rollupTomlPath)
 
 	return nil
+}
+
+func replaceMailboxLine(content, mailboxAddress string) (string, error) {
+	lines := strings.Split(content, "\n")
+	updated := false
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "Mailbox = ") {
+			continue
+		}
+
+		indentLen := len(line) - len(strings.TrimLeft(line, " \t"))
+		indent := line[:indentLen]
+		lines[i] = fmt.Sprintf(`%sMailbox = "%s"`, indent, mailboxAddress)
+		updated = true
+		break
+	}
+
+	if !updated {
+		return "", fmt.Errorf("Mailbox entry not found")
+	}
+
+	return strings.Join(lines, "\n"), nil
 }

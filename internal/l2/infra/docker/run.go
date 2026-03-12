@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
@@ -16,6 +17,7 @@ type RunOptions struct {
 	Entrypoint []string
 	Cmd        []string
 	Env        []string
+	Network    string
 	Volumes    map[string]string // host:container
 	WorkDir    string
 	User       string
@@ -38,6 +40,15 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 	hostConfig := &container.HostConfig{
 		AutoRemove: opts.AutoRemove,
 	}
+	var networkingConfig *network.NetworkingConfig
+	if opts.Network != "" {
+		hostConfig.NetworkMode = container.NetworkMode(opts.Network)
+		networkingConfig = &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				opts.Network: {},
+			},
+		}
+	}
 
 	if len(opts.Volumes) > 0 {
 		binds := make([]string, 0, len(opts.Volumes))
@@ -47,7 +58,7 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 		hostConfig.Binds = binds
 	}
 
-	resp, err := c.cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
+	resp, err := c.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, nil, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
 	}

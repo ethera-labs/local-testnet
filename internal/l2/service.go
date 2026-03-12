@@ -72,6 +72,12 @@ func NewService(
 func (s *Service) Deploy(ctx context.Context, cfg configs.L2) error {
 	s.logger.Info("starting L2 deployment process")
 
+	resolvedCfg, err := resolveManagedL1Endpoints(ctx, cfg, s.logger)
+	if err != nil {
+		return fmt.Errorf("failed to resolve local L1 endpoints: %w", err)
+	}
+	cfg = resolvedCfg
+
 	if err := s.cloneRepositories(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to clone repositories: %w", err)
 	}

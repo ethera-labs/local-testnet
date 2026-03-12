@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,7 +17,10 @@ import (
 )
 
 const (
-	publicImageName = "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer"
+	publicImageName      = "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer"
+	kurtosisL1Network    = "kt-localnet"
+	kurtosisL1ELPort     = 8545
+	kurtosisL1ELNameHint = "el-1-geth-lighthouse--"
 )
 
 // Deployer wraps the op-deployer tool
@@ -137,6 +141,10 @@ func (o *Deployer) Apply(ctx context.Context, l1RpcURL, deployerPrivateKey, depl
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
+	containerL1RPCURL, network, err := o.containerAccessibleL1RPCURL(ctx, l1RpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to resolve container-accessible L1 RPC URL: %w", err)
+	}
 
 	_, err = o.docker.Run(ctx, docker.RunOptions{
 		Image:      o.imageWithTag,
@@ -148,9 +156,10 @@ func (o *Deployer) Apply(ctx context.Context, l1RpcURL, deployerPrivateKey, depl
 		Env: []string{
 			"HOME=/work",
 			"DEPLOYER_CACHE_DIR=/work/.cache",
-			fmt.Sprintf("L1_RPC_URL=%s", l1RpcURL),
+			fmt.Sprintf("L1_RPC_URL=%s", containerL1RPCURL),
 			fmt.Sprintf("DEPLOYER_PRIVATE_KEY=%s", deployerPrivateKey),
 		},
+		Network: network,
 		Volumes: map[string]string{
 			absStateDir: "/work",
 		},
@@ -167,6 +176,29 @@ func (o *Deployer) Apply(ctx context.Context, l1RpcURL, deployerPrivateKey, depl
 	o.logger.Info("deployer apply completed successfully")
 
 	return nil
+}
+
+func (o *Deployer) containerAccessibleL1RPCURL(ctx context.Context, raw string) (string, string, error) {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw, "", nil
+	}
+	if parsed.Hostname() != "host.docker.internal" {
+		return raw, "", nil
+	}
+	if parsed.Port() != "63816" {
+		return raw, "", nil
+	}
+
+	containerName, err := o.docker.FindContainerByNamePrefix(ctx, kurtosisL1ELNameHint)
+	if err != nil {
+		return "", "", err
+	}
+	ip, err := o.docker.ContainerNetworkIPv4(ctx, containerName, kurtosisL1Network)
+	if err != nil {
+		return "", "", err
+	}
+	return fmt.Sprintf("http://%s:%d", ip, kurtosisL1ELPort), kurtosisL1Network, nil
 }
 
 // InspectGenesis exports genesis JSON for a chain

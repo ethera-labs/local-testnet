@@ -26,10 +26,52 @@ var labeledAddressRegex = regexp.MustCompile(`(?im)(?:contract\s+address|address
 var celestiaNamespaceRegex = regexp.MustCompile(`(?m)^\s*namespace\s*=\s*"([^"]+)"`)
 
 const defaultCelestiaNamespace = "0000000000000000000000000000000000000000010203040506070809"
+const opSuccinctPrebuiltBinaryRelativePath = ".localnet-prebuilt/validity-proposer"
 
 type opSuccinctInstance struct {
 	chainName configs.L2ChainName
 	envFile   string
+}
+
+func (o *Orchestrator) prepareOpSuccinctPrebuiltBinary(ctx context.Context, cfg configs.L2, opSuccinctPath string) error {
+	feature := opSuccinctOracleFeature(cfg)
+	targetDir := filepath.Join(o.localnetDir, "op-succinct", "cargo-target")
+	dstPath := filepath.Join(opSuccinctPath, opSuccinctPrebuiltBinaryRelativePath)
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create op-succinct cargo target dir: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return fmt.Errorf("failed to create op-succinct prebuilt dir: %w", err)
+	}
+
+	args := []string{"build", "--release", "--bin", "validity", "--features", feature}
+	cmd := exec.CommandContext(ctx, "cargo", args...)
+	cmd.Dir = opSuccinctPath
+	cmd.Env = append(os.Environ(),
+		"CARGO_TARGET_DIR="+targetDir,
+		"RUSTFLAGS=-A warnings",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = io.MultiWriter(os.Stdout, &output)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &output)
+
+	o.logger.With("path", opSuccinctPath, "feature", feature).Info("building host op-succinct validity binary")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to build op-succinct validity binary in %s: %w", opSuccinctPath, err)
+	}
+
+	srcPath := filepath.Join(targetDir, "release", "validity")
+	if err := copyFile(srcPath, dstPath); err != nil {
+		return fmt.Errorf("failed to stage prebuilt op-succinct validity binary: %w", err)
+	}
+	if err := os.Chmod(dstPath, 0755); err != nil {
+		return fmt.Errorf("failed to chmod prebuilt op-succinct validity binary: %w", err)
+	}
+
+	o.logger.With("path", dstPath).Info("prepared prebuilt op-succinct validity binary")
+	return nil
 }
 
 func (o *Orchestrator) prepareOpSuccinctEnvFiles(
@@ -134,6 +176,7 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 				return err
 			}
 			envVars["ALTDA_DA_SERVER"] = altDAServer
+			envVars["ALTDA_SERVER_URL"] = altDAServer
 			envVars["ALTDA_VERIFY_ON_READ"] = strconv.FormatBool(cfg.AltDA.VerifyOnRead)
 		}
 		if err := o.applyCelestiaEnvVarsIfNeeded(cfg, instance.chainName, envVars); err != nil {
@@ -328,6 +371,7 @@ func (o *Orchestrator) finalizeOpSuccinctRuntimeEnvFiles(cfg configs.L2, compose
 				return err
 			}
 			envVars["ALTDA_DA_SERVER"] = altDAServer
+			envVars["ALTDA_SERVER_URL"] = altDAServer
 			envVars["ALTDA_VERIFY_ON_READ"] = strconv.FormatBool(cfg.AltDA.VerifyOnRead)
 		}
 

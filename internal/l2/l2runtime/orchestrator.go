@@ -62,13 +62,28 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	}
 
 	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
+	enabledOpSuccinctChains := cfg.EnabledOpSuccinctChains()
+	opSuccinctEnabled := isOpSuccinctEnabled(cfg, enabledOpSuccinctChains)
+	if opSuccinctEnabled && cfg.IsLocalOpAltDAEnabled() && docker.CanUseOpSuccinctPrebuiltBinary() {
+		opSuccinctPath, err := envBuilder.ResolveRepoPath(
+			cfg.Repositories[configs.RepositoryNameOpSuccinct],
+			configs.RepositoryNameOpSuccinct,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve op-succinct path: %w", err)
+		}
+		if err := o.prepareOpSuccinctPrebuiltBinary(ctx, cfg, opSuccinctPath); err != nil {
+			return nil, fmt.Errorf("failed to prepare op-succinct prebuilt binary: %w", err)
+		}
+	} else if opSuccinctEnabled && cfg.IsLocalOpAltDAEnabled() {
+		o.logger.Info("skipping host-built op-succinct prebuilt binary; Docker will build a Linux binary for this platform")
+	}
+
 	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	enabledOpSuccinctChains := cfg.EnabledOpSuccinctChains()
-	opSuccinctEnabled := isOpSuccinctEnabled(cfg, enabledOpSuccinctChains)
 	opSuccinctPath := envVars["OP_SUCCINCT_PATH"]
 	if opSuccinctEnabled {
 		if opSuccinctPath == "" {
@@ -160,6 +175,17 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	deployedContracts, err := contractDeployer.Deploy(ctx, effectiveChainConfigs, cfg.CoordinatorPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contracts: %w", err)
+	}
+
+	if err := publisherConfig.UpdateRollupMailboxAddresses(
+		o.localnetDir,
+		cfg.EtheraNetworkName,
+		map[configs.L2ChainName]common.Address{
+			configs.L2ChainNameRollupA: deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameMailbox],
+			configs.L2ChainNameRollupB: deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameMailbox],
+		},
+	); err != nil {
+		return nil, fmt.Errorf("failed to update registry mailbox addresses: %w", err)
 	}
 
 	o.logger.Info("restarting op-geth services to apply mailbox configuration")

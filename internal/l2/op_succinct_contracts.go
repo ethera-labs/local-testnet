@@ -25,6 +25,11 @@ var opSuccinctContractsCmd = &cobra.Command{
 			return err
 		}
 
+		resolvedCfg, err := resolveManagedL1Endpoints(cmd.Context(), configs.Values.L2, slog.Default())
+		if err != nil {
+			return fmt.Errorf("failed to resolve local L1 endpoints: %w", err)
+		}
+
 		rootDir, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get working directory: %w", err)
@@ -35,7 +40,7 @@ var opSuccinctContractsCmd = &cobra.Command{
 		networksDir := filepath.Join(localnetDir, networksDirName)
 		servicesDir := filepath.Join(localnetDir, servicesDirName)
 
-		disputeGameFactoryProxyAddresses, err := loadDisputeGameFactoryProxyAddresses(stateDir, configs.Values.L2)
+		disputeGameFactoryProxyAddresses, err := loadDisputeGameFactoryProxyAddresses(stateDir, resolvedCfg)
 		if err != nil {
 			return err
 		}
@@ -43,7 +48,7 @@ var opSuccinctContractsCmd = &cobra.Command{
 		runtimeOrchestrator := l2runtime.NewOrchestrator(rootDir, localnetDir, networksDir, servicesDir)
 		if err := runtimeOrchestrator.DeployOpSuccinctContractsOnly(
 			cmd.Context(),
-			configs.Values.L2,
+			resolvedCfg,
 			disputeGameFactoryProxyAddresses,
 		); err != nil {
 			return fmt.Errorf("op-succinct contract-only deployment failed: %w", err)

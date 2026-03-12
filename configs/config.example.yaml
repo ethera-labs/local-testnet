@@ -52,9 +52,9 @@ l2:
     port: 3000
   op-succinct:
     rollup-a:
-      enabled: true
+      enabled: false
     rollup-b:
-      enabled: true
+      enabled: false
   alt-da:
     enabled: false
     provider: celestia # celestia | op-alt-da-local
@@ -64,7 +64,7 @@ l2:
     put-timeout: 0s
     get-timeout: 0s
     max-concurrent-da-requests: 1
-    da-commitment-type: GenericCommitment
+    da-commitment-type: KeccakCommitment
     da-challenge-window: 100
     da-resolve-window: 100
     da-bond-size: 0

@@ -107,11 +107,19 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 	case cfg.IsLocalOpAltDAEnabled():
 		altDADockerfile := filepath.Join(rootHost, "internal", "l2", "infra", "docker", "op-succinct.altda.Dockerfile")
+		prebuiltDockerfile := filepath.Join(rootHost, "internal", "l2", "infra", "docker", "op-succinct.altda.prebuilt.Dockerfile")
+		prebuiltBinary := filepath.Join(opSuccinctPath, ".localnet-prebuilt", "validity-proposer")
 		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupA) {
 			env["OP_SUCCINCT_A_DOCKERFILE"] = altDADockerfile
+			if CanUseOpSuccinctPrebuiltBinary() && fileExists(prebuiltBinary) {
+				env["OP_SUCCINCT_A_DOCKERFILE"] = prebuiltDockerfile
+			}
 		}
 		if cfg.IsOpSuccinctChainEnabled(configs.L2ChainNameRollupB) {
 			env["OP_SUCCINCT_B_DOCKERFILE"] = altDADockerfile
+			if CanUseOpSuccinctPrebuiltBinary() && fileExists(prebuiltBinary) {
+				env["OP_SUCCINCT_B_DOCKERFILE"] = prebuiltDockerfile
+			}
 		}
 	}
 
@@ -248,6 +256,14 @@ func (b *EnvBuilder) readMailboxAddress(chainName configs.L2ChainName) string {
 	}
 
 	return ""
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }
 
 // expandUserHome expands a leading ~ to the current user's home directory.
