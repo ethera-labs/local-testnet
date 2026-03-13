@@ -41,8 +41,6 @@ var (
 		{"publisher-branch", "l2.repositories.publisher.branch", "", "publisher repository branch"},
 		{"compose-contracts-url", "l2.repositories.compose-contracts.url", "", "compose-contracts repository URL"},
 		{"compose-contracts-branch", "l2.repositories.compose-contracts.branch", "", "compose-contracts repository branch"},
-		{"sidecar-url", "l2.repositories.sidecar.url", "", "sidecar repository URL"},
-		{"sidecar-branch", "l2.repositories.sidecar.branch", "", "sidecar repository branch"},
 
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},

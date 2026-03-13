@@ -30,6 +30,20 @@ make run-l2 L2_ARGS="--flashblocks-enabled"
 make run-l2 L2_ARGS="--flashblocks-enabled --op-rbuilder-tag=v1.0.0 --rollup-boost-tag=v1.0.0"
 ```
 
+## Builder Source
+
+`local-testnet` currently builds `op-rbuilder` from `git@github.com:ethera-labs/op-rbuilder.git#stage` over SSH by
+default. That branch-specific SSH source is a temporary integration default and should be replaced with a stable,
+production-ready source later.
+
+For local iteration, prefer a local checkout:
+
+```bash
+OP_RBUILDER_PATH=../op-rbuilder make run-l2 L2_ARGS="--flashblocks-enabled"
+```
+
+If you rely on the remote default, make sure Docker BuildKit can access your SSH agent.
+
 ## Services
 
 When flashblocks is enabled, 4 additional services start:

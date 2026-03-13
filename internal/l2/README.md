@@ -61,7 +61,7 @@ Deploys Compose-specific contracts to L2:
 
 ## Configuration
 
-All L2 settings are configured in `configs/config.yaml`. See [example config](../../configs/config.yaml) for all
+All L2 settings are configured in `configs/config.yaml`. See [example config](../../configs/config.example.yaml) for all
 available options.
 
 **Required settings:**
@@ -99,6 +99,19 @@ make clean-l2
 
 For flashblocks documentation, see [docs/flashblocks.md](../../docs/flashblocks.md).
 
+### Flashblocks and Sidecar Sources
+
+`local-testnet` currently uses SSH-based Git contexts for the flashblocks builder and sidecar:
+
+- `op-rbuilder`: `git@github.com:ethera-labs/op-rbuilder.git#stage`
+- `sidecar`: `git@github.com:ethera-labs/sidecar.git#chore/specs`
+
+These are temporary integration defaults and should be replaced with stable, production-ready refs once those
+repositories are ready. Until then:
+
+- prefer `OP_RBUILDER_PATH` / `SIDECAR_PATH` for local iteration
+- or make sure Docker BuildKit can access your SSH agent
+
 ### Local Development
 
 For rapid iteration on local changes to `op-geth` or `publisher`, use local repository paths:
@@ -116,13 +129,13 @@ Rebuild and restart specific services after code changes:
 
 ```bash
 # Rebuild and restart publisher service only
-make l2-deploy SERVICE=publisher
+make run-l2-deploy SERVICE=publisher
 
 # Rebuild and restart op-geth services only
-make l2-deploy SERVICE=op-geth
+make run-l2-deploy SERVICE=op-geth
 
 # Rebuild and restart all services
-make l2-deploy SERVICE=all
+make run-l2-deploy SERVICE=all
 ```
 
 This skips full redeployment (Phase 1-2) and only rebuilds Docker images + restarts containers.
@@ -163,6 +176,9 @@ make stop-l2
 
 # Stop and remove everything (containers + volumes + generated configs)
 make clean-l2
+
+# Also remove locally built L2 images
+make clean-l2-full
 ```
 
 ## Viewing Logs
@@ -231,10 +247,10 @@ docker logs sidecar-b -f
 
 ### Configuration
 
-Set `sidecar` repository in `configs/config.yaml`:
+`docker-compose.sidecar.yml` currently defaults to `ethera-labs/sidecar#chore/specs` over SSH.
+This is temporary until the sidecar repo is ready for stable production defaults.
+Override it locally with `SIDECAR_PATH`:
 
-```yaml
-repositories:
-  sidecar:
-    local-path: ../sidecar  # or url + branch
+```bash
+SIDECAR_PATH=../sidecar make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 ```

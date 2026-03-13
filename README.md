@@ -42,6 +42,11 @@ Manages the Layer 1 Ethereum test network using Kurtosis. Deploys execution and 
 ### L2 Network (`localnet l2`)
 Manages Layer 2 rollup networks. Orchestrates a three-phase deployment process for multiple OP Stack rollups.
 
+Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
+temporary setup for local integration and should move to stable, production-ready defaults later. For day-to-day
+development, prefer local overrides such as `OP_RBUILDER_PATH` and `SIDECAR_PATH`, or ensure your SSH agent is
+available.
+
 **📖 [Read L2 Documentation](internal/l2/README.md)**
 
 ### Observability (`localnet observability`)
@@ -83,10 +88,12 @@ make stop-observability  # Stop observability stack
 make clean               # Clean all components
 make clean-l1            # Clean L1 (Kurtosis)
 make clean-l2            # Clean L2 (docker containers + generated files)
+make clean-l2-full       # Clean L2 including locally built Docker images
 make clean-observability # Clean observability stack
 ```
 
-Configuration is managed via `configs/config.yaml`.
+Configuration is managed via `configs/config.yaml`. Use `configs/config.example.yaml` or
+`configs/config.sepolia.yaml` as a starting point.
 
 ## 📜 Viewing Logs
 
@@ -98,17 +105,30 @@ Each component has its own logging approach:
 
 ## ⏹️ Stopping Services
 
+Stop commands preserve generated state and configuration:
+
 ```bash
 # Stop all services (preserves configs and state)
 make stop
 
 # Or stop specific components:
-make stop-l1              # Stop L1 (Kurtosis enclave)
-make stop-l2              # Stop L2 (Docker containers)
-make stop-observability   # Stop observability stack
+make stop-l1             # Stop L1 (Kurtosis)
+make stop-l2             # Stop L2 (Docker containers)
+make stop-observability  # Stop observability stack
 ```
 
-Use `make clean-*` commands for full cleanup (removes configs and volumes).
+Clean commands remove generated state, containers, and other local artifacts:
+
+```bash
+# Clean all components
+make clean
+
+# Or clean specific components:
+make clean-l1            # Clean L1 (Kurtosis)
+make clean-l2            # Clean L2 (docker containers + generated files)
+make clean-l2-full       # Clean L2 including locally built Docker images
+make clean-observability # Clean observability stack
+```
 
 ## 🐳 Docker Usage
 

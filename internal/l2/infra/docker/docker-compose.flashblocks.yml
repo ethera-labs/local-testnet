@@ -20,8 +20,11 @@ services:
   # Block builder for Chain A
   op-rbuilder-a:
     build:
-      context: ${OP_RBUILDER_PATH:-https://github.com/ethera-labs/op-rbuilder.git#stage} # default: remote stage; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
       dockerfile: Dockerfile
+      target: rbuilder-runtime
+      ssh:
+        - default
     image: local/op-rbuilder:dev #  image: ghcr.io/flashbots/op-rbuilder:${OP_RBUILDER_IMAGE_TAG:-latest}
     container_name: op-rbuilder-a
     labels:
@@ -57,8 +60,11 @@ services:
   # Block builder for Chain B
   op-rbuilder-b:
     build:
-      context: ${OP_RBUILDER_PATH:-https://github.com/ethera-labs/op-rbuilder.git#stage} # default: remote stage; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
       dockerfile: Dockerfile
+      target: rbuilder-runtime
+      ssh:
+        - default
     image: local/op-rbuilder:dev #  image: ghcr.io/flashbots/op-rbuilder:${OP_RBUILDER_IMAGE_TAG:-latest}
     container_name: op-rbuilder-b
     labels:

@@ -110,6 +110,7 @@ clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images
 	rm -rf ./.localnet/services
 	docker images -q "local/publisher" | xargs -r docker rmi -f
 	docker images -q "local/op-geth" | xargs -r docker rmi -f
+	docker images -q "local/op-rbuilder" | xargs -r docker rmi -f
 	docker images -q "local/sidecar" | xargs -r docker rmi -f
 	docker images -q "local/compose-console" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node" | xargs -r docker rmi -f

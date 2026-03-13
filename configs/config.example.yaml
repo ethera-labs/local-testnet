@@ -15,12 +15,16 @@ l2:
     enabled: false
   flashblocks:
     enabled: false
+    # Defaults to ethera-labs/op-rbuilder#stage over SSH.
+    # Override locally with OP_RBUILDER_PATH=/path/to/op-rbuilder.
     op-rbuilder-image-tag: "latest"
     rollup-boost-image-tag: "latest"
     rollup-a-rpc-port: 17545
     rollup-b-rpc-port: 27545
   sidecar:
     enabled: false  # requires flashblocks
+    # Defaults to ethera-labs/sidecar#chore/specs over SSH.
+    # Override locally with SIDECAR_PATH=/path/to/sidecar.
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
   chain-configs:
@@ -66,11 +70,6 @@ l2:
       # local-path: ~/projects/publisher
     compose-contracts:
       url: https://github.com/contracts.git
-      branch: main
-    sidecar:
-      # Required when sidecar.enabled: true
-      # local-path: ~/projects/sidecar
-      url: https://github.com/sidecar.git
       branch: main
   dispute:
     network-name: network-name # e.g. hoodi

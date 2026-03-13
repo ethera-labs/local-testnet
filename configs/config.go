@@ -105,7 +105,6 @@ const (
 	RepositoryNameOpGeth           RepositoryName = "op-geth"
 	RepositoryNamePublisher        RepositoryName = "publisher"
 	RepositoryNameComposeContracts RepositoryName = "compose-contracts"
-	RepositoryNameSidecar          RepositoryName = "sidecar"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -139,9 +138,6 @@ func (c *L2) Validate() error {
 	}
 
 	requiredRepos := []RepositoryName{RepositoryNameOpGeth, RepositoryNamePublisher}
-	if c.Sidecar.Enabled {
-		requiredRepos = append(requiredRepos, RepositoryNameSidecar)
-	}
 	for _, name := range requiredRepos {
 		repo, exists := c.Repositories[name]
 		if !exists {

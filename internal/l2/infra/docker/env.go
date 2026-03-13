@@ -100,14 +100,6 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		env["CONSOLE_PORT"] = fmt.Sprintf("%d", cfg.Frontend.Port)
 	}
 
-	if cfg.Sidecar.Enabled {
-		sidecarPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSidecar], configs.RepositoryNameSidecar)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve sidecar path: %w", err)
-		}
-		env["SIDECAR_PATH"] = sidecarPath
-	}
-
 	env["SP_L1_DISPUTE_GAME_FACTORY"] = gameFactoryAddr.Hex()
 
 	env["OP_BATCHER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpBatcher].Tag
