@@ -62,6 +62,7 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 
 	// Attach to container logs before starting (needed for AutoRemove containers)
 	var stdout, stderr bytes.Buffer
+	var attachDone chan error
 
 	if opts.CaptureOut || opts.StreamLogs || opts.AutoRemove {
 		attachResp, err := c.cli.ContainerAttach(ctx, containerID, container.AttachOptions{
@@ -75,16 +76,19 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 		defer attachResp.Close()
 
 		// Start copying output in background
+		attachDone = make(chan error, 1)
 		go func() {
+			var copyErr error
 			if opts.StreamLogs {
 				// Stream to console and capture
 				outWriter := io.MultiWriter(os.Stdout, &stdout)
 				errWriter := io.MultiWriter(os.Stderr, &stderr)
-				_, _ = stdcopy.StdCopy(outWriter, errWriter, attachResp.Reader)
+				_, copyErr = stdcopy.StdCopy(outWriter, errWriter, attachResp.Reader)
 			} else {
 				// Just capture
-				_, _ = stdcopy.StdCopy(&stdout, &stderr, attachResp.Reader)
+				_, copyErr = stdcopy.StdCopy(&stdout, &stderr, attachResp.Reader)
 			}
+			attachDone <- copyErr
 		}()
 	}
 
@@ -99,8 +103,13 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 			return "", fmt.Errorf("error waiting for container: %w", err)
 		}
 	case status := <-statusCh:
+		if attachDone != nil {
+			if copyErr := <-attachDone; copyErr != nil {
+				return "", fmt.Errorf("failed to copy container output: %w", copyErr)
+			}
+		}
+
 		if status.StatusCode != 0 {
-			// Use already-captured output from attach
 			errorOutput := stdout.String() + stderr.String()
 			if errorOutput != "" {
 				return "", fmt.Errorf("container exited with code %d: %s", status.StatusCode, errorOutput)
