@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/ethera-labs/local-testnet/configs"
@@ -95,13 +94,6 @@ func (s *Service) Deploy(ctx context.Context, cfg configs.L2) error {
 		return fmt.Errorf("phase 3 failed: %w", err)
 	}
 
-	s.logger.Info("restarting op-geth services to apply mailbox configuration")
-	if err := s.restartOpGeth(ctx); err != nil {
-		const msg = "failed to restart op-geth services"
-		s.logger.Error(msg, "error", err)
-		return fmt.Errorf("%s: %w", msg, err)
-	}
-
 	if cfg.Blockscout.Enabled {
 		s.logger.Info("blockscout is enabled. Starting Blockscout services")
 		chainConfigs, err := generateBlockscoutConfig(cfg, deploymentState)
@@ -166,21 +158,6 @@ func generateBlockscoutConfig(cfg configs.L2, deploymentState l1deployment.Deplo
 	}
 
 	return chainConfigs, nil
-}
-
-// restartOpGeth restarts op-geth services to pick up new mailbox configuration
-func (s *Service) restartOpGeth(ctx context.Context) error {
-	localnetDir := filepath.Join(s.rootDir, localnetDirName)
-	composeFile := filepath.Join(localnetDir, "docker-compose.yml")
-
-	cmd := exec.CommandContext(ctx, "docker", "compose", "-f", composeFile, "restart", "op-geth-a", "op-geth-b")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("docker compose restart failed: %w, output: %s", err, string(output))
-	}
-
-	s.logger.Info("op-geth services restarted successfully, waiting for them to be ready")
-
-	return nil
 }
 
 // cloneRepositories clones all required git repositories
