@@ -25,7 +25,7 @@ type (
 		L1ChainID             int                           `mapstructure:"l1-chain-id"`
 		L1ElURL               string                        `mapstructure:"l1-el-url"`
 		L1ClURL               string                        `mapstructure:"l1-cl-url"`
-		ComposeNetworkName    string                        `mapstructure:"compose-network-name"`
+		ComposeNetworkName    string                        `mapstructure:"ethera-labs-name"`
 		Wallet                Wallet                        `mapstructure:"wallet"`
 		CoordinatorPrivateKey string                        `mapstructure:"coordinator-private-key"`
 		Repositories          map[RepositoryName]Repository `mapstructure:"repositories"`
@@ -37,6 +37,12 @@ type (
 		Blockscout            BlockscoutConfig              `mapstructure:"blockscout"`
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
+		Frontend              FrontendConfig                `mapstructure:"frontend"`
+	}
+
+	FrontendConfig struct {
+		Enabled bool `mapstructure:"enabled"`
+		Port    int  `mapstructure:"port"`
 	}
 
 	BlockscoutConfig struct {
@@ -99,7 +105,6 @@ const (
 	RepositoryNameOpGeth           RepositoryName = "op-geth"
 	RepositoryNamePublisher        RepositoryName = "publisher"
 	RepositoryNameComposeContracts RepositoryName = "compose-contracts"
-	RepositoryNameSidecar          RepositoryName = "sidecar"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -133,9 +138,6 @@ func (c *L2) Validate() error {
 	}
 
 	requiredRepos := []RepositoryName{RepositoryNameOpGeth, RepositoryNamePublisher}
-	if c.Sidecar.Enabled {
-		requiredRepos = append(requiredRepos, RepositoryNameSidecar)
-	}
 	for _, name := range requiredRepos {
 		repo, exists := c.Repositories[name]
 		if !exists {
@@ -226,7 +228,7 @@ func (c *L2) Validate() error {
 	}
 
 	if c.ComposeNetworkName == "" {
-		errs = append(errs, errors.New("l2.compose-network-name is required"))
+		errs = append(errs, errors.New("l2.ethera-labs-name is required"))
 	}
 
 	if len(errs) > 0 {

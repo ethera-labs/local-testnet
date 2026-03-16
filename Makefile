@@ -93,6 +93,7 @@ stop-l2: ## Stop L2 Docker containers
 	docker compose -f .localnet/docker-compose.yml down || true
 	-if [ -f .localnet/docker-compose.flashblocks.yml ]; then docker compose -f .localnet/docker-compose.flashblocks.yml down || true; fi
 	-if [ -f .localnet/docker-compose.sidecar.yml ]; then docker compose -f .localnet/docker-compose.sidecar.yml down || true; fi
+	-docker rm -f compose-console 2>/dev/null || true
 
 .PHONY: clean-l2
 clean-l2: ## Clean L2 Docker containers and volumes
@@ -100,16 +101,18 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.flashblocks.yml ]; then docker compose -f .localnet/docker-compose.flashblocks.yml down -v 2>/dev/null || true; fi
 	-if [ -f .localnet/docker-compose.sidecar.yml ]; then docker compose -f .localnet/docker-compose.sidecar.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
-	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-proposer-a op-proposer-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b 2>/dev/null || true
+	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b compose-console 2>/dev/null || true
 	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder)" | xargs -r docker volume rm
-	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/.tmp ./.localnet/registry ./.cache
+	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
 .PHONY: clean-l2-full
 clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images
 	rm -rf ./.localnet/services
 	docker images -q "local/publisher" | xargs -r docker rmi -f
 	docker images -q "local/op-geth" | xargs -r docker rmi -f
+	docker images -q "local/op-rbuilder" | xargs -r docker rmi -f
 	docker images -q "local/sidecar" | xargs -r docker rmi -f
+	docker images -q "local/compose-console" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer" | xargs -r docker rmi -f
@@ -118,6 +121,14 @@ clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images
 .PHONY: run-l2-compile
 run-l2-compile: build ## Compile L2 contracts
 	${BINARY_PATH} l2 compile
+
+.PHONY: run-frontend
+run-frontend: ## Start Compose Network Console (cd frontend && npm run dev)
+	@cd frontend && npm run dev
+
+.PHONY: frontend-install
+frontend-install: ## Install frontend dependencies
+	@cd frontend && npm install
 
 SERVICE?=all
 .PHONY: run-l2-deploy
@@ -147,7 +158,7 @@ clean-observability: ## Clean observability Docker containers
 ######
 
 ### Docker ###
-DOCKER_IMAGE_NAME?=compose-network/local-testnet
+DOCKER_IMAGE_NAME?=ethera-labs/local-testnet
 DOCKER_IMAGE_TAG?=latest
 
 .PHONY: docker-build

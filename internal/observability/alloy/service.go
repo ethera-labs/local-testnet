@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/internal/observability/shared"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
@@ -15,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/ethera-labs/local-testnet/internal/observability/shared"
 )
 
 const dockerImage = "grafana/alloy:v1.9.1"

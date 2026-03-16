@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l1"
-	"github.com/compose-network/local-testnet/internal/l2"
-	"github.com/compose-network/local-testnet/internal/logger"
-	"github.com/compose-network/local-testnet/internal/observability"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l1"
+	"github.com/ethera-labs/local-testnet/internal/l2"
+	"github.com/ethera-labs/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/internal/observability"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

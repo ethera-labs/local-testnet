@@ -1,8 +1,10 @@
 services:
   sidecar-a:
     build:
-      context: ${SIDECAR_PATH}
+      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#chore/specs} # default: remote chore/specs over SSH; override with SIDECAR_PATH
       dockerfile: build/Dockerfile
+      ssh:
+        - default
     image: local/sidecar:dev
     container_name: sidecar-a
     labels:
@@ -31,8 +33,10 @@ services:
 
   sidecar-b:
     build:
-      context: ${SIDECAR_PATH}
+      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#chore/specs} # default: remote chore/specs over SSH; override with SIDECAR_PATH
       dockerfile: build/Dockerfile
+      ssh:
+        - default
     image: local/sidecar:dev
     container_name: sidecar-b
     labels:

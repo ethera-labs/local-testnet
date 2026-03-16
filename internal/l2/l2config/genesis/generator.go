@@ -14,10 +14,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/pebble"
 
-	"github.com/compose-network/local-testnet/internal/l2/infra/docker"
-	"github.com/compose-network/local-testnet/internal/l2/infra/filesystem"
-	"github.com/compose-network/local-testnet/internal/l2/path"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem"
+	"github.com/ethera-labs/local-testnet/internal/l2/path"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 )
 
 const GenesisFileName = "genesis.json"

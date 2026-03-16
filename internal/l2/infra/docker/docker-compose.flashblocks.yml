@@ -20,8 +20,11 @@ services:
   # Block builder for Chain A
   op-rbuilder-a:
     build:
-      context: ${OP_RBUILDER_PATH:-https://github.com/compose-network/op-rbuilder.git#stage} # default: remote stage; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
       dockerfile: Dockerfile
+      target: rbuilder-runtime
+      ssh:
+        - default
     image: local/op-rbuilder:dev #  image: ghcr.io/flashbots/op-rbuilder:${OP_RBUILDER_IMAGE_TAG:-latest}
     container_name: op-rbuilder-a
     labels:
@@ -52,12 +55,16 @@ services:
       - --flashblocks.enabled
       - --flashblocks.addr=0.0.0.0
       - --flashblocks.port=1111
+      - --flashblocks.fixed
 
   # Block builder for Chain B
   op-rbuilder-b:
     build:
-      context: ${OP_RBUILDER_PATH:-https://github.com/compose-network/op-rbuilder.git#stage} # default: remote stage; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
       dockerfile: Dockerfile
+      target: rbuilder-runtime
+      ssh:
+        - default
     image: local/op-rbuilder:dev #  image: ghcr.io/flashbots/op-rbuilder:${OP_RBUILDER_IMAGE_TAG:-latest}
     container_name: op-rbuilder-b
     labels:
@@ -88,6 +95,7 @@ services:
       - --flashblocks.enabled
       - --flashblocks.addr=0.0.0.0
       - --flashblocks.port=1111
+      - --flashblocks.fixed
 
   # Multiplexer for Chain A - routes between op-geth (fallback) and op-rbuilder (builder)
   rollup-boost-a:

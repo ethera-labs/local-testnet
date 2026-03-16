@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/compose-network/local-testnet/internal/l2/infra/docker"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 )
 
 // Manager manages L2 service lifecycle via docker-compose
@@ -15,8 +15,10 @@ type Manager struct {
 	composeFilePath            string
 	flashblocksComposeFilePath string
 	sidecarComposeFilePath     string
+	frontendComposeFilePath    string
 	flashblocksEnabled         bool
 	sidecarEnabled             bool
+	frontendEnabled            bool
 	logger                     *slog.Logger
 }
 
@@ -40,6 +42,13 @@ func (m *Manager) WithFlashblocks(flashblocksComposeFilePath string) *Manager {
 func (m *Manager) WithSidecar(sidecarComposeFilePath string) *Manager {
 	m.sidecarComposeFilePath = sidecarComposeFilePath
 	m.sidecarEnabled = true
+	return m
+}
+
+// WithFrontend enables Compose Network Console with the specified compose file
+func (m *Manager) WithFrontend(frontendComposeFilePath string) *Manager {
+	m.frontendComposeFilePath = frontendComposeFilePath
+	m.frontendEnabled = true
 	return m
 }
 
@@ -76,6 +85,8 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 			"sidecar-b",
 		)
 	}
+
+	// Frontend (compose-console) is started separately after contract deployment
 
 	if len(composeFiles) > 1 {
 		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled).Info("starting L2 services")
@@ -115,5 +126,27 @@ func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) e
 	}
 
 	m.logger.Info("flashblocks services started successfully")
+	return nil
+}
+
+// StartFrontend builds and starts the Compose Network Console. Must be called after contract deployment
+// so that env contains CONTRACT_BRIDGE_ADDRESS and CONTRACT_TOKEN_ADDRESS.
+func (m *Manager) StartFrontend(ctx context.Context, composeFiles []string, env map[string]string) error {
+	if !m.frontendEnabled || m.frontendComposeFilePath == "" {
+		return fmt.Errorf("frontend not enabled or compose file not set")
+	}
+
+	allFiles := append(composeFiles, m.frontendComposeFilePath)
+	m.logger.Info("building and starting Compose Network Console")
+
+	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "compose-console"); err != nil {
+		return fmt.Errorf("failed to build compose-console: %w", err)
+	}
+
+	if err := docker.ComposeUpMultiFile(ctx, allFiles, env, "compose-console"); err != nil {
+		return fmt.Errorf("failed to start compose-console: %w", err)
+	}
+
+	m.logger.Info("Compose Network Console started successfully")
 	return nil
 }

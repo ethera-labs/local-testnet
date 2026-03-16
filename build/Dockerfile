@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.25@sha256:5d73b7b83dd6e0258ff62832c93b6ea208fbb7727985d265fb49f75f81fc3d1f AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26@sha256:e2ddb153f786ee6210bf8c40f7f35490b3ff7d38be70d1a0d358ba64225f6428 AS builder
 
 WORKDIR /build
 
@@ -47,6 +47,6 @@ WORKDIR /workspace
 ENTRYPOINT ["localnet"]
 CMD ["--help"]
 
-LABEL org.opencontainers.image.source="https://github.com/compose-network/local-testnet"
+LABEL org.opencontainers.image.source="https://github.com/ethera-labs/local-testnet"
 LABEL org.opencontainers.image.description="Local testnet control plane for L1 and L2 Ethereum networks"
 LABEL org.opencontainers.image.licenses="Apache-2.0"

@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'IBM Plex Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #E8E4DC;
+  background-color: #0A0A0C;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #0A0A0C;
+  background-image:
+    linear-gradient(rgba(255, 107, 0, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 0, 0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0A0A0C; }
+::-webkit-scrollbar-thumb { background: #333340; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #FF6B00; }
+
+/* Corner bracket mixin — decorate card corners with orange L-marks */
+.cb {
+  position: relative;
+}
+.cb::before,
+.cb::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: rgba(255, 107, 0, 0.55);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 1;
+}
+.cb::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.cb::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* Active corner brackets (brighter) */
+.cb-bright::before,
+.cb-bright::after {
+  border-color: rgba(255, 107, 0, 0.9);
+}
+
+/* Cyan corner brackets */
+.cb-cyan::before,
+.cb-cyan::after {
+  border-color: rgba(0, 212, 168, 0.6);
+}
+
+/* Input styles */
+input[type='text'],
+input[type='number'] {
+  caret-color: #FF6B00;
+}
+input::placeholder {
+  color: #3E3C38;
+}
+
+/* Font display */
+.font-display {
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+/* Glow animations */
+@keyframes amber-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 107, 0, 0.3); }
+  50%       { box-shadow: 0 0 18px rgba(255, 107, 0, 0.7), 0 0 40px rgba(255, 107, 0, 0.2); }
+}
+@keyframes cyan-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(0, 212, 168, 0.3); }
+  50%       { box-shadow: 0 0 18px rgba(0, 212, 168, 0.7), 0 0 40px rgba(0, 212, 168, 0.2); }
+}
+.glow-amber { animation: amber-glow-pulse 2s ease-in-out infinite; }
+.glow-cyan  { animation: cyan-glow-pulse 2s ease-in-out infinite; }
+
+/* Scanline sweep */
+@keyframes scanline-sweep {
+  0%   { top: -2px; }
+  100% { top: 100vh; }
+}
+.scanline-overlay::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  top: -2px;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 107, 0, 0.06) 50%, transparent 100%);
+  animation: scanline-sweep 10s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Fade-slide for new log entries */
+@keyframes fade-slide-in {
+  0%   { opacity: 0; transform: translateX(-6px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-fade-slide-in {
+  animation: fade-slide-in 0.25s ease-out forwards;
+}
+
+/* Status indicator dot */
+@keyframes indicator-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.indicator-active {
+  animation: indicator-pulse 1.6s ease-in-out infinite;
+}
+
+/* ReactFlow dark overrides */
+.react-flow__background { background: transparent !important; }
+.react-flow__controls {
+  background: #111116 !important;
+  border: 1px solid #242430 !important;
+  border-radius: 2px !important;
+}
+.react-flow__controls-button {
+  background: transparent !important;
+  border-bottom: 1px solid #242430 !important;
+  color: #6A6860 !important;
+  fill: #6A6860 !important;
+}
+.react-flow__controls-button:hover {
+  background: #1C1C24 !important;
+  color: #FF6B00 !important;
+  fill: #FF6B00 !important;
+}
+.react-flow__minimap {
+  background: #111116 !important;
+  border: 1px solid #242430 !important;
+}

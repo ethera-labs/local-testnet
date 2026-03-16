@@ -1,0 +1,36 @@
+# Compose Network Console - web UI for testing cross-chain transactions.
+# Requires flashblocks and sidecar. Started after contract deployment.
+
+services:
+  compose-console:
+    build:
+      context: ${FRONTEND_PATH}
+      dockerfile: Dockerfile
+      args:
+        VITE_CHAIN_A_ID: "${ROLLUP_A_CHAIN_ID}"
+        VITE_CHAIN_B_ID: "${ROLLUP_B_CHAIN_ID}"
+        VITE_FLASHBLOCKS_ENABLED: "true"
+        VITE_CHAIN_A_BUILDER_RPC: "http://localhost:${FLASHBLOCKS_ROLLUP_A_RPC_PORT}"
+        VITE_CHAIN_A_GETH_RPC: "http://localhost:${ROLLUP_A_RPC_PORT}"
+        VITE_CHAIN_B_BUILDER_RPC: "http://localhost:${FLASHBLOCKS_ROLLUP_B_RPC_PORT}"
+        VITE_CHAIN_B_GETH_RPC: "http://localhost:${ROLLUP_B_RPC_PORT}"
+        VITE_SIDECAR_A_URL: "http://localhost:${SIDECAR_ROLLUP_A_API_PORT}"
+        VITE_SIDECAR_B_URL: "http://localhost:${SIDECAR_ROLLUP_B_API_PORT}"
+        VITE_CHAIN_A_BRIDGE_ADDRESS: "${CONTRACT_BRIDGE_ADDRESS}"
+        VITE_CHAIN_B_BRIDGE_ADDRESS: "${CONTRACT_BRIDGE_ADDRESS}"
+        VITE_CHAIN_A_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
+        VITE_CHAIN_B_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
+        VITE_WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
+    image: local/compose-console:dev
+    container_name: compose-console
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    ports:
+      - "${CONSOLE_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

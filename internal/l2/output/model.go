@@ -1,7 +1,7 @@
 package output
 
 import (
-	"github.com/compose-network/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/yaml.v3"
 )

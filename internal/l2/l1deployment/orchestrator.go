@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/infra/docker"
-	"github.com/compose-network/local-testnet/internal/l2/infra/filesystem/json"
-	"github.com/compose-network/local-testnet/internal/l2/l1deployment/deployer"
-	"github.com/compose-network/local-testnet/internal/l2/l1deployment/dispute"
-	"github.com/compose-network/local-testnet/internal/l2/l2config/crypto"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem/json"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment/deployer"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment/dispute"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2config/crypto"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
 )
 

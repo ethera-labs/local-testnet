@@ -1,0 +1,289 @@
+import { useState } from 'react'
+import SystemDiagram from './components/visualization/SystemDiagram'
+import TransactionFlowPanel, {
+  FlowMode,
+} from './components/visualization/TransactionFlowPanel'
+import TransactionPanel from './components/transactions/TransactionPanel'
+import { useTransactionStore } from './stores/transactionStore'
+import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT } from './api/rollup'
+
+function StatusDot({ active, label }: { active?: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${
+          active ? 'bg-cyan indicator-active' : 'bg-border-bright'
+        }`}
+      />
+      <span className="text-text-secondary text-[10px] font-display tracking-widest uppercase">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function App() {
+  const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
+  const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
+  const { transactions, currentStatus } = useTransactionStore()
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
+  const formatDuration = (createdAt: Date, decidedAt?: Date) => {
+    if (!decidedAt) return null
+    const ms = decidedAt.getTime() - createdAt.getTime()
+    return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+  }
+
+  const getBlockscoutUrl = (chainId: number, txHash: string) => {
+    const baseUrl = chainId === CHAIN_A_ID ? CHAIN_A_BLOCKSCOUT : CHAIN_B_BLOCKSCOUT
+    return `${baseUrl}/tx/${txHash}`
+  }
+
+  const statusColor = (status: string) => {
+    if (status === 'committed') return 'text-cyan'
+    if (status === 'aborted') return 'text-error'
+    return 'text-yellow-400'
+  }
+
+  const statusDot = (status: string) => {
+    if (status === 'committed') return 'bg-cyan'
+    if (status === 'aborted') return 'bg-error'
+    return 'bg-yellow-400'
+  }
+
+  return (
+    <div className="scanline-overlay min-h-screen text-text-primary flex flex-col">
+      {/* ── Header ── */}
+      <header className="border-b border-border bg-bg-card flex-none">
+        <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center justify-between gap-6">
+          {/* Left: brand */}
+          <div className="flex items-center gap-4">
+            <img
+              src="https://framerusercontent.com/images/Fb2oWhF4xWeQVhnTEkAGcHvKrc.png?width=4182&height=1547"
+              alt="Compose Network"
+              className="h-5 w-auto opacity-80"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
+            <div className="w-px h-4 bg-border-bright" />
+            <span className="font-display text-[11px] tracking-[0.3em] uppercase text-text-secondary">
+              Local-Testnet
+            </span>
+            <div className="w-px h-4 bg-border-bright" />
+            <span className="font-display text-[11px] tracking-[0.3em] uppercase text-text-primary">
+              Compose Network Console
+            </span>
+          </div>
+
+          {/* Right: live status */}
+          <div className="flex items-center gap-4">
+            <StatusDot active={currentStatus.chainAConnected} label="Chain A" />
+            <StatusDot active={currentStatus.chainBConnected} label="Chain B" />
+            <StatusDot active={currentStatus.sidecarAActive} label="Sidecar A" />
+            <StatusDot active={currentStatus.sidecarBActive} label="Sidecar B" />
+            <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber indicator-active" />
+              <span className="font-display text-[10px] tracking-widest uppercase text-amber">
+                Compose Active
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Main ── */}
+      <main className="flex-1 max-w-[1440px] mx-auto w-full px-6 py-6 grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
+
+        {/* Left column: System Diagram + Flow Panel */}
+        <div className="flex flex-col gap-6">
+          {/* Architecture diagram card */}
+          <div className="cb bg-bg-card border border-border flex flex-col h-[580px]">
+            <div className="border-b border-border px-5 py-3 flex items-center justify-between flex-none">
+              <div className="flex items-center gap-3">
+                <span className="font-display text-[10px] tracking-[0.3em] uppercase text-amber">
+                  System Architecture
+                </span>
+                <span className="text-border-bright">·</span>
+                <span className="text-[10px] text-text-secondary font-mono">
+                  {currentStatus.step.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFlowMode(null)}
+                  disabled={!flowMode}
+                  className="text-[10px] font-display tracking-widest uppercase transition-colors disabled:text-text-dim disabled:cursor-not-allowed text-text-secondary hover:text-amber"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => setFlowMode('normal')}
+                  className={`px-2 py-0.5 text-[10px] font-display tracking-widest uppercase border transition-colors ${
+                    flowMode === 'normal'
+                      ? 'border-cyan text-cyan bg-cyan/5'
+                      : 'border-border text-text-secondary hover:border-border-bright hover:text-text-primary'
+                  }`}
+                >
+                  Normal TX
+                </button>
+                <button
+                  onClick={() => setFlowMode('xt')}
+                  className={`px-2 py-0.5 text-[10px] font-display tracking-widest uppercase border transition-colors ${
+                    flowMode === 'xt'
+                      ? 'border-amber text-amber bg-amber/5'
+                      : 'border-border text-text-secondary hover:border-border-bright hover:text-text-primary'
+                  }`}
+                >
+                  Submit XT
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 relative">
+              <SystemDiagram
+                currentStatus={currentStatus}
+                onSelectFlow={setFlowMode}
+                selectedFlow={flowMode}
+              />
+            </div>
+          </div>
+
+          {/* Flow documentation panel */}
+          <div className="cb bg-bg-card border border-border flex-none">
+            <TransactionFlowPanel
+              mode={flowMode}
+              onSelect={setFlowMode}
+              onClear={() => setFlowMode(null)}
+            />
+          </div>
+        </div>
+
+        {/* Right column: Controls + Log */}
+        <div className="flex flex-col gap-6">
+          {/* Tab selector */}
+          <div className="cb bg-bg-card border border-border">
+            <div className="border-b border-border">
+              <div className="flex">
+                <button
+                  onClick={() => setActiveTab('mint')}
+                  className={`flex-1 px-3 py-3 font-display text-[10px] tracking-[0.2em] uppercase transition-all border-b-2 ${
+                    activeTab === 'mint' ? 'border-cyan text-cyan bg-cyan/5' : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Mint
+                </button>
+                <button
+                  onClick={() => setActiveTab('bridge')}
+                  className={`flex-1 px-3 py-3 font-display text-[10px] tracking-[0.2em] uppercase transition-all border-b-2 ${
+                    activeTab === 'bridge' ? 'border-amber text-amber bg-amber/5' : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Bridge XT
+                </button>
+                <button
+                  onClick={() => setActiveTab('atomicity')}
+                  className={`flex-1 px-3 py-3 font-display text-[10px] tracking-[0.2em] uppercase transition-all border-b-2 ${
+                    activeTab === 'atomicity' ? 'border-warning text-warning bg-warning/5' : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Atomicity
+                </button>
+                <button
+                  onClick={() => setActiveTab('stress')}
+                  className={`flex-1 px-3 py-3 font-display text-[10px] tracking-[0.2em] uppercase transition-all border-b-2 ${
+                    activeTab === 'stress' ? 'border-error text-error bg-error/5' : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Stress
+                </button>
+              </div>
+            </div>
+            <div className="p-5">
+              <TransactionPanel mode={activeTab} onSelectFlow={setFlowMode} />
+            </div>
+          </div>
+
+          {/* Transaction log */}
+          {transactions.length > 0 && (
+            <div className="cb bg-bg-card border border-border flex-1">
+              <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
+                <span className="font-display text-[10px] tracking-[0.3em] uppercase text-text-secondary">
+                  TX Log
+                </span>
+                <span className="text-[10px] text-text-dim font-mono">
+                  {transactions.length} entries
+                </span>
+              </div>
+              <div className="divide-y divide-border max-h-[360px] overflow-y-auto">
+                {transactions.map((tx) => (
+                  <div
+                    key={tx.instanceId}
+                    className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-bg-elevated/50 transition-colors animate-fade-slide-in"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full flex-none ${statusDot(tx.status)} ${
+                            tx.status !== 'committed' && tx.status !== 'aborted'
+                              ? 'indicator-active'
+                              : ''
+                          }`}
+                        />
+                        <span className="text-[10px] font-display tracking-widest uppercase text-text-secondary">
+                          {tx.type}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={getBlockscoutUrl(tx.chainId, tx.instanceId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] text-text-secondary hover:text-amber transition-colors"
+                        >
+                          {tx.instanceId.slice(0, 18)}…{tx.instanceId.slice(-6)}
+                        </a>
+                        <button
+                          onClick={() => handleCopyId(tx.instanceId)}
+                          className="text-text-dim hover:text-amber transition-colors flex-none"
+                          title="Copy full ID"
+                        >
+                          {copiedId === tx.instanceId ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
+                              <rect x="9" y="9" width="13" height="13" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-none">
+                      <span className={`text-[10px] font-display tracking-widest uppercase ${statusColor(tx.status)}`}>
+                        {tx.status}
+                      </span>
+                      {formatDuration(tx.createdAt, tx.decidedAt) && (
+                        <span className="font-mono text-[10px] text-text-dim">
+                          {formatDuration(tx.createdAt, tx.decidedAt)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default App

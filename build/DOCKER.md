@@ -44,7 +44,7 @@ docker run --rm \
   -v $(PWD):/workspace \
   -w /workspace \
   -e HOST_PROJECT_PATH=$(PWD) \
-  compose-network/local-testnet:latest \
+  ethera-labs/local-testnet:latest \
   l2 \
   --l1-chain-id 560048 \
   --l1-el-url http://your-l1-node:8545 \

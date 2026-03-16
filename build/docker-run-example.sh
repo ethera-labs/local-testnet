@@ -22,5 +22,5 @@ docker run --rm \
   -v $(PWD):/workspace \
   -w /workspace \
   -e HOST_PROJECT_PATH=$(PWD) \
-  compose-network/local-testnet:latest \
+  ethera-labs/local-testnet:latest \
   l2

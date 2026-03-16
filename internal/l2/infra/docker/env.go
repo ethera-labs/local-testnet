@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/path"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/path"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -90,12 +90,14 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["SIDECAR_ROLLUP_A_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupAAPIPort)
 	env["SIDECAR_ROLLUP_B_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupBAPIPort)
 
-	if cfg.Sidecar.Enabled {
-		sidecarPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSidecar], configs.RepositoryNameSidecar)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve sidecar path: %w", err)
-		}
-		env["SIDECAR_PATH"] = sidecarPath
+	frontendPath, err := path.GetHostPath(filepath.Join(b.rootDir, "frontend"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve frontend path: %w", err)
+	}
+	env["FRONTEND_PATH"] = frontendPath
+
+	if cfg.Frontend.Enabled && cfg.Frontend.Port > 0 {
+		env["CONSOLE_PORT"] = fmt.Sprintf("%d", cfg.Frontend.Port)
 	}
 
 	env["SP_L1_DISPUTE_GAME_FACTORY"] = gameFactoryAddr.Hex()

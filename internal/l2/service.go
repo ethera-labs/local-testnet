@@ -7,12 +7,12 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/compose-network/local-testnet/configs"
-	"github.com/compose-network/local-testnet/internal/l2/blockscout"
-	"github.com/compose-network/local-testnet/internal/l2/infra/git"
-	"github.com/compose-network/local-testnet/internal/l2/l1deployment"
-	"github.com/compose-network/local-testnet/internal/l2/l2runtime/contracts"
-	"github.com/compose-network/local-testnet/internal/logger"
+	"github.com/ethera-labs/local-testnet/configs"
+	"github.com/ethera-labs/local-testnet/internal/l2/blockscout"
+	"github.com/ethera-labs/local-testnet/internal/l2/infra/git"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
+	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -190,6 +190,11 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 	repos := make([]git.Repository, 0, len(cfg.Repositories))
 
 	for name, repo := range cfg.Repositories {
+		if name == "sidecar" {
+			s.logger.With("name", name).Info("ignoring sidecar repository config; use SIDECAR_PATH to override docker-compose.sidecar.yml")
+			continue
+		}
+
 		if repo.URL != "" {
 			repos = append(repos, git.Repository{
 				Name: string(name),

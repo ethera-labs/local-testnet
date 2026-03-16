@@ -44,6 +44,8 @@ Starts L2 services using Docker Compose:
 - **op-rbuilder**: External block builder for flashblocks (`--flashblocks-enabled`)
 - **rollup-boost**: Engine API multiplexer for flashblocks (`--flashblocks-enabled`)
 - **blockscout**: Block explorer UI (`--blockscout-enabled`)
+- **sidecar**: Cross-chain coordination (`--sidecar-enabled`, requires flashblocks)
+- **Compose Network Console**: Web UI for XT testing (`--frontend-enabled`, requires flashblocks and sidecar)
 
 Deploys Compose-specific contracts to L2:
 
@@ -59,7 +61,7 @@ Deploys Compose-specific contracts to L2:
 
 ## Configuration
 
-All L2 settings are configured in `configs/config.yaml`. See [example config](../../configs/config.yaml) for all
+All L2 settings are configured in `configs/config.yaml`. See [example config](../../configs/config.example.yaml) for all
 available options.
 
 **Required settings:**
@@ -82,6 +84,7 @@ make run-l2
 make run-l2 L2_ARGS="--flashblocks-enabled"              # Enable flashblocks
 make run-l2 L2_ARGS="--blockscout-enabled"               # Enable block explorer
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled"  # Both
+make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack
 
 # Or run directly
 ./cmd/localnet/bin/localnet l2
@@ -95,6 +98,32 @@ make clean-l2
 ```
 
 For flashblocks documentation, see [docs/flashblocks.md](../../docs/flashblocks.md).
+
+### Flashblocks and Sidecar Sources
+
+`local-testnet` currently uses SSH-based Git contexts as the default build source for the flashblocks builder
+and sidecar. **Docker BuildKit SSH forwarding can fail depending on your environment** — using local paths is
+the recommended approach:
+
+```bash
+# Clone the repos first, then point to them
+OP_RBUILDER_PATH=../op-rbuilder SIDECAR_PATH=../sidecar \
+  make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
+```
+
+If you don't have local clones and want to use the SSH-based defaults, make sure your SSH agent is forwarded
+to Docker BuildKit:
+
+```bash
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+```
+
+Default remote refs (used when `OP_RBUILDER_PATH` / `SIDECAR_PATH` are not set):
+
+- `op-rbuilder`: `git@github.com:ethera-labs/op-rbuilder.git#stage`
+- `sidecar`: `git@github.com:ethera-labs/sidecar.git#chore/specs`
+
+These will be replaced with stable, production-ready refs once both repositories are ready.
 
 ### Local Development
 
@@ -113,13 +142,13 @@ Rebuild and restart specific services after code changes:
 
 ```bash
 # Rebuild and restart publisher service only
-make l2-deploy SERVICE=publisher
+make run-l2-deploy SERVICE=publisher
 
 # Rebuild and restart op-geth services only
-make l2-deploy SERVICE=op-geth
+make run-l2-deploy SERVICE=op-geth
 
 # Rebuild and restart all services
-make l2-deploy SERVICE=all
+make run-l2-deploy SERVICE=all
 ```
 
 This skips full redeployment (Phase 1-2) and only rebuilds Docker images + restarts containers.
@@ -160,6 +189,9 @@ make stop-l2
 
 # Stop and remove everything (containers + volumes + generated configs)
 make clean-l2
+
+# Also remove locally built L2 images
+make clean-l2-full
 ```
 
 ## Viewing Logs
@@ -203,12 +235,13 @@ docker compose -f .localnet/docker-compose.yml logs -f publisher op-geth-a op-ge
 
 ## Service Ports
 
-| Service         | Chain A | Chain B | Description       |
-|-----------------|---------|---------|-------------------|
-| op-geth RPC     | 18545   | 28545   | Execution RPC     |
-| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC   |
-| sidecar         | 17090   | 27090   | Sidecar API       |
-| Blockscout      | 19000   | 29000   | Block explorer UI |
+| Service         | Chain A | Chain B | Description                 |
+|-----------------|---------|---------|-----------------------------|
+| op-geth RPC     | 18545   | 28545   | Execution RPC               |
+| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC             |
+| sidecar         | 17090   | 27090   | Sidecar API                 |
+| Blockscout      | 19000   | 29000   | Block explorer UI           |
+| Compose Console | 3000    | —       | Web UI (--frontend-enabled) |
 
 ## Sidecar Mode
 
@@ -227,10 +260,10 @@ docker logs sidecar-b -f
 
 ### Configuration
 
-Set `sidecar` repository in `configs/config.yaml`:
+`docker-compose.sidecar.yml` currently defaults to `ethera-labs/sidecar#chore/specs` over SSH.
+This is temporary until the sidecar repo is ready for stable production defaults.
+Override it locally with `SIDECAR_PATH`:
 
-```yaml
-repositories:
-  sidecar:
-    local-path: ../sidecar  # or url + branch
+```bash
+SIDECAR_PATH=../sidecar make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 ```

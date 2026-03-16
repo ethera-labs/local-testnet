@@ -19,7 +19,7 @@ Local testnet is a CLI tool for managing local L1 and L2 Ethereum test networks.
 
 ```bash
 # Clone the repo
-git clone https://github.com/compose-network/local-testnet.git
+git clone https://github.com/ethera-labs/local-testnet.git
 
 # Navigate
 cd local-testnet
@@ -42,12 +42,22 @@ Manages the Layer 1 Ethereum test network using Kurtosis. Deploys execution and 
 ### L2 Network (`localnet l2`)
 Manages Layer 2 rollup networks. Orchestrates a three-phase deployment process for multiple OP Stack rollups.
 
+Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
+temporary setup for local integration and should move to stable, production-ready defaults later. For day-to-day
+development, prefer local overrides such as `OP_RBUILDER_PATH` and `SIDECAR_PATH`, or ensure your SSH agent is
+available.
+
 **📖 [Read L2 Documentation](internal/l2/README.md)**
 
 ### Observability (`localnet observability`)
 Manages the observability stack for monitoring and debugging. Deploys Grafana, Prometheus, Loki, Tempo, and Alloy.
 
 **📖 [Read Observability Documentation](internal/observability/README.md)**
+
+### Compose Network Console (`frontend`)
+Web UI for testing cross-chain transactions. Requires L2 with flashblocks and sidecar enabled. Use `--frontend-enabled` to start with L2, or run locally with `make run-frontend`.
+
+**📖 [Read Frontend Documentation](frontend/README.md)** | **📖 [Port Reference](docs/ports.md)**
 
 ## 🔧 Usage
 
@@ -60,6 +70,8 @@ make run-l1              # Start L1 network
 make run-l2              # Start L2 networks
 make run-l2-compile      # Compile L2 contracts from publisher repo
 make run-observability   # Start observability stack
+make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack with Compose Console
+make run-frontend       # Run Compose Console locally (requires L2 + flashblocks + sidecar already running)
 
 # Inspect running services:
 make show-l1             # Show Kurtosis enclave
@@ -76,10 +88,12 @@ make stop-observability  # Stop observability stack
 make clean               # Clean all components
 make clean-l1            # Clean L1 (Kurtosis)
 make clean-l2            # Clean L2 (docker containers + generated files)
+make clean-l2-full       # Clean L2 including locally built Docker images
 make clean-observability # Clean observability stack
 ```
 
-Configuration is managed via `configs/config.yaml`.
+Configuration is managed via `configs/config.yaml`. Use `configs/config.example.yaml` or
+`configs/config.sepolia.yaml` as a starting point.
 
 ## 📜 Viewing Logs
 
@@ -91,17 +105,30 @@ Each component has its own logging approach:
 
 ## ⏹️ Stopping Services
 
+Stop commands preserve generated state and configuration:
+
 ```bash
 # Stop all services (preserves configs and state)
 make stop
 
 # Or stop specific components:
-make stop-l1              # Stop L1 (Kurtosis enclave)
-make stop-l2              # Stop L2 (Docker containers)
-make stop-observability   # Stop observability stack
+make stop-l1             # Stop L1 (Kurtosis)
+make stop-l2             # Stop L2 (Docker containers)
+make stop-observability  # Stop observability stack
 ```
 
-Use `make clean-*` commands for full cleanup (removes configs and volumes).
+Clean commands remove generated state, containers, and other local artifacts:
+
+```bash
+# Clean all components
+make clean
+
+# Or clean specific components:
+make clean-l1            # Clean L1 (Kurtosis)
+make clean-l2            # Clean L2 (docker containers + generated files)
+make clean-l2-full       # Clean L2 including locally built Docker images
+make clean-observability # Clean observability stack
+```
 
 ## 🐳 Docker Usage
 
