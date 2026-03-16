@@ -21,6 +21,15 @@ export default function TransactionStatus({ instanceId, onClose }: TransactionSt
   const [decision, setDecision] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { updateTransaction } = useTransactionStore()
+  const [startedAt] = useState(() => Date.now())
+  const [copied, setCopied] = useState(false)
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(instanceId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -29,6 +38,7 @@ export default function TransactionStatus({ instanceId, onClose }: TransactionSt
       try {
         const result = await waitForDecision(instanceId, 30000)
         if (mounted) {
+          setElapsedMs(Date.now() - startedAt)
           setDecision(result)
           setStatus(result ? 'committed' : 'aborted')
           updateTransaction(instanceId, {
@@ -74,8 +84,26 @@ export default function TransactionStatus({ instanceId, onClose }: TransactionSt
           <div className="font-display text-[10px] tracking-[0.3em] uppercase text-text-secondary mb-1">
             XT Status
           </div>
-          <div className="font-mono text-[11px] text-text-dim">
-            {instanceId.slice(0, 20)}…{instanceId.slice(-4)}
+          <div className="flex items-center gap-1.5">
+            <div className="font-mono text-[11px] text-text-secondary">
+              {instanceId.slice(0, 20)}…{instanceId.slice(-4)}
+            </div>
+            <button
+              onClick={handleCopy}
+              className="text-text-dim hover:text-amber transition-colors"
+              title="Copy full XT ID"
+            >
+              {copied ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
+                  <rect x="9" y="9" width="13" height="13" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
         <button
@@ -98,18 +126,32 @@ export default function TransactionStatus({ instanceId, onClose }: TransactionSt
             </span>
           </div>
         ) : decision ? (
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan glow-cyan" />
-            <span className="font-display text-[11px] tracking-[0.2em] uppercase text-cyan">
-              Committed
-            </span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan glow-cyan" />
+              <span className="font-display text-[11px] tracking-[0.2em] uppercase text-cyan">
+                Committed
+              </span>
+            </div>
+            {elapsedMs !== null && (
+              <span className="font-mono text-[10px] text-text-dim">
+                {elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-error" />
-            <span className="font-display text-[11px] tracking-[0.2em] uppercase text-error">
-              Aborted
-            </span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-error" />
+              <span className="font-display text-[11px] tracking-[0.2em] uppercase text-error">
+                Aborted
+              </span>
+            </div>
+            {elapsedMs !== null && (
+              <span className="font-mono text-[10px] text-text-dim">
+                {elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
           </div>
         )}
       </div>

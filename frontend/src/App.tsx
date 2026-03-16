@@ -26,6 +26,19 @@ function App() {
   const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
   const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
   const { transactions, currentStatus } = useTransactionStore()
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
+  const formatDuration = (createdAt: Date, decidedAt?: Date) => {
+    if (!decidedAt) return null
+    const ms = decidedAt.getTime() - createdAt.getTime()
+    return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+  }
 
   const getBlockscoutUrl = (chainId: number, txHash: string) => {
     const baseUrl = chainId === CHAIN_A_ID ? CHAIN_A_BLOCKSCOUT : CHAIN_B_BLOCKSCOUT
@@ -221,22 +234,47 @@ function App() {
                               : ''
                           }`}
                         />
-                        <span className="text-[10px] font-display tracking-widest uppercase text-text-dim">
+                        <span className="text-[10px] font-display tracking-widest uppercase text-text-secondary">
                           {tx.type}
                         </span>
                       </div>
-                      <a
-                        href={getBlockscoutUrl(tx.chainId, tx.instanceId)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-[11px] text-text-secondary hover:text-amber transition-colors break-all block"
-                      >
-                        {tx.instanceId.slice(0, 18)}…{tx.instanceId.slice(-6)}
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={getBlockscoutUrl(tx.chainId, tx.instanceId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] text-text-secondary hover:text-amber transition-colors"
+                        >
+                          {tx.instanceId.slice(0, 18)}…{tx.instanceId.slice(-6)}
+                        </a>
+                        <button
+                          onClick={() => handleCopyId(tx.instanceId)}
+                          className="text-text-dim hover:text-amber transition-colors flex-none"
+                          title="Copy full ID"
+                        >
+                          {copiedId === tx.instanceId ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
+                              <rect x="9" y="9" width="13" height="13" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <span className={`text-[10px] font-display tracking-widest uppercase flex-none ${statusColor(tx.status)}`}>
-                      {tx.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 flex-none">
+                      <span className={`text-[10px] font-display tracking-widest uppercase ${statusColor(tx.status)}`}>
+                        {tx.status}
+                      </span>
+                      {formatDuration(tx.createdAt, tx.decidedAt) && (
+                        <span className="font-mono text-[10px] text-text-dim">
+                          {formatDuration(tx.createdAt, tx.decidedAt)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

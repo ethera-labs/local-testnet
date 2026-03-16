@@ -101,16 +101,29 @@ For flashblocks documentation, see [docs/flashblocks.md](../../docs/flashblocks.
 
 ### Flashblocks and Sidecar Sources
 
-`local-testnet` currently uses SSH-based Git contexts for the flashblocks builder and sidecar:
+`local-testnet` currently uses SSH-based Git contexts as the default build source for the flashblocks builder
+and sidecar. **Docker BuildKit SSH forwarding can fail depending on your environment** — using local paths is
+the recommended approach:
+
+```bash
+# Clone the repos first, then point to them
+OP_RBUILDER_PATH=../op-rbuilder SIDECAR_PATH=../sidecar \
+  make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
+```
+
+If you don't have local clones and want to use the SSH-based defaults, make sure your SSH agent is forwarded
+to Docker BuildKit:
+
+```bash
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+```
+
+Default remote refs (used when `OP_RBUILDER_PATH` / `SIDECAR_PATH` are not set):
 
 - `op-rbuilder`: `git@github.com:ethera-labs/op-rbuilder.git#stage`
 - `sidecar`: `git@github.com:ethera-labs/sidecar.git#chore/specs`
 
-These are temporary integration defaults and should be replaced with stable, production-ready refs once those
-repositories are ready. Until then:
-
-- prefer `OP_RBUILDER_PATH` / `SIDECAR_PATH` for local iteration
-- or make sure Docker BuildKit can access your SSH agent
+These will be replaced with stable, production-ready refs once both repositories are ready.
 
 ### Local Development
 

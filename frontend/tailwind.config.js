@@ -17,8 +17,8 @@ export default {
         },
         text: {
           primary: '#E8E4DC',
-          secondary: '#6A6860',
-          dim: '#3E3C38',
+          secondary: '#9A9890',
+          dim: '#6A6860',
         },
         amber: {
           DEFAULT: '#FF6B00',
