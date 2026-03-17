@@ -59,15 +59,15 @@ func (s *Service) Run(ctx context.Context, rollupConfigs []RollupConfig, l1RPCUR
 		return fmt.Errorf("failed to generate nginx configs: %w", err)
 	}
 
-	composePath, err := ensureComposeFile(s.localnetDir)
+	dockerPath, err := ensureDockerFile(s.localnetDir)
 	if err != nil {
-		return fmt.Errorf("failed to prepare blockscout compose file: %w", err)
+		return fmt.Errorf("failed to prepare blockscout docker file: %w", err)
 	}
 
 	envVars := s.buildAllEnvVars(rollupConfigs, l1RPCURL, l1BeaconURL)
 	s.logger.With("env", envVars).Info("environment variables built. Starting services")
 
-	if err := docker.ComposeUp(ctx, composePath, envVars); err != nil {
+	if err := docker.DockerUp(ctx, dockerPath, envVars); err != nil {
 		return fmt.Errorf("failed to start blockscout services: %w", err)
 	}
 

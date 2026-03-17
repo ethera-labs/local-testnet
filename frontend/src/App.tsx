@@ -66,7 +66,7 @@ function App() {
           <div className="flex items-center gap-4">
             <img
               src="https://framerusercontent.com/images/Fb2oWhF4xWeQVhnTEkAGcHvKrc.png?width=4182&height=1547"
-              alt="Compose Network"
+              alt="Ethera Labs"
               className="h-5 w-auto opacity-80"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
@@ -76,7 +76,7 @@ function App() {
             </span>
             <div className="w-px h-4 bg-border-bright" />
             <span className="font-display text-[11px] tracking-[0.3em] uppercase text-text-primary">
-              Compose Network Console
+              Ethera Labs Console
             </span>
           </div>
 
@@ -89,7 +89,7 @@ function App() {
             <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber indicator-active" />
               <span className="font-display text-[10px] tracking-widest uppercase text-amber">
-                Compose Active
+                Flashblocks Active
               </span>
             </div>
           </div>

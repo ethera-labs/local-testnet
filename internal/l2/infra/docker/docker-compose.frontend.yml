@@ -1,8 +1,8 @@
-# Compose Network Console - web UI for testing cross-chain transactions.
+# Ethera Labs Console - web UI for testing cross-chain transactions.
 # Requires flashblocks and sidecar. Started after contract deployment.
 
 services:
-  compose-console:
+  ethera-console:
     build:
       context: ${FRONTEND_PATH}
       dockerfile: Dockerfile
@@ -21,8 +21,8 @@ services:
         VITE_CHAIN_A_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
         VITE_CHAIN_B_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
         VITE_WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
-    image: local/compose-console:dev
-    container_name: compose-console
+    image: local/ethera-console:dev
+    container_name: ethera-console
     labels:
       - "stack=localnet-l2"
     networks:

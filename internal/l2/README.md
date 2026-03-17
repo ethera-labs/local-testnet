@@ -31,7 +31,7 @@ Generates configuration files for each L2 chain:
 
 ### Phase 3: Runtime Deployment
 
-Starts L2 services using Docker Compose:
+Starts L2 services using Docker:
 
 - **op-geth**: Execution client for each rollup
 - **op-node**: Consensus/derivation client
@@ -45,9 +45,9 @@ Starts L2 services using Docker Compose:
 - **rollup-boost**: Engine API multiplexer for flashblocks (`--flashblocks-enabled`)
 - **blockscout**: Block explorer UI (`--blockscout-enabled`)
 - **sidecar**: Cross-chain coordination (`--sidecar-enabled`, requires flashblocks)
-- **Compose Network Console**: Web UI for XT testing (`--frontend-enabled`, requires flashblocks and sidecar)
+- **Ethera Labs Console**: Web UI for XT testing (`--frontend-enabled`, requires flashblocks and sidecar)
 
-Deploys Compose-specific contracts to L2:
+Deploys Ethera Labs contracts to L2:
 
 - Dispute settlement contracts
 - Verification contracts
@@ -69,7 +69,7 @@ available options.
 - L1 connection (chain ID, EL URL, CL URL)
 - Wallet credentials (private key, address)
 - Coordinator credentials
-- Compose network name
+- Ethera Labs network name
 - Dispute game settings (addresses, vkeys, explorer URLs)
 
 ## Usage
@@ -156,7 +156,7 @@ This skips full redeployment (Phase 1-2) and only rebuilds Docker images + resta
 ### Compiling Contracts
 
 ```bash
-# Compile contracts from compose-contracts repository
+# Compile contracts from ethera-contracts repository
 make run-l2-compile
 
 # Or run directly
@@ -241,7 +241,7 @@ docker compose -f .localnet/docker-compose.yml logs -f publisher op-geth-a op-ge
 | op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC             |
 | sidecar         | 17090   | 27090   | Sidecar API                 |
 | Blockscout      | 19000   | 29000   | Block explorer UI           |
-| Compose Console | 3000    | —       | Web UI (--frontend-enabled) |
+| Ethera Console  | 3000    | —       | Web UI (--frontend-enabled) |
 
 ## Sidecar Mode
 

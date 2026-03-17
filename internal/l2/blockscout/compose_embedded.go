@@ -8,25 +8,25 @@ import (
 )
 
 //go:embed docker-compose.blockscout.yml
-var embeddedComposeFS embed.FS
+var embeddedDockerFS embed.FS
 
-const composeFileName = "docker-compose.blockscout.yml"
+const dockerFileName = "docker-compose.blockscout.yml"
 
-func ensureComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, composeFileName)
+func ensureDockerFile(localnetDir string) (string, error) {
+	dockerPath := filepath.Join(localnetDir, dockerFileName)
 
-	content, err := embeddedComposeFS.ReadFile(composeFileName)
+	content, err := embeddedDockerFS.ReadFile(dockerFileName)
 	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", composeFileName, err)
+		return "", fmt.Errorf("failed to read embedded %s: %w", dockerFileName, err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dockerPath), 0755); err != nil {
 		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
 	}
 
-	if err := os.WriteFile(composePath, content, 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", composeFileName, err)
+	if err := os.WriteFile(dockerPath, content, 0644); err != nil {
+		return "", fmt.Errorf("failed to write %s: %w", dockerFileName, err)
 	}
 
-	return composePath, nil
+	return dockerPath, nil
 }

@@ -12,10 +12,10 @@ import (
 // Manager manages L2 service lifecycle via docker-compose
 type Manager struct {
 	rootDir                    string
-	composeFilePath            string
-	flashblocksComposeFilePath string
-	sidecarComposeFilePath     string
-	frontendComposeFilePath    string
+	dockerFilePath            string
+	flashblocksDockerFilePath string
+	sidecarDockerFilePath     string
+	frontendDockerFilePath    string
 	flashblocksEnabled         bool
 	sidecarEnabled             bool
 	frontendEnabled            bool
@@ -23,31 +23,31 @@ type Manager struct {
 }
 
 // NewManager creates a new service manager
-func NewManager(rootDir, composeFilePath string) *Manager {
+func NewManager(rootDir, dockerFilePath string) *Manager {
 	return &Manager{
 		rootDir:         rootDir,
-		composeFilePath: composeFilePath,
+		dockerFilePath: dockerFilePath,
 		logger:          logger.Named("service_manager"),
 	}
 }
 
-// WithFlashblocks enables flashblocks support with the specified compose file
-func (m *Manager) WithFlashblocks(flashblocksComposeFilePath string) *Manager {
-	m.flashblocksComposeFilePath = flashblocksComposeFilePath
+// WithFlashblocks enables flashblocks support with the specified docker file
+func (m *Manager) WithFlashblocks(flashblocksDockerFilePath string) *Manager {
+	m.flashblocksDockerFilePath = flashblocksDockerFilePath
 	m.flashblocksEnabled = true
 	return m
 }
 
-// WithSidecar enables sidecar support with the specified compose file
-func (m *Manager) WithSidecar(sidecarComposeFilePath string) *Manager {
-	m.sidecarComposeFilePath = sidecarComposeFilePath
+// WithSidecar enables sidecar support with the specified docker file
+func (m *Manager) WithSidecar(sidecarDockerFilePath string) *Manager {
+	m.sidecarDockerFilePath = sidecarDockerFilePath
 	m.sidecarEnabled = true
 	return m
 }
 
-// WithFrontend enables Compose Network Console with the specified compose file
-func (m *Manager) WithFrontend(frontendComposeFilePath string) *Manager {
-	m.frontendComposeFilePath = frontendComposeFilePath
+// WithFrontend enables Ethera Labs Console with the specified docker file
+func (m *Manager) WithFrontend(frontendDockerFilePath string) *Manager {
+	m.frontendDockerFilePath = frontendDockerFilePath
 	m.frontendEnabled = true
 	return m
 }
@@ -66,10 +66,10 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		"op-proposer-b",
 	}
 
-	composeFiles := []string{m.composeFilePath}
+	dockerFiles := []string{m.dockerFilePath}
 
-	if m.flashblocksEnabled && m.flashblocksComposeFilePath != "" {
-		composeFiles = append(composeFiles, m.flashblocksComposeFilePath)
+	if m.flashblocksEnabled && m.flashblocksDockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.flashblocksDockerFilePath)
 		services = append(services,
 			"op-rbuilder-a",
 			"op-rbuilder-b",
@@ -78,26 +78,26 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		)
 	}
 
-	if m.sidecarEnabled && m.sidecarComposeFilePath != "" {
-		composeFiles = append(composeFiles, m.sidecarComposeFilePath)
+	if m.sidecarEnabled && m.sidecarDockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.sidecarDockerFilePath)
 		services = append(services,
 			"sidecar-a",
 			"sidecar-b",
 		)
 	}
 
-	// Frontend (compose-console) is started separately after contract deployment
+	// Frontend (ethera-console) is started separately after contract deployment
 
-	if len(composeFiles) > 1 {
+	if len(dockerFiles) > 1 {
 		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled).Info("starting L2 services")
 
-		if err := docker.ComposeUpMultiFile(ctx, composeFiles, env, services...); err != nil {
+		if err := docker.DockerUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
 		}
 	} else {
 		m.logger.With("services", services).Info("starting L2 services")
 
-		if err := docker.ComposeUp(ctx, m.composeFilePath, env, services...); err != nil {
+		if err := docker.DockerUp(ctx, m.dockerFilePath, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
 		}
 	}
@@ -108,8 +108,8 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 
 // StartFlashblocks starts flashblocks services (op-rbuilder and rollup-boost)
 func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) error {
-	if !m.flashblocksEnabled || m.flashblocksComposeFilePath == "" {
-		return fmt.Errorf("flashblocks not enabled or compose file not set")
+	if !m.flashblocksEnabled || m.flashblocksDockerFilePath == "" {
+		return fmt.Errorf("flashblocks not enabled or docker file not set")
 	}
 
 	services := []string{
@@ -121,7 +121,7 @@ func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) e
 
 	m.logger.With("services", services).Info("starting flashblocks services")
 
-	if err := docker.ComposeUpMultiFile(ctx, []string{m.composeFilePath, m.flashblocksComposeFilePath}, env, services...); err != nil {
+	if err := docker.DockerUpMultiFile(ctx, []string{m.dockerFilePath, m.flashblocksDockerFilePath}, env, services...); err != nil {
 		return fmt.Errorf("failed to start flashblocks services: %w", err)
 	}
 
@@ -129,24 +129,24 @@ func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) e
 	return nil
 }
 
-// StartFrontend builds and starts the Compose Network Console. Must be called after contract deployment
+// StartFrontend builds and starts the Ethera Labs Console. Must be called after contract deployment
 // so that env contains CONTRACT_BRIDGE_ADDRESS and CONTRACT_TOKEN_ADDRESS.
-func (m *Manager) StartFrontend(ctx context.Context, composeFiles []string, env map[string]string) error {
-	if !m.frontendEnabled || m.frontendComposeFilePath == "" {
-		return fmt.Errorf("frontend not enabled or compose file not set")
+func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env map[string]string) error {
+	if !m.frontendEnabled || m.frontendDockerFilePath == "" {
+		return fmt.Errorf("frontend not enabled or docker file not set")
 	}
 
-	allFiles := append(composeFiles, m.frontendComposeFilePath)
-	m.logger.Info("building and starting Compose Network Console")
+	allFiles := append(dockerFiles, m.frontendDockerFilePath)
+	m.logger.Info("building and starting Ethera Labs Console")
 
-	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "compose-console"); err != nil {
-		return fmt.Errorf("failed to build compose-console: %w", err)
+	if err := docker.DockerBuildMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
+		return fmt.Errorf("failed to build ethera-console: %w", err)
 	}
 
-	if err := docker.ComposeUpMultiFile(ctx, allFiles, env, "compose-console"); err != nil {
-		return fmt.Errorf("failed to start compose-console: %w", err)
+	if err := docker.DockerUpMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
+		return fmt.Errorf("failed to start ethera-console: %w", err)
 	}
 
-	m.logger.Info("Compose Network Console started successfully")
+	m.logger.Info("Ethera Labs Console started successfully")
 	return nil
 }

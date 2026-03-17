@@ -1,6 +1,6 @@
 # Precompiled Smart Contracts
 
-This directory contains precompiled Solidity smart contracts for the Compose rollup system.
+This directory contains precompiled Solidity smart contracts for the Ethera Labs rollup system.
 
 ## Contents
 

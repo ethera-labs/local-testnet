@@ -35,11 +35,11 @@ All ports are bound to `localhost` unless otherwise noted.
 |------------|----------------|----------------|----------------|
 | Blockscout | 19000          | 29000          | Block explorer |
 
-## Compose Network Console (--frontend-enabled, requires flashblocks and sidecar)
+## Ethera Labs Console (--frontend-enabled, requires flashblocks and sidecar)
 
-| Service         | Port | Description                    |
-|-----------------|------|--------------------------------|
-| Compose Console | 3000 | Web UI for cross-chain testing |
+| Service             | Port | Description                    |
+|---------------------|------|--------------------------------|
+| Ethera Labs Console | 3000 | Web UI for cross-chain testing |
 
 ## Summary by Command
 
@@ -60,7 +60,7 @@ make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 make run-l2 L2_ARGS="--blockscout-enabled"
 # + 19000, 29000
 
-# Full stack including Compose Network Console
+# Full stack including Ethera Labs Console
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"
-# + 3000 (Compose Console at http://localhost:3000)
+# + 3000 (Ethera Labs Console at http://localhost:3000)
 ```

@@ -23,7 +23,7 @@ var (
 		// L1 connection
 		{"l1-el-url", "l2.l1-el-url", "", "L1 execution layer RPC URL"},
 		{"l1-cl-url", "l2.l1-cl-url", "", "L1 consensus layer RPC URL"},
-		{"ethera-labs-name", "l2.ethera-labs-name", "", "Compose network name for publisher registry"},
+		{"ethera-labs-name", "l2.ethera-labs-name", "", "Ethera Labs network name for publisher registry"},
 
 		// Wallet
 		{"wallet-private-key", "l2.wallet.private-key", "", "Deployer wallet private key"},
@@ -39,8 +39,8 @@ var (
 		{"op-geth-branch", "l2.repositories.op-geth.branch", "", "op-geth repository branch"},
 		{"publisher-url", "l2.repositories.publisher.url", "", "publisher repository URL"},
 		{"publisher-branch", "l2.repositories.publisher.branch", "", "publisher repository branch"},
-		{"compose-contracts-url", "l2.repositories.compose-contracts.url", "", "compose-contracts repository URL"},
-		{"compose-contracts-branch", "l2.repositories.compose-contracts.branch", "", "compose-contracts repository branch"},
+		{"ethera-contracts-url", "l2.repositories.ethera-contracts.url", "", "ethera-contracts repository URL"},
+		{"ethera-contracts-branch", "l2.repositories.ethera-contracts.branch", "", "ethera-contracts repository branch"},
 
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},
@@ -78,8 +78,8 @@ var (
 		{"sidecar-rollup-a-api-port", "l2.sidecar.rollup-a-api-port", 17090, "Rollup A sidecar API port"},
 		{"sidecar-rollup-b-api-port", "l2.sidecar.rollup-b-api-port", 27090, "Rollup B sidecar API port"},
 
-		// Frontend (Compose Network Console)
-		{"frontend-port", "l2.frontend.port", 3000, "Compose Network Console port"},
+		// Frontend (Ethera Labs Console)
+		{"frontend-port", "l2.frontend.port", 3000, "Ethera Labs Console port"},
 
 		// Dispute config
 		{"dispute-proof-maturity-delay-seconds", "l2.dispute.proof-maturity-delay-seconds", 604800, "Proof maturity delay in seconds (default: 7 days)"},
@@ -90,7 +90,7 @@ var (
 		{"blockscout-enabled", "l2.blockscout.enabled", false, "Enable Blockscout block explorer"},
 		{"flashblocks-enabled", "l2.flashblocks.enabled", false, "Enable flashblocks support (op-rbuilder and rollup-boost)"},
 		{"sidecar-enabled", "l2.sidecar.enabled", false, "Enable sidecar for cross-chain coordination (requires flashblocks)"},
-		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Compose Network Console (requires flashblocks and sidecar)"},
+		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Ethera Labs Console (requires flashblocks and sidecar)"},
 	}
 )
 

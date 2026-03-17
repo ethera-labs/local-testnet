@@ -26,7 +26,7 @@ var compileCmd = &cobra.Command{
 			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
-		repositoryName := configs.RepositoryNameComposeContracts
+		repositoryName := configs.RepositoryNameEtheraContracts
 		slog.With("name", repositoryName).Info("fetching repository settings from configuration before cloning")
 		var (
 			contractsRepo git.Repository
@@ -55,7 +55,7 @@ var compileCmd = &cobra.Command{
 		}
 
 		compiler := contracts.NewCompiler(
-			filepath.Join(servicesDir, "compose-contracts", "L2"),
+			filepath.Join(servicesDir, "ethera-contracts", "L2"),
 			filepath.Join(rootDir, localnetDirName, compiledContractsDirName),
 		)
 

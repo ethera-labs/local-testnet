@@ -20,9 +20,11 @@ Edit `configs/config.yaml` with your settings, then run:
 ./build/docker-run-example.sh
 ```
 
-The config file is automatically loaded from the mounted workspace. This is the simplest approach and keeps all settings in one place.
+The config file is automatically loaded from the mounted workspace. This is the simplest approach and keeps all settings
+in one place.
 
 **Required settings in config.yaml:**
+
 - `l2.l1-chain-id` - L1 network chain ID
 - `l2.l1-el-url` - L1 execution client RPC URL
 - `l2.l1-cl-url` - L1 consensus client REST URL
@@ -53,6 +55,7 @@ docker run --rm \
 ```
 
 This approach is useful for:
+
 - CI/CD pipelines
 - Automated deployments
 - Overriding specific config values without modifying config.yaml
@@ -64,6 +67,7 @@ This approach is useful for:
 For iterating on local changes to repositories (op-geth, publisher):
 
 1. Configure local paths in `configs/config.yaml`:
+
 ```yaml
 repositories:
   op-geth:
@@ -74,14 +78,15 @@ repositories:
 
 3. The container will use your local repository instead of cloning
 
-**Note:** Local paths in Docker require the repository to be within or adjacent to the project directory so it can be accessed via the workspace mount.
-
+**Note:** Local paths in Docker require the repository to be within or adjacent to the project directory so it can be
+accessed via the workspace mount.
 
 ## Installed Tools
 
 The image includes:
+
 - **localnet** binary at `/usr/local/bin/localnet`
-- **Docker CLI** with compose plugin
+- **Docker CLI with compose plugin
 - **Git** for repository cloning
 - **Foundry** (forge, cast, anvil) for Solidity compilation
 - **just** - Command runner for contract setup scripts

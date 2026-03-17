@@ -9,65 +9,65 @@ import (
 	"strings"
 )
 
-// ComposeBuild builds docker compose services.
-func ComposeBuild(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
+// DockerBuild builds docker compose services.
+func DockerBuild(ctx context.Context, dockerFilePath string, env map[string]string, services ...string) error {
 	args := append([]string{"build", "--parallel"}, services...)
-	return composeRun(ctx, composeFilePath, env, args...)
+	return dockerRun(ctx, dockerFilePath, env, args...)
 }
 
-// ComposeBuildMultiFile builds docker compose services using multiple compose files.
-func ComposeBuildMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
+// DockerBuildMultiFile builds docker compose services using multiple compose files.
+func DockerBuildMultiFile(ctx context.Context, dockerFilePaths []string, env map[string]string, services ...string) error {
 	args := append([]string{"build", "--parallel"}, services...)
-	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
+	return dockerRunMultiFile(ctx, dockerFilePaths, env, args...)
 }
 
-// ComposeUp starts docker compose services in detached mode.
-func ComposeUp(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
+// DockerUp starts docker compose services in detached mode.
+func DockerUp(ctx context.Context, dockerFilePath string, env map[string]string, services ...string) error {
 	args := append([]string{"up", "-d", "--no-build"}, services...)
-	return composeRun(ctx, composeFilePath, env, args...)
+	return dockerRun(ctx, dockerFilePath, env, args...)
 }
 
-// ComposeRestart restarts docker compose services.
-func ComposeRestart(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
+// DockerRestart restarts docker compose services.
+func DockerRestart(ctx context.Context, dockerFilePath string, env map[string]string, services ...string) error {
 	args := append([]string{"up", "-d", "--force-recreate", "--no-build"}, services...)
-	return composeRun(ctx, composeFilePath, env, args...)
+	return dockerRun(ctx, dockerFilePath, env, args...)
 }
 
-// ComposeRestartMultiFile restarts docker compose services using multiple compose files.
-func ComposeRestartMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
+// DockerRestartMultiFile restarts docker compose services using multiple compose files.
+func DockerRestartMultiFile(ctx context.Context, dockerFilePaths []string, env map[string]string, services ...string) error {
 	args := append([]string{"up", "-d", "--force-recreate", "--no-build"}, services...)
-	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
+	return dockerRunMultiFile(ctx, dockerFilePaths, env, args...)
 }
 
-// ComposeDown stops docker compose services.
-func ComposeDown(ctx context.Context, composeFilePath string, env map[string]string, removeVolumes bool) error {
+// DockerDown stops docker compose services.
+func DockerDown(ctx context.Context, dockerFilePath string, env map[string]string, removeVolumes bool) error {
 	args := []string{"down"}
 	if removeVolumes {
 		args = append(args, "-v")
 	}
-	return composeRun(ctx, composeFilePath, env, args...)
+	return dockerRun(ctx, dockerFilePath, env, args...)
 }
 
-// ComposeUpMultiFile starts docker compose services using multiple compose files.
-func ComposeUpMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
+// DockerUpMultiFile starts docker compose services using multiple compose files.
+func DockerUpMultiFile(ctx context.Context, dockerFilePaths []string, env map[string]string, services ...string) error {
 	args := append([]string{"up", "-d", "--no-build"}, services...)
-	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
+	return dockerRunMultiFile(ctx, dockerFilePaths, env, args...)
 }
 
-// composeRunMultiFile executes a docker compose command with multiple compose files.
-func composeRunMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, args ...string) error {
-	if len(composeFilePaths) == 0 {
-		return fmt.Errorf("no compose files provided")
+// dockerRunMultiFile executes a docker compose command with multiple compose files.
+func dockerRunMultiFile(ctx context.Context, dockerFilePaths []string, env map[string]string, args ...string) error {
+	if len(dockerFilePaths) == 0 {
+		return fmt.Errorf("no docker files provided")
 	}
 
 	fullArgs := []string{"compose"}
-	for _, path := range composeFilePaths {
+	for _, path := range dockerFilePaths {
 		fullArgs = append(fullArgs, "-f", path)
 	}
 	fullArgs = append(fullArgs, args...)
 
 	cmd := exec.CommandContext(ctx, "docker", fullArgs...)
-	cmd.Dir = filepath.Dir(composeFilePaths[0])
+	cmd.Dir = filepath.Dir(dockerFilePaths[0])
 
 	cmd.Env = os.Environ()
 	for k, v := range env {
@@ -84,11 +84,11 @@ func composeRunMultiFile(ctx context.Context, composeFilePaths []string, env map
 	return nil
 }
 
-// ComposeRun executes a docker compose command with environment variables.
-func composeRun(ctx context.Context, composeFilePath string, env map[string]string, args ...string) error {
-	fullArgs := append([]string{"compose", "-f", composeFilePath}, args...)
+// dockerRun executes a docker compose command with environment variables.
+func dockerRun(ctx context.Context, dockerFilePath string, env map[string]string, args ...string) error {
+	fullArgs := append([]string{"compose", "-f", dockerFilePath}, args...)
 	cmd := exec.CommandContext(ctx, "docker", fullArgs...)
-	cmd.Dir = filepath.Dir(composeFilePath)
+	cmd.Dir = filepath.Dir(dockerFilePath)
 
 	cmd.Env = os.Environ()
 	for k, v := range env {

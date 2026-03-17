@@ -6,7 +6,7 @@ l2:
   l1-chain-id: 11155111
   l1-el-url: https://sepolia.drpc.org
   l1-cl-url: https://eth-sepolia.api.onfinality.io/beacon/public
-  ethera-labs-name: sepolia-stage # compose network name for publisher registry
+  ethera-labs-name: sepolia-stage # Ethera Labs network name for publisher registry
   coordinator-private-key: 0x336ff3f15e4a2356201939cbc486d8589585e3e67fb4664ba1912ad21ac1153a
   wallet:
     private-key: 336ff3f15e4a2356201939cbc486d8589585e3e67fb4664ba1912ad21ac1153a
@@ -56,7 +56,7 @@ l2:
     publisher:
       url: git@github.com:ethera-labs/publisher.git
       branch: feature/compose-sidecar
-    compose-contracts:
+    ethera-contracts:
       url: git@github.com:ethera-labs/contracts.git
       branch: develop
   dispute:

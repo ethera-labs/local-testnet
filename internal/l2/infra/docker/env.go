@@ -29,9 +29,9 @@ func NewEnvBuilder(rootDir, networksDir, servicesDir string) *EnvBuilder {
 	}
 }
 
-// BuildComposeEnv builds environment variables for docker-compose.
+// BuildDockerEnv builds environment variables for docker-compose.
 // The gameFactoryAddr parameter can be empty (zero address) for dev deployments.
-func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
+func (b *EnvBuilder) BuildDockerEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
 	env := make(map[string]string)
 
 	publisherPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNamePublisher], configs.RepositoryNamePublisher)
@@ -66,7 +66,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["L1_EL_URL"] = cfg.L1ElURL
 	env["L1_CL_URL"] = cfg.L1ClURL
 	env["L1_CHAIN_ID"] = fmt.Sprintf("%d", cfg.L1ChainID)
-	env["COMPOSE_NETWORK_NAME"] = cfg.ComposeNetworkName
+	env["ETHERA_NETWORK_NAME"] = cfg.EtheraNetworkName
 	env["COORDINATOR_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SP_L1_SUPERBLOCK_CONTRACT"] = ""
