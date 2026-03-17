@@ -30,9 +30,25 @@ const BRIDGE_ABI = [
   'function receiveTokens(uint256 otherChainId, address sender, address receiver, uint256 sessionId, address srcBridge) returns (address token, uint256 amount)',
 ]
 
+const providerCache = new Map<string, ethers.JsonRpcProvider>()
+
 export function getProvider(chain: 'A' | 'B'): ethers.JsonRpcProvider {
   const url = chain === 'A' ? CHAIN_A_RPC : CHAIN_B_RPC
-  return new ethers.JsonRpcProvider(url)
+  let provider = providerCache.get(url)
+  if (!provider) {
+    provider = new ethers.JsonRpcProvider(url)
+    providerCache.set(url, provider)
+  }
+  return provider
+}
+
+export async function checkChainConnectivity(chain: 'A' | 'B'): Promise<boolean> {
+  try {
+    await getProvider(chain).getBlockNumber()
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function getChainId(chain: 'A' | 'B'): number {

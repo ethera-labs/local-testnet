@@ -32,13 +32,13 @@ var deployCmd = &cobra.Command{
 		networksDir := filepath.Join(localnetDir, networksDirName)
 		servicesDir := filepath.Join(localnetDir, servicesDirName)
 
-		dockerPath, err := docker.EnsureDockerFile(localnetDir)
+		dockerPath, err := docker.EnsureComposeFile(localnetDir)
 		if err != nil {
 			return fmt.Errorf("failed to prepare docker file: %w", err)
 		}
 
 		envBuilder := docker.NewEnvBuilder(rootDir, networksDir, servicesDir)
-		envVars, err := envBuilder.BuildDockerEnv(configs.Values.L2, common.Address{})
+		envVars, err := envBuilder.BuildComposeEnv(configs.Values.L2, common.Address{})
 		if err != nil {
 			return err
 		}
@@ -46,12 +46,12 @@ var deployCmd = &cobra.Command{
 		services := mapServices(target)
 		ctx := cmd.Context()
 		slog.With("services", services).Info("building services from local sources")
-		if err := docker.DockerBuild(ctx, dockerPath, envVars, services...); err != nil {
+		if err := docker.ComposeBuild(ctx, dockerPath, envVars, services...); err != nil {
 			return fmt.Errorf("failed to build services: %w", err)
 		}
 
 		slog.Info("restarting services to apply new images")
-		if err := docker.DockerRestart(ctx, dockerPath, envVars, services...); err != nil {
+		if err := docker.ComposeRestart(ctx, dockerPath, envVars, services...); err != nil {
 			return fmt.Errorf("failed to restart services: %w", err)
 		}
 

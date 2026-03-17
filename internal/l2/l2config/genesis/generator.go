@@ -246,7 +246,7 @@ func (g *Generator) ensureOpGethImage(ctx context.Context, imageName string) err
 
 	g.logger.Info("op-geth image not found, building it using docker compose")
 
-	dockerPath, err := docker.EnsureDockerFile(g.localnetDir)
+	dockerPath, err := docker.EnsureComposeFile(g.localnetDir)
 	if err != nil {
 		return fmt.Errorf("failed to ensure docker file: %w", err)
 	}
@@ -267,7 +267,7 @@ func (g *Generator) ensureOpGethImage(ctx context.Context, imageName string) err
 
 	g.logger.With("op_geth_path", g.opGethPath, "root_dir", rootHostPath, "docker_file", dockerPath).Info("building op-geth image")
 
-	if err := docker.DockerBuild(ctx, dockerPath, env, "op-geth-a"); err != nil {
+	if err := docker.ComposeBuild(ctx, dockerPath, env, "op-geth-a"); err != nil {
 		return fmt.Errorf("failed to build op-geth image: %w", err)
 	}
 

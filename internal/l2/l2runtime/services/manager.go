@@ -91,13 +91,13 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	if len(dockerFiles) > 1 {
 		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled).Info("starting L2 services")
 
-		if err := docker.DockerUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
+		if err := docker.ComposeUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
 		}
 	} else {
 		m.logger.With("services", services).Info("starting L2 services")
 
-		if err := docker.DockerUp(ctx, m.dockerFilePath, env, services...); err != nil {
+		if err := docker.ComposeUp(ctx, m.dockerFilePath, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
 		}
 	}
@@ -121,7 +121,7 @@ func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) e
 
 	m.logger.With("services", services).Info("starting flashblocks services")
 
-	if err := docker.DockerUpMultiFile(ctx, []string{m.dockerFilePath, m.flashblocksDockerFilePath}, env, services...); err != nil {
+	if err := docker.ComposeUpMultiFile(ctx, []string{m.dockerFilePath, m.flashblocksDockerFilePath}, env, services...); err != nil {
 		return fmt.Errorf("failed to start flashblocks services: %w", err)
 	}
 
@@ -139,11 +139,11 @@ func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env m
 	allFiles := append(dockerFiles, m.frontendDockerFilePath)
 	m.logger.Info("building and starting Ethera Labs Console")
 
-	if err := docker.DockerBuildMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
+	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
 		return fmt.Errorf("failed to build ethera-console: %w", err)
 	}
 
-	if err := docker.DockerUpMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
+	if err := docker.ComposeUpMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
 		return fmt.Errorf("failed to start ethera-console: %w", err)
 	}
 

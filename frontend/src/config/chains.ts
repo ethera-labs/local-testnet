@@ -45,8 +45,8 @@ export const CHAIN_B_RPC = FLASHBLOCKS_ENABLED ? CHAIN_B_BUILDER_RPC : CHAIN_B_G
 export const SIDECAR_A_URL = requireEnv('VITE_SIDECAR_A_URL')
 export const SIDECAR_B_URL = requireEnv('VITE_SIDECAR_B_URL')
 
-export const CHAIN_A_BLOCKSCOUT = 'http://localhost:19000'
-export const CHAIN_B_BLOCKSCOUT = 'http://localhost:29000'
+export const CHAIN_A_BLOCKSCOUT = env.VITE_CHAIN_A_BLOCKSCOUT_URL?.trim() || 'http://localhost:19000'
+export const CHAIN_B_BLOCKSCOUT = env.VITE_CHAIN_B_BLOCKSCOUT_URL?.trim() || 'http://localhost:29000'
 
 export const CHAIN_A_BRIDGE_ADDRESS =
   env.VITE_CHAIN_A_BRIDGE_ADDRESS || env.VITE_BRIDGE_ADDRESS || ''

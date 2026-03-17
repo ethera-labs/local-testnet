@@ -29,9 +29,9 @@ func NewEnvBuilder(rootDir, networksDir, servicesDir string) *EnvBuilder {
 	}
 }
 
-// BuildDockerEnv builds environment variables for docker-compose.
+// BuildComposeEnv builds environment variables for docker-compose.
 // The gameFactoryAddr parameter can be empty (zero address) for dev deployments.
-func (b *EnvBuilder) BuildDockerEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
+func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
 	env := make(map[string]string)
 
 	publisherPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNamePublisher], configs.RepositoryNamePublisher)

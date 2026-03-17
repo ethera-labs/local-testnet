@@ -54,19 +54,19 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, fmt.Errorf("failed to setup publisher registry: %w", err)
 	}
 
-	dockerPath, err := docker.EnsureDockerFile(o.localnetDir)
+	dockerPath, err := docker.EnsureComposeFile(o.localnetDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare docker file: %w", err)
 	}
 
 	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
-	envVars, err := envBuilder.BuildDockerEnv(cfg, gameFactoryAddr)
+	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	o.logger.With("env", envVars).Info("environment variables were constructed. Building docker services")
-	if err := o.buildDockerServices(ctx, dockerPath, envVars, cfg); err != nil {
+	if err := o.buildComposeServices(ctx, dockerPath, envVars, cfg); err != nil {
 		return nil, fmt.Errorf("failed to build docker services: %w", err)
 	}
 
@@ -78,7 +78,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 
 	if cfg.Flashblocks.Enabled {
 		o.logger.Info("flashblocks enabled, configuring services to use rollup-boost")
-		flashblocksDockerPath, err = docker.EnsureFlashblocksDockerFile(o.localnetDir)
+		flashblocksDockerPath, err = docker.EnsureFlashblocksComposeFile(o.localnetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare flashblocks docker file: %w", err)
 		}
@@ -97,7 +97,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 			return nil, fmt.Errorf("sidecar requires flashblocks to be enabled")
 		}
 		o.logger.Info("sidecar enabled, configuring sidecar services")
-		sidecarDockerPath, err = docker.EnsureSidecarDockerFile(o.localnetDir)
+		sidecarDockerPath, err = docker.EnsureSidecarComposeFile(o.localnetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare sidecar docker file: %w", err)
 		}
@@ -109,7 +109,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 			return nil, fmt.Errorf("frontend requires flashblocks and sidecar to be enabled")
 		}
 		o.logger.Info("frontend enabled, configuring Ethera Labs Console")
-		frontendDockerPath, err := docker.EnsureFrontendDockerFile(o.localnetDir)
+		frontendDockerPath, err := docker.EnsureFrontendComposeFile(o.localnetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare frontend docker file: %w", err)
 		}
@@ -240,7 +240,7 @@ func (o *Orchestrator) restartOpGeth(ctx context.Context, dockerFilePath string,
 		"mailbox_b", mailboxB.Hex())
 
 	services := []string{"op-geth-a", "op-geth-b"}
-	if err := docker.DockerRestart(ctx, dockerFilePath, env, services...); err != nil {
+	if err := docker.ComposeRestart(ctx, dockerFilePath, env, services...); err != nil {
 		return fmt.Errorf("failed to restart op-geth: %w", err)
 	}
 
@@ -261,7 +261,7 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 	dockerFiles = append(dockerFiles, sidecarDockerPath)
 
 	services := []string{"sidecar-a", "sidecar-b"}
-	if err := docker.DockerRestartMultiFile(ctx, dockerFiles, env, services...); err != nil {
+	if err := docker.ComposeRestartMultiFile(ctx, dockerFiles, env, services...); err != nil {
 		return fmt.Errorf("failed to restart sidecar: %w", err)
 	}
 
@@ -269,7 +269,7 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 }
 
 // buildDockerServices builds services using docker-compose
-func (o *Orchestrator) buildDockerServices(ctx context.Context, dockerFilePath string, env map[string]string, cfg configs.L2) error {
+func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, cfg configs.L2) error {
 	services := []string{
 		"publisher",
 		"op-geth-a",
@@ -280,13 +280,13 @@ func (o *Orchestrator) buildDockerServices(ctx context.Context, dockerFilePath s
 
 	// Sidecar requires flashblocks, so add flashblocks docker file first
 	if cfg.Sidecar.Enabled {
-		flashblocksDockerPath, err := docker.EnsureFlashblocksDockerFile(o.localnetDir)
+		flashblocksDockerPath, err := docker.EnsureFlashblocksComposeFile(o.localnetDir)
 		if err != nil {
 			return fmt.Errorf("failed to prepare flashblocks docker file for build: %w", err)
 		}
 		dockerFiles = append(dockerFiles, flashblocksDockerPath)
 
-		sidecarDockerPath, err := docker.EnsureSidecarDockerFile(o.localnetDir)
+		sidecarDockerPath, err := docker.EnsureSidecarComposeFile(o.localnetDir)
 		if err != nil {
 			return fmt.Errorf("failed to prepare sidecar docker file for build: %w", err)
 		}
@@ -295,11 +295,11 @@ func (o *Orchestrator) buildDockerServices(ctx context.Context, dockerFilePath s
 	}
 
 	if len(dockerFiles) > 1 {
-		if err := docker.DockerBuildMultiFile(ctx, dockerFiles, env, services...); err != nil {
+		if err := docker.ComposeBuildMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to build docker services: %w", err)
 		}
 	} else {
-		if err := docker.DockerBuild(ctx, dockerFilePath, env, services...); err != nil {
+		if err := docker.ComposeBuild(ctx, dockerFilePath, env, services...); err != nil {
 			return fmt.Errorf("failed to build docker services: %w", err)
 		}
 	}

@@ -54,7 +54,7 @@ export async function waitForDecision(
   timeoutMs: number = 30000
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
-  const pollInterval = 100
+  const pollInterval = 300
 
   while (Date.now() < deadline) {
     try {
@@ -80,9 +80,9 @@ export async function waitForDecision(
   throw new Error('Timeout waiting for decision')
 }
 
-export async function checkHealth(): Promise<boolean> {
+export async function checkHealth(url: string = SIDECAR_A_URL): Promise<boolean> {
   try {
-    const response = await fetch(`${SIDECAR_A_URL}/health`)
+    const response = await fetch(`${url}/health`)
     return response.ok
   } catch {
     return false
