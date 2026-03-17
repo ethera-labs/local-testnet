@@ -11,23 +11,23 @@ import (
 
 // Manager manages L2 service lifecycle via docker-compose
 type Manager struct {
-	rootDir                    string
+	rootDir                   string
 	dockerFilePath            string
 	flashblocksDockerFilePath string
 	sidecarDockerFilePath     string
 	frontendDockerFilePath    string
-	flashblocksEnabled         bool
-	sidecarEnabled             bool
-	frontendEnabled            bool
-	logger                     *slog.Logger
+	flashblocksEnabled        bool
+	sidecarEnabled            bool
+	frontendEnabled           bool
+	logger                    *slog.Logger
 }
 
 // NewManager creates a new service manager
 func NewManager(rootDir, dockerFilePath string) *Manager {
 	return &Manager{
-		rootDir:         rootDir,
+		rootDir:        rootDir,
 		dockerFilePath: dockerFilePath,
-		logger:          logger.Named("service_manager"),
+		logger:         logger.Named("service_manager"),
 	}
 }
 

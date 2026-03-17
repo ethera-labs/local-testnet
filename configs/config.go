@@ -25,7 +25,7 @@ type (
 		L1ChainID             int                           `mapstructure:"l1-chain-id"`
 		L1ElURL               string                        `mapstructure:"l1-el-url"`
 		L1ClURL               string                        `mapstructure:"l1-cl-url"`
-		EtheraNetworkName    string                        `mapstructure:"ethera-labs-name"`
+		EtheraNetworkName     string                        `mapstructure:"ethera-labs-name"`
 		Wallet                Wallet                        `mapstructure:"wallet"`
 		CoordinatorPrivateKey string                        `mapstructure:"coordinator-private-key"`
 		Repositories          map[RepositoryName]Repository `mapstructure:"repositories"`
@@ -102,8 +102,8 @@ type (
 )
 
 const (
-	RepositoryNameOpGeth           RepositoryName = "op-geth"
-	RepositoryNamePublisher        RepositoryName = "publisher"
+	RepositoryNameOpGeth          RepositoryName = "op-geth"
+	RepositoryNamePublisher       RepositoryName = "publisher"
 	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
