@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Docker Compose plugin from Docker's official repository for latest version
 # Note: Older versions (e.g., v2.33.0 from Ubuntu's docker-compose-v2 package) validate
-# the entire compose file even when restarting specific services, causing spurious errors
+# the entire docker file even when restarting specific services, causing spurious errors
 # like "env file not found" for services that aren't being restarted.
 RUN curl -fsSL https://github.com/docker/compose/releases/download/v2.40.3/docker-compose-linux-$(uname -m) -o /usr/local/bin/docker-compose && \
     chmod +x /usr/local/bin/docker-compose && \

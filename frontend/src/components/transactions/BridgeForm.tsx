@@ -25,7 +25,7 @@ interface BridgeFormProps {
 
 type Direction = 'a_to_b' | 'b_to_a'
 
-export default function BridgeForm({ onSubmit, onSelectFlow: _onSelectFlow }: BridgeFormProps) {
+export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) {
   const [amount, setAmount] = useState('')
   const [direction, setDirection] = useState<Direction>('a_to_b')
   const [repeatCount, setRepeatCount] = useState('1')
@@ -47,6 +47,7 @@ export default function BridgeForm({ onSubmit, onSelectFlow: _onSelectFlow }: Br
 
       const repeat = Math.max(1, Number.parseInt(repeatCount, 10) || 1)
 
+      onSelectFlow?.('xt')
       setFlowStep('submitting')
 
       const parsedAmount = parseAmount(amount)

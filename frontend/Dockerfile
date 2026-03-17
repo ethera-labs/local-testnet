@@ -1,10 +1,23 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Dev stage - hot reload via Vite dev server
+FROM oven/bun:alpine AS dev
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+# Source is mounted as a volume at runtime; env vars are passed via environment
+EXPOSE 3000
+
+CMD ["bun", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+
+# Build stage
+FROM oven/bun:alpine AS builder
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY . .
 
@@ -39,7 +52,7 @@ ENV VITE_CHAIN_A_TOKEN_ADDRESS=$VITE_CHAIN_A_TOKEN_ADDRESS
 ENV VITE_CHAIN_B_TOKEN_ADDRESS=$VITE_CHAIN_B_TOKEN_ADDRESS
 ENV VITE_WALLET_PRIVATE_KEY=$VITE_WALLET_PRIVATE_KEY
 
-RUN npm run build
+RUN bun run build
 
 # Serve stage
 FROM nginx:alpine

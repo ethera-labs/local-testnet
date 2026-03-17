@@ -1,0 +1,41 @@
+# Ethera Labs Console - hot reload dev override.
+# Use alongside docker-compose.frontend.yml to mount source and run Vite dev server.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.frontend.yml \
+#                  -f docker-compose.frontend.dev.yml up ethera-console
+
+services:
+  ethera-console:
+    build:
+      target: dev
+    image: local/ethera-console:dev-hot
+    volumes:
+      - ${FRONTEND_PATH}/src:/app/src
+      - ${FRONTEND_PATH}/public:/app/public
+      - ${FRONTEND_PATH}/index.html:/app/index.html
+      - ${FRONTEND_PATH}/vite.config.ts:/app/vite.config.ts
+      - ${FRONTEND_PATH}/tailwind.config.js:/app/tailwind.config.js
+      - ${FRONTEND_PATH}/postcss.config.js:/app/postcss.config.js
+      - ${FRONTEND_PATH}/tsconfig.json:/app/tsconfig.json
+      - ${FRONTEND_PATH}/tsconfig.node.json:/app/tsconfig.node.json
+    environment:
+      VITE_CHAIN_A_ID: "${ROLLUP_A_CHAIN_ID}"
+      VITE_CHAIN_B_ID: "${ROLLUP_B_CHAIN_ID}"
+      VITE_FLASHBLOCKS_ENABLED: "true"
+      VITE_CHAIN_A_BUILDER_RPC: "http://localhost:${FLASHBLOCKS_ROLLUP_A_RPC_PORT}"
+      VITE_CHAIN_A_GETH_RPC: "http://localhost:${ROLLUP_A_RPC_PORT}"
+      VITE_CHAIN_B_BUILDER_RPC: "http://localhost:${FLASHBLOCKS_ROLLUP_B_RPC_PORT}"
+      VITE_CHAIN_B_GETH_RPC: "http://localhost:${ROLLUP_B_RPC_PORT}"
+      VITE_SIDECAR_A_URL: "http://localhost:${SIDECAR_ROLLUP_A_API_PORT}"
+      VITE_SIDECAR_B_URL: "http://localhost:${SIDECAR_ROLLUP_B_API_PORT}"
+      VITE_CHAIN_A_BRIDGE_ADDRESS: "${CONTRACT_BRIDGE_ADDRESS}"
+      VITE_CHAIN_B_BRIDGE_ADDRESS: "${CONTRACT_BRIDGE_ADDRESS}"
+      VITE_CHAIN_A_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
+      VITE_CHAIN_B_TOKEN_ADDRESS: "${CONTRACT_TOKEN_ADDRESS}"
+      VITE_WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

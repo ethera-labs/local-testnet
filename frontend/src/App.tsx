@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SystemDiagram from './components/visualization/SystemDiagram'
 import TransactionFlowPanel, {
   FlowMode,
 } from './components/visualization/TransactionFlowPanel'
 import TransactionPanel from './components/transactions/TransactionPanel'
 import { useTransactionStore } from './stores/transactionStore'
-import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT } from './api/rollup'
+import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, checkChainConnectivity } from './api/rollup'
+import { checkHealth } from './api/sidecar'
+import { FLASHBLOCKS_ENABLED, SIDECAR_A_URL, SIDECAR_B_URL } from './config/chains'
 
 function StatusDot({ active, label }: { active?: boolean; label: string }) {
   return (
@@ -25,8 +27,28 @@ function StatusDot({ active, label }: { active?: boolean; label: string }) {
 function App() {
   const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
   const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
-  const { transactions, currentStatus } = useTransactionStore()
+  const { transactions, currentStatus, setCurrentStatus } = useTransactionStore()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const poll = async () => {
+      const [sidecarA, sidecarB, chainA, chainB] = await Promise.all([
+        checkHealth(SIDECAR_A_URL),
+        checkHealth(SIDECAR_B_URL),
+        checkChainConnectivity('A'),
+        checkChainConnectivity('B'),
+      ])
+      setCurrentStatus({
+        chainAConnected: chainA,
+        chainBConnected: chainB,
+        sidecarAActive: sidecarA,
+        sidecarBActive: sidecarB,
+      })
+    }
+    poll()
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
+  }, [setCurrentStatus])
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id)
@@ -66,7 +88,7 @@ function App() {
           <div className="flex items-center gap-4">
             <img
               src="https://framerusercontent.com/images/Fb2oWhF4xWeQVhnTEkAGcHvKrc.png?width=4182&height=1547"
-              alt="Compose Network"
+              alt="Ethera Labs"
               className="h-5 w-auto opacity-80"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
@@ -76,7 +98,7 @@ function App() {
             </span>
             <div className="w-px h-4 bg-border-bright" />
             <span className="font-display text-[11px] tracking-[0.3em] uppercase text-text-primary">
-              Compose Network Console
+              Ethera Labs Console
             </span>
           </div>
 
@@ -86,12 +108,14 @@ function App() {
             <StatusDot active={currentStatus.chainBConnected} label="Chain B" />
             <StatusDot active={currentStatus.sidecarAActive} label="Sidecar A" />
             <StatusDot active={currentStatus.sidecarBActive} label="Sidecar B" />
-            <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber indicator-active" />
-              <span className="font-display text-[10px] tracking-widest uppercase text-amber">
-                Compose Active
-              </span>
-            </div>
+            {FLASHBLOCKS_ENABLED && (
+              <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber indicator-active" />
+                <span className="font-display text-[10px] tracking-widest uppercase text-amber">
+                  Flashblocks Active
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -269,11 +293,12 @@ function App() {
                       <span className={`text-[10px] font-display tracking-widest uppercase ${statusColor(tx.status)}`}>
                         {tx.status}
                       </span>
-                      {formatDuration(tx.createdAt, tx.decidedAt) && (
-                        <span className="font-mono text-[10px] text-text-dim">
-                          {formatDuration(tx.createdAt, tx.decidedAt)}
-                        </span>
-                      )}
+                      {(() => {
+                        const dur = formatDuration(tx.createdAt, tx.decidedAt)
+                        return dur ? (
+                          <span className="font-mono text-[10px] text-text-dim">{dur}</span>
+                        ) : null
+                      })()}
                     </div>
                   </div>
                 ))}

@@ -171,9 +171,9 @@ func generateBlockscoutConfig(cfg configs.L2, deploymentState l1deployment.Deplo
 // restartOpGeth restarts op-geth services to pick up new mailbox configuration
 func (s *Service) restartOpGeth(ctx context.Context) error {
 	localnetDir := filepath.Join(s.rootDir, localnetDirName)
-	composeFile := filepath.Join(localnetDir, "docker-compose.yml")
+	dockerFile := filepath.Join(localnetDir, "docker-compose.yml")
 
-	cmd := exec.CommandContext(ctx, "docker", "compose", "-f", composeFile, "restart", "op-geth-a", "op-geth-b")
+	cmd := exec.CommandContext(ctx, "docker", "compose", "-f", dockerFile, "restart", "op-geth-a", "op-geth-b")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("docker compose restart failed: %w, output: %s", err, string(output))
 	}
