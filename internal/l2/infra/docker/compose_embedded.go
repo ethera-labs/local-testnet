@@ -11,7 +11,7 @@ import (
 var embeddedComposeFS embed.FS
 
 const (
-	dockerFileName            = "docker-compose.yml"
+	dockerFileName             = "docker-compose.yml"
 	composeFlashblocksFileName = "docker-compose.flashblocks.yml"
 	composeSidecarFileName     = "docker-compose.sidecar.yml"
 	composeFrontendFileName    = "docker-compose.frontend.yml"
