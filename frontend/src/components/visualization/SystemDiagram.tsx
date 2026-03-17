@@ -681,10 +681,6 @@ export default function SystemDiagram({
     [highlightNormal, highlightXt, step]
   )
 
-  const onInit = useCallback(() => {
-    // Fit view on init
-  }, [])
-
   const onEdgeClick = useCallback(
     (_event: MouseEvent, edge: Edge) => {
       if (!onSelectFlow) {
@@ -719,7 +715,6 @@ export default function SystemDiagram({
               edges={edges}
               nodeTypes={nodeTypes}
               onEdgeClick={onEdgeClick}
-              onInit={onInit}
               fitView
               attributionPosition="bottom-left"
               proOptions={{ hideAttribution: true }}
@@ -765,7 +760,6 @@ export default function SystemDiagram({
         edges={edges}
         nodeTypes={nodeTypes}
         onEdgeClick={onEdgeClick}
-        onInit={onInit}
         fitView
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}

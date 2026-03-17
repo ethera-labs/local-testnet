@@ -1,4 +1,4 @@
-# Compose Network Console
+# Ethera Labs Console
 
 Web UI for testing cross-chain transactions against the local-testnet stack.
 
@@ -22,7 +22,7 @@ Open http://localhost:3000
 2. Run the frontend:
    ```bash
    make run-frontend
-   # or: cd frontend && npm install && npm run dev
+   # or: cd frontend && bun install && bun run dev
    ```
 
 Open http://localhost:5173

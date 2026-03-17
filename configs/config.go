@@ -26,7 +26,7 @@ type (
 		L1ChainID             int                           `mapstructure:"l1-chain-id"`
 		L1ElURL               string                        `mapstructure:"l1-el-url"`
 		L1ClURL               string                        `mapstructure:"l1-cl-url"`
-		ComposeNetworkName    string                        `mapstructure:"ethera-labs-name"`
+		EtheraNetworkName     string                        `mapstructure:"ethera-labs-name"`
 		Wallet                Wallet                        `mapstructure:"wallet"`
 		CoordinatorPrivateKey string                        `mapstructure:"coordinator-private-key"`
 		Repositories          map[RepositoryName]Repository `mapstructure:"repositories"`
@@ -103,9 +103,9 @@ type (
 )
 
 const (
-	RepositoryNameOpGeth           RepositoryName = "op-geth"
-	RepositoryNamePublisher        RepositoryName = "publisher"
-	RepositoryNameComposeContracts RepositoryName = "compose-contracts"
+	RepositoryNameOpGeth          RepositoryName = "op-geth"
+	RepositoryNamePublisher       RepositoryName = "publisher"
+	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -231,7 +231,7 @@ func (c *L2) Validate() error {
 		errs = append(errs, errors.New("l2.dispute.dispute-game-init-bond is required"))
 	}
 
-	if c.ComposeNetworkName == "" {
+	if c.EtheraNetworkName == "" {
 		errs = append(errs, errors.New("l2.ethera-labs-name is required"))
 	}
 

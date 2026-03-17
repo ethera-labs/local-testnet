@@ -17,7 +17,7 @@ interface MintFormProps {
   onSelectFlow?: (mode: FlowMode) => void
 }
 
-export default function MintForm({ onSelectFlow: _onSelectFlow }: MintFormProps) {
+export default function MintForm({ onSelectFlow }: MintFormProps) {
   const [amountA, setAmountA] = useState('')
   const [amountB, setAmountB] = useState('')
   const [loading, setLoading] = useState(false)
@@ -86,6 +86,7 @@ export default function MintForm({ onSelectFlow: _onSelectFlow }: MintFormProps)
     try {
       if (!amountA && !amountB) throw new Error('Enter at least one amount')
 
+      onSelectFlow?.('normal')
       const mintStep =
         amountA && amountB ? 'minting_both' : amountA ? 'minting_a' : 'minting_b'
       setFlowStep(mintStep)

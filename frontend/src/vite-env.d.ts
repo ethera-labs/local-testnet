@@ -3,10 +3,17 @@
 interface ImportMetaEnv {
   readonly VITE_CHAIN_A_ID: string
   readonly VITE_CHAIN_B_ID: string
-  readonly VITE_CHAIN_A_RPC: string
-  readonly VITE_CHAIN_B_RPC: string
+  readonly VITE_FLASHBLOCKS_ENABLED?: string
+  readonly VITE_CHAIN_A_BUILDER_RPC?: string
+  readonly VITE_CHAIN_A_GETH_RPC?: string
+  readonly VITE_CHAIN_B_BUILDER_RPC?: string
+  readonly VITE_CHAIN_B_GETH_RPC?: string
+  readonly VITE_CHAIN_A_RPC?: string
+  readonly VITE_CHAIN_B_RPC?: string
   readonly VITE_SIDECAR_A_URL: string
   readonly VITE_SIDECAR_B_URL: string
+  readonly VITE_CHAIN_A_BLOCKSCOUT_URL?: string
+  readonly VITE_CHAIN_B_BLOCKSCOUT_URL?: string
   readonly VITE_CHAIN_A_BRIDGE_ADDRESS?: string
   readonly VITE_CHAIN_B_BRIDGE_ADDRESS?: string
   readonly VITE_BRIDGE_ADDRESS?: string

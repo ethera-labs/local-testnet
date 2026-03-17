@@ -66,7 +66,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["L1_EL_URL"] = cfg.L1ElURL
 	env["L1_CL_URL"] = cfg.L1ClURL
 	env["L1_CHAIN_ID"] = fmt.Sprintf("%d", cfg.L1ChainID)
-	env["COMPOSE_NETWORK_NAME"] = cfg.ComposeNetworkName
+	env["ETHERA_NETWORK_NAME"] = cfg.EtheraNetworkName
 	env["COORDINATOR_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SP_L1_SUPERBLOCK_CONTRACT"] = ""

@@ -32,10 +32,10 @@ func TestL2ValidateAllowsDifferentCoordinatorAndWalletKeys(t *testing.T) {
 
 func validL2Config() L2 {
 	return L2{
-		L1ChainID:          1,
-		L1ElURL:            "http://localhost:8545",
-		L1ClURL:            "http://localhost:5052",
-		ComposeNetworkName: "compose",
+		L1ChainID:         1,
+		L1ElURL:           "http://localhost:8545",
+		L1ClURL:           "http://localhost:5052",
+		EtheraNetworkName: "compose",
 		Wallet: Wallet{
 			PrivateKey: "wallet-key",
 			Address:    "0x123",

@@ -61,7 +61,7 @@ func (s *Service) Run(ctx context.Context, rollupConfigs []RollupConfig, l1RPCUR
 
 	composePath, err := ensureComposeFile(s.localnetDir)
 	if err != nil {
-		return fmt.Errorf("failed to prepare blockscout compose file: %w", err)
+		return fmt.Errorf("failed to prepare blockscout docker file: %w", err)
 	}
 
 	envVars := s.buildAllEnvVars(rollupConfigs, l1RPCURL, l1BeaconURL)

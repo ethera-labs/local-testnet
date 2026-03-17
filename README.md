@@ -4,7 +4,8 @@
 
 ## ✨ Introduction
 
-Local testnet is a CLI tool for managing local L1 and L2 Ethereum test networks. It provides a complete local development environment for testing Ethereum applications with multiple L2 rollups.
+Local testnet is a CLI tool for managing local L1 and L2 Ethereum test networks. It provides a complete local
+development environment for testing Ethereum applications with multiple L2 rollups.
 
 ## 📋 Prerequisites
 
@@ -15,7 +16,7 @@ Local testnet is a CLI tool for managing local L1 and L2 Ethereum test networks.
 - [just](https://github.com/casey/just) (for L2 commands)
 - jq (for L2 commands)
 
-## ⚙️  How to Build
+## ⚙️ How to Build
 
 ```bash
 # Clone the repo
@@ -35,11 +36,13 @@ The binary will be available at `cmd/localnet/bin/localnet`.
 The tool provides three main commands, each managing a different part of the local network:
 
 ### L1 Network (`localnet l1`)
+
 Manages the Layer 1 Ethereum test network using Kurtosis. Deploys execution and consensus clients along with SSV nodes.
 
 **📖 [Read L1 Documentation](internal/l1/README.md)**
 
 ### L2 Network (`localnet l2`)
+
 Manages Layer 2 rollup networks. Orchestrates a three-phase deployment process for multiple OP Stack rollups.
 
 Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
@@ -50,12 +53,15 @@ available.
 **📖 [Read L2 Documentation](internal/l2/README.md)**
 
 ### Observability (`localnet observability`)
+
 Manages the observability stack for monitoring and debugging. Deploys Grafana, Prometheus, Loki, Tempo, and Alloy.
 
 **📖 [Read Observability Documentation](internal/observability/README.md)**
 
-### Compose Network Console (`frontend`)
-Web UI for testing cross-chain transactions. Requires L2 with flashblocks and sidecar enabled. Use `--frontend-enabled` to start with L2, or run locally with `make run-frontend`.
+### Ethera Labs Console (`frontend`)
+
+Web UI for testing cross-chain transactions. Requires L2 with flashblocks and sidecar enabled. Use `--frontend-enabled`
+to start with L2, or run locally with `make run-frontend`.
 
 **📖 [Read Frontend Documentation](frontend/README.md)** | **📖 [Port Reference](docs/ports.md)**
 
@@ -70,8 +76,8 @@ make run-l1              # Start L1 network
 make run-l2              # Start L2 networks
 make run-l2-compile      # Compile L2 contracts from publisher repo
 make run-observability   # Start observability stack
-make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack with Compose Console
-make run-frontend       # Run Compose Console locally (requires L2 + flashblocks + sidecar already running)
+make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack with Ethera Labs Console
+make run-frontend       # Run Ethera Labs Console locally (requires L2 + flashblocks + sidecar already running)
 
 # Inspect running services:
 make show-l1             # Show Kurtosis enclave

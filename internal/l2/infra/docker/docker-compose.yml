@@ -25,7 +25,7 @@ services:
       L1_FROM_ADDRESS: "${SP_L1_FROM_ADDRESS:-${WALLET_ADDRESS}}"
       L1_DISPUTE_GAME_FACTORY: "${SP_L1_DISPUTE_GAME_FACTORY}"
       L1_CHAIN_ID: "${L1_CHAIN_ID}"
-      L1_COMPOSE_NETWORK_NAME: "${COMPOSE_NETWORK_NAME}"
+      L1_ETHERA_NETWORK_NAME: "${ETHERA_NETWORK_NAME}"
       REGISTRY_PATH: "/workspace/.localnet/registry"  # Custom registry with local chain definitions
     volumes:
       - ${ROOT_DIR}/.localnet/registry:/workspace/.localnet/registry:ro
@@ -229,7 +229,7 @@ services:
       COORDINATOR_PRIVATE_KEY: "${COORDINATOR_PRIVATE_KEY}"
       MAILBOX_A: "${MAILBOX_A:-}"
       MAILBOX_B: "${MAILBOX_B:-}"
-      COMPOSE_NETWORK_NAME: "${COMPOSE_NETWORK_NAME}"
+      ETHERA_NETWORK_NAME: "${ETHERA_NETWORK_NAME}"
     volumes:
       - rollup-b-geth:/data
       - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}:/config:ro

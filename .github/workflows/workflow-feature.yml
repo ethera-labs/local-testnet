@@ -68,7 +68,7 @@ jobs:
         uses: compose-network/github-actions/actions/docker@v0.6.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          image-description: This Docker image is a CLI tool for building and managing Compose Network local testnets
+          image-description: This Docker image is a CLI tool for building and managing Ethera Labs local testnets
           dockerfile-path: build/Dockerfile
           image-architectures: linux/amd64
           with-push: false

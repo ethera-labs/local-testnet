@@ -23,7 +23,7 @@ var templatesFS embed.FS
 // Service handles dispute game factory deployment
 type Service struct {
 	rootDir      string
-	contractsDir string // Path to cloned compose-contracts repo
+	contractsDir string // Path to cloned ethera-contracts repo
 	deployerPK   string
 	cfg          configs.L2
 	logger       *slog.Logger
@@ -33,7 +33,7 @@ type Service struct {
 func NewService(rootDir, servicesDir string, cfg configs.L2) *Service {
 	return &Service{
 		rootDir:      rootDir,
-		contractsDir: filepath.Join(servicesDir, string(configs.RepositoryNameComposeContracts), "L1-settlement"),
+		contractsDir: filepath.Join(servicesDir, string(configs.RepositoryNameEtheraContracts), "L1-settlement"),
 		deployerPK:   cfg.Wallet.PrivateKey,
 		cfg:          cfg,
 		logger:       logger.Named("dispute_deployer"),
@@ -45,7 +45,7 @@ func (s *Service) Deploy(ctx context.Context) (common.Address, error) {
 	s.logger.Info("starting dispute contracts deployment")
 
 	if _, err := os.Stat(s.contractsDir); os.IsNotExist(err) {
-		return common.Address{}, fmt.Errorf("L1-settlement directory not found at %s. Make sure compose-contracts repository is cloned first", s.contractsDir)
+		return common.Address{}, fmt.Errorf("L1-settlement directory not found at %s. Make sure ethera-contracts repository is cloned first", s.contractsDir)
 	}
 
 	s.logger.Info("generating networks.toml")
@@ -218,27 +218,27 @@ func (s *Service) parseDisputeGameFactoryAddress() (common.Address, error) {
 		}
 	}
 
-	// Fallback to compose deployment layout: deployments/compose/<network>.json
-	composePath := filepath.Join(s.contractsDir, "deployments", "compose", s.cfg.Dispute.NetworkName+".json")
-	data, err := os.ReadFile(composePath)
+	// Fallback to ethera deployment layout: deployments/ethera/<network>.json
+	etheraPath := filepath.Join(s.contractsDir, "deployments", "compose", s.cfg.Dispute.NetworkName+".json")
+	data, err := os.ReadFile(etheraPath)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to read deployments.json or compose deployments: %w", err)
+		return common.Address{}, fmt.Errorf("failed to read deployments.json or ethera deployments: %w", err)
 	}
 
-	var composeDeployments map[string]struct {
+	var etheraDeployments map[string]struct {
 		Contracts struct {
 			DisputeGameFactory struct {
 				ProxyAddress string `json:"proxyAddress"`
 			} `json:"DisputeGameFactory"`
 		} `json:"contracts"`
 	}
-	if err := json.Unmarshal(data, &composeDeployments); err != nil {
-		return common.Address{}, fmt.Errorf("failed to parse compose deployments file: %w", err)
+	if err := json.Unmarshal(data, &etheraDeployments); err != nil {
+		return common.Address{}, fmt.Errorf("failed to parse ethera deployments file: %w", err)
 	}
 
-	network, ok := composeDeployments[s.cfg.Dispute.NetworkName]
+	network, ok := etheraDeployments[s.cfg.Dispute.NetworkName]
 	if !ok {
-		return common.Address{}, fmt.Errorf("%s deployment not found in compose deployments file", s.cfg.Dispute.NetworkName)
+		return common.Address{}, fmt.Errorf("%s deployment not found in ethera deployments file", s.cfg.Dispute.NetworkName)
 	}
 
 	if network.Contracts.DisputeGameFactory.ProxyAddress == "" {

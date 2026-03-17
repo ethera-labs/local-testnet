@@ -11,7 +11,7 @@ import (
 var embeddedComposeFS embed.FS
 
 const (
-	composeFileName            = "docker-compose.yml"
+	dockerFileName             = "docker-compose.yml"
 	composeFlashblocksFileName = "docker-compose.flashblocks.yml"
 	composeSidecarFileName     = "docker-compose.sidecar.yml"
 	composeFrontendFileName    = "docker-compose.frontend.yml"
@@ -22,9 +22,9 @@ const (
 // This allows the compose file to be used from anywhere (including when running
 // the binary from a different directory).
 func EnsureComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, composeFileName)
+	composePath := filepath.Join(localnetDir, dockerFileName)
 
-	content, err := getDockerComposeContent()
+	content, err := getComposeFileContent()
 	if err != nil {
 		return "", err
 	}
@@ -34,17 +34,17 @@ func EnsureComposeFile(localnetDir string) (string, error) {
 	}
 
 	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", composeFileName, err)
+		return "", fmt.Errorf("failed to write %s: %w", dockerFileName, err)
 	}
 
 	return composePath, nil
 }
 
-// getDockerComposeContent returns the embedded docker-compose.yml content.
-func getDockerComposeContent() (string, error) {
-	content, err := embeddedComposeFS.ReadFile(composeFileName)
+// getComposeFileContent returns the embedded docker-compose.yml content.
+func getComposeFileContent() (string, error) {
+	content, err := embeddedComposeFS.ReadFile(dockerFileName)
 	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", composeFileName, err)
+		return "", fmt.Errorf("failed to read embedded %s: %w", dockerFileName, err)
 	}
 	return string(content), nil
 }

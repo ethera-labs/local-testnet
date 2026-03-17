@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// ComposeBuild builds docker compose services.
+// DockerBuild builds docker compose services.
 func ComposeBuild(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
 	args := append([]string{"build", "--parallel"}, services...)
 	return composeRun(ctx, composeFilePath, env, args...)
@@ -84,7 +84,7 @@ func composeRunMultiFile(ctx context.Context, composeFilePaths []string, env map
 	return nil
 }
 
-// ComposeRun executes a docker compose command with environment variables.
+// composeRun executes a docker compose command with environment variables.
 func composeRun(ctx context.Context, composeFilePath string, env map[string]string, args ...string) error {
 	fullArgs := append([]string{"compose", "-f", composeFilePath}, args...)
 	cmd := exec.CommandContext(ctx, "docker", fullArgs...)
