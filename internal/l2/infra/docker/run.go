@@ -103,10 +103,8 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 			return "", fmt.Errorf("error waiting for container: %w", err)
 		}
 	case status := <-statusCh:
-		if attachDone != nil {
-			if copyErr := <-attachDone; copyErr != nil {
-				return "", fmt.Errorf("failed to copy container output: %w", copyErr)
-			}
+		if err := waitForAttachDone(ctx, attachDone); err != nil {
+			return "", err
 		}
 
 		if status.StatusCode != 0 {
@@ -124,4 +122,20 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 	}
 
 	return "", nil
+}
+
+func waitForAttachDone(ctx context.Context, attachDone <-chan error) error {
+	if attachDone == nil {
+		return nil
+	}
+
+	select {
+	case copyErr := <-attachDone:
+		if copyErr != nil {
+			return fmt.Errorf("failed to copy container output: %w", copyErr)
+		}
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("context done while waiting for container output: %w", ctx.Err())
+	}
 }
