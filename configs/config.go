@@ -3,6 +3,7 @@ package configs
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var Values Config
@@ -136,6 +137,9 @@ func (c *L2) Validate() error {
 	if c.Wallet.Address == "" {
 		errs = append(errs, errors.New("l2.wallet.address is required"))
 	}
+	if normalizedCoordinatorKey, normalizedWalletKey := normalizePrivateKey(c.CoordinatorPrivateKey), normalizePrivateKey(c.Wallet.PrivateKey); normalizedCoordinatorKey != "" && normalizedCoordinatorKey == normalizedWalletKey {
+		errs = append(errs, errors.New("l2.coordinator-private-key must differ from l2.wallet.private-key to avoid nonce collisions"))
+	}
 
 	requiredRepos := []RepositoryName{RepositoryNameOpGeth, RepositoryNamePublisher}
 	for _, name := range requiredRepos {
@@ -236,4 +240,11 @@ func (c *L2) Validate() error {
 	}
 
 	return nil
+}
+
+func normalizePrivateKey(key string) string {
+	trimmed := strings.TrimSpace(key)
+	trimmed = strings.TrimPrefix(trimmed, "0x")
+	trimmed = strings.TrimPrefix(trimmed, "0X")
+	return strings.ToLower(trimmed)
 }
