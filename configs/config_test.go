@@ -30,6 +30,18 @@ func TestL2ValidateAllowsDifferentCoordinatorAndWalletKeys(t *testing.T) {
 	}
 }
 
+func TestNormalizePrivateKeyStripsAtMostOnePrefix(t *testing.T) {
+	t.Parallel()
+
+	if got := normalizePrivateKey(" 0XAbC123 "); got != "abc123" {
+		t.Fatalf("expected normalized key %q, got %q", "abc123", got)
+	}
+
+	if got := normalizePrivateKey("0x0X123"); got != "0x123" {
+		t.Fatalf("expected malformed double-prefix key to normalize to %q, got %q", "0x123", got)
+	}
+}
+
 func validL2Config() L2 {
 	return L2{
 		L1ChainID:         1,

@@ -244,7 +244,6 @@ func (c *L2) Validate() error {
 
 func normalizePrivateKey(key string) string {
 	trimmed := strings.TrimSpace(key)
-	trimmed = strings.TrimPrefix(trimmed, "0x")
-	trimmed = strings.TrimPrefix(trimmed, "0X")
-	return strings.ToLower(trimmed)
+	trimmed = strings.ToLower(trimmed)
+	return strings.TrimPrefix(trimmed, "0x")
 }
