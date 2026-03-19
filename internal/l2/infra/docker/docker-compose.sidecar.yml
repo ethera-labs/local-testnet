@@ -26,7 +26,7 @@ services:
       SIDECAR_LOG_LEVEL: "debug"
       SIDECAR_LOG_FORMAT: "pretty"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8090/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,7 +58,7 @@ services:
       SIDECAR_LOG_LEVEL: "debug"
       SIDECAR_LOG_FORMAT: "pretty"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8090/health"]
       interval: 10s
       timeout: 5s
       retries: 5
