@@ -31,13 +31,12 @@ run: build ## Build and run the localnet binary
 	${BINARY_PATH}
 
 .PHONY: clean
-clean: clean-observability clean-celestia clean-l2 clean-l1 ## Clean all resources (L1, L2, Celestia, observability)
+clean: clean-observability clean-l2 clean-l1 ## Clean all resources (L1, L2, observability)
 
 .PHONY: stop
-stop: ## Stop all services gracefully (observability, L2, Celestia, L1)
+stop: ## Stop all services gracefully (observability, L2, L1)
 	@$(MAKE) stop-observability
 	@$(MAKE) stop-l2
-	@$(MAKE) stop-celestia
 	@$(MAKE) stop-l1
 
 .PHONY: test
@@ -138,8 +137,8 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.frontend.yml ]; then docker compose -f .localnet/docker-compose.frontend.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
 	docker ps -aq --filter "name=op-succinct" | xargs -r docker rm -f
-	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console op-succinct-a op-succinct-b op-succinct-db-a op-succinct-db-b op-celestia-indexer-a op-celestia-indexer-b op-alt-da-a op-alt-da-b 2>/dev/null || true
-	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct-db|op-celestia-indexer|op-alt-da)" | xargs -r docker volume rm
+	-docker rm -f publisher op-geth-a op-geth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b ethera-console op-succinct-a op-succinct-b op-succinct-db-a op-succinct-db-b op-alt-da-a op-alt-da-b 2>/dev/null || true
+	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct-db|op-alt-da)" | xargs -r docker volume rm
 	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
 .PHONY: clean-l2-full
@@ -217,25 +216,6 @@ op-succinct-prove-multi-offline: ## Run op-succinct multi prover fully offline (
 			--env-file "$(OP_SUCCINCT_ENV_FILE)" \
 			--start "$(START)" \
 			--end "$(END)"
-
-######
-
-### Celestia ###
-.PHONY: run-celestia
-run-celestia: build ## Run the Celestia stack (app, bridge, op-alt-da, celenium)
-	${BINARY_PATH} celestia
-
-.PHONY: show-celestia
-show-celestia: build ## Show Celestia Docker containers
-	${BINARY_PATH} celestia show
-
-.PHONY: stop-celestia
-stop-celestia: build ## Stop Celestia Docker containers
-	${BINARY_PATH} celestia stop || true
-
-.PHONY: clean-celestia
-clean-celestia: build ## Clean Celestia Docker containers and volumes
-	${BINARY_PATH} celestia clean || true
 
 ######
 

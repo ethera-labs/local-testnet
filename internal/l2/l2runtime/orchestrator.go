@@ -212,7 +212,6 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 			ctx,
 			envVars,
 			enabledOpSuccinctChains,
-			cfg.IsCelestiaAltDAEnabled(),
 		); err != nil {
 			return nil, fmt.Errorf("failed to start op-succinct services: %w", err)
 		}

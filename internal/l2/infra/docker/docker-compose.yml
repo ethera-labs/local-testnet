@@ -528,39 +528,6 @@ services:
       - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
     restart: unless-stopped
 
-  op-celestia-indexer-a:
-    image: opcelestia/op-celestia-indexer:op-node-v1.13.6-rc.1
-    container_name: op-celestia-indexer-a
-    labels:
-      - "stack=localnet-l2"
-    networks:
-      - localnet-l2
-    depends_on:
-      - op-node-a
-    env_file:
-      - ${OP_SUCCINCT_ENV_FILE_A}
-    command:
-      - /bin/sh
-      - -lc
-      - |
-        set -eu
-        exec op-celestia-indexer \
-          --start-l1-block="$${START_L1_BLOCK}" \
-          --batch-inbox-address="$${BATCH_INBOX_ADDRESS}" \
-          --l1-eth-rpc="$${L1_RPC}" \
-          --l2-eth-rpc="$${L2_RPC}" \
-          --op-node-rpc="$${L2_NODE_RPC}" \
-          --rpc.enable-admin \
-          --rpc.addr=0.0.0.0 \
-          --rpc.port=57220 \
-          --da.rpc="$${CELESTIA_CONNECTION}" \
-          --da.namespace="$${NAMESPACE}" \
-          --da.auth_token="$${AUTH_TOKEN:-}" \
-          --db-path=/data/indexer.db
-    volumes:
-      - op-celestia-indexer-a:/data
-    restart: unless-stopped
-
   op-succinct-db-b:
     image: postgres:15
     container_name: op-succinct-db-b
@@ -607,39 +574,6 @@ services:
       - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
     restart: unless-stopped
 
-  op-celestia-indexer-b:
-    image: opcelestia/op-celestia-indexer:op-node-v1.13.6-rc.1
-    container_name: op-celestia-indexer-b
-    labels:
-      - "stack=localnet-l2"
-    networks:
-      - localnet-l2
-    depends_on:
-      - op-node-b
-    env_file:
-      - ${OP_SUCCINCT_ENV_FILE_B}
-    command:
-      - /bin/sh
-      - -lc
-      - |
-        set -eu
-        exec op-celestia-indexer \
-          --start-l1-block="$${START_L1_BLOCK}" \
-          --batch-inbox-address="$${BATCH_INBOX_ADDRESS}" \
-          --l1-eth-rpc="$${L1_RPC}" \
-          --l2-eth-rpc="$${L2_RPC}" \
-          --op-node-rpc="$${L2_NODE_RPC}" \
-          --rpc.enable-admin \
-          --rpc.addr=0.0.0.0 \
-          --rpc.port=57220 \
-          --da.rpc="$${CELESTIA_CONNECTION}" \
-          --da.namespace="$${NAMESPACE}" \
-          --da.auth_token="$${AUTH_TOKEN:-}" \
-          --db-path=/data/indexer.db
-    volumes:
-      - op-celestia-indexer-b:/data
-    restart: unless-stopped
-
 volumes:
   rollup-a-geth:
   rollup-b-geth:
@@ -647,8 +581,6 @@ volumes:
   rollup-b-opnode:
   op-alt-da-a-data:
   op-alt-da-b-data:
-  op-celestia-indexer-a:
-  op-celestia-indexer-b:
   op-succinct-db-a:
   op-succinct-db-b:
 

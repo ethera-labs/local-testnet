@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/ethera-labs/local-testnet/configs"
-	"github.com/ethera-labs/local-testnet/internal/celestia"
 	"github.com/ethera-labs/local-testnet/internal/l1"
 	"github.com/ethera-labs/local-testnet/internal/l2"
 	"github.com/ethera-labs/local-testnet/internal/logger"
@@ -65,7 +64,6 @@ func main() {
 
 	rootCmd.AddCommand(l1.CMD)
 	rootCmd.AddCommand(l2.CMD)
-	rootCmd.AddCommand(celestia.CMD)
 	rootCmd.AddCommand(observability.CMD)
 
 	if err := rootCmd.Execute(); err != nil {

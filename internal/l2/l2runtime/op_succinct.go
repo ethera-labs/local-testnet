@@ -3,7 +3,6 @@ package l2runtime
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,9 +22,7 @@ import (
 
 var strictAddressRegex = regexp.MustCompile(`(?i)\b0x[0-9a-f]{40}\b`)
 var labeledAddressRegex = regexp.MustCompile(`(?im)(?:contract\s+address|address)\s*:?\s*(0x[0-9a-f]{40})\b`)
-var celestiaNamespaceRegex = regexp.MustCompile(`(?m)^\s*namespace\s*=\s*"([^"]+)"`)
 
-const defaultCelestiaNamespace = "0000000000000000000000000000000000000000010203040506070809"
 const opSuccinctPrebuiltBinaryRelativePath = ".localnet-prebuilt/validity-proposer"
 
 type opSuccinctInstance struct {
@@ -170,6 +167,16 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 			envVars["SAFE_DB_FALLBACK"] = "true"
 		}
 		envVars["DGF_ADDRESS"] = disputeGameFactory.Hex()
+		// Mailbox addresses are only known after L2 helper contracts are deployed.
+		// Populate them early when available so repeated runs and contract-only flows
+		// do not depend on later mutation.
+		mailboxAddress, err := lookupOpSuccinctMailboxAddress(instance.chainName, composeEnv)
+		if err != nil {
+			return err
+		}
+		if mailboxAddress != "" {
+			envVars["MAILBOX_ADDRESS"] = mailboxAddress
+		}
 		if cfg.IsLocalOpAltDAEnabled() {
 			altDAServer, err := opSuccinctHostAltDAServerURL(instance.chainName, cfg.AltDA.DAServer)
 			if err != nil {
@@ -178,9 +185,6 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 			envVars["ALTDA_DA_SERVER"] = altDAServer
 			envVars["ALTDA_SERVER_URL"] = altDAServer
 			envVars["ALTDA_VERIFY_ON_READ"] = strconv.FormatBool(cfg.AltDA.VerifyOnRead)
-		}
-		if err := o.applyCelestiaEnvVarsIfNeeded(cfg, instance.chainName, envVars); err != nil {
-			return fmt.Errorf("failed to configure Celestia env vars for %s: %w", instance.chainName, err)
 		}
 
 		if err := writeEnvFile(envFilePath, envVars); err != nil {
@@ -231,6 +235,21 @@ func (o *Orchestrator) setupOpSuccinct(ctx context.Context, cfg configs.L2, opSu
 	for _, instance := range instances {
 		if strings.TrimSpace(instance.envFile) == "" {
 			return fmt.Errorf("op-succinct env file path is empty for %s", instance.chainName)
+		}
+
+		mailboxAddress, err := lookupOpSuccinctMailboxAddress(instance.chainName, composeEnv)
+		if err != nil {
+			return err
+		}
+		if mailboxAddress == "" {
+			key, err := opSuccinctMailboxComposeKey(instance.chainName)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("MAILBOX_ADDRESS is not available for %s: compose env %s is empty", instance.chainName, key)
+		}
+		if err := setEnvValue(instance.envFile, "MAILBOX_ADDRESS", mailboxAddress); err != nil {
+			return fmt.Errorf("failed to set MAILBOX_ADDRESS for %s: %w", instance.chainName, err)
 		}
 
 		o.logger.With("chain", instance.chainName, "env_file", instance.envFile).Info("running op-succinct setup calls")
@@ -358,13 +377,18 @@ func (o *Orchestrator) finalizeOpSuccinctRuntimeEnvFiles(cfg configs.L2, compose
 		if strings.TrimSpace(envVars["CUDA_VISIBLE_DEVICES"]) == "" {
 			envVars["CUDA_VISIBLE_DEVICES"] = "-1"
 		}
-		if cfg.IsCelestiaAltDAEnabled() {
-			indexerRPC, err := opSuccinctRuntimeCelestiaIndexerRPCURL(instance.chainName)
+		mailboxAddress, err := lookupOpSuccinctMailboxAddress(instance.chainName, composeEnv)
+		if err != nil {
+			return err
+		}
+		if mailboxAddress == "" {
+			key, err := opSuccinctMailboxComposeKey(instance.chainName)
 			if err != nil {
 				return err
 			}
-			envVars["CELESTIA_INDEXER_RPC"] = indexerRPC
+			return fmt.Errorf("MAILBOX_ADDRESS is not available for %s: compose env %s is empty", instance.chainName, key)
 		}
+		envVars["MAILBOX_ADDRESS"] = mailboxAddress
 		if cfg.IsLocalOpAltDAEnabled() {
 			altDAServer, err := opSuccinctRuntimeAltDAServerURL(instance.chainName)
 			if err != nil {
@@ -429,90 +453,6 @@ func (o *Orchestrator) syncOpSuccinctMultiEnvFiles(cfg configs.L2, composeEnv ma
 	}
 
 	return nil
-}
-
-func (o *Orchestrator) applyCelestiaEnvVarsIfNeeded(cfg configs.L2, chainName configs.L2ChainName, envVars map[string]string) error {
-	if !cfg.IsCelestiaAltDAEnabled() {
-		return nil
-	}
-
-	rollupInfo, err := o.loadRollupInfo(chainName)
-	if err != nil {
-		return err
-	}
-
-	if strings.TrimSpace(envVars["CELESTIA_CONNECTION"]) == "" {
-		envVars["CELESTIA_CONNECTION"] = "http://host.docker.internal:26658"
-	}
-	if strings.TrimSpace(envVars["NAMESPACE"]) == "" {
-		namespace, nsErr := o.readCelestiaNamespace()
-		if nsErr != nil {
-			o.logger.With("error", nsErr).Warn("failed to read Celestia namespace from runtime config; using default namespace")
-			namespace = defaultCelestiaNamespace
-		}
-		envVars["NAMESPACE"] = namespace
-	}
-	if _, exists := envVars["AUTH_TOKEN"]; !exists {
-		envVars["AUTH_TOKEN"] = ""
-	}
-	// Always derive these from the freshly generated rollup config.
-	envVars["START_L1_BLOCK"] = strconv.FormatUint(rollupInfo.Genesis.L1.Number, 10)
-	envVars["BATCH_INBOX_ADDRESS"] = rollupInfo.BatchInboxAddress
-	if strings.TrimSpace(envVars["CELESTIA_INDEXER_RPC"]) == "" {
-		envVars["CELESTIA_INDEXER_RPC"] = "http://127.0.0.1:57220"
-	}
-	if strings.TrimSpace(envVars["BLOBSTREAM_ADDRESS"]) == "" {
-		if blobstreamAddr := strings.TrimSpace(os.Getenv("OP_SUCCINCT_BLOBSTREAM_ADDRESS")); blobstreamAddr != "" {
-			envVars["BLOBSTREAM_ADDRESS"] = blobstreamAddr
-		}
-	}
-	// In local mock mode there may be no Blobstream relay/commitments; allow an explicit fallback
-	// to the indexer's L1 block to avoid blocking proposer progress.
-	if strings.TrimSpace(envVars["CELESTIA_ALLOW_UNVERIFIED_SAFE_HEAD"]) == "" &&
-		isTruthyEnvValue(envVars["OP_SUCCINCT_MOCK"]) {
-		envVars["CELESTIA_ALLOW_UNVERIFIED_SAFE_HEAD"] = "true"
-	}
-
-	return nil
-}
-
-type rollupInfo struct {
-	BatchInboxAddress string `json:"batch_inbox_address"`
-	Genesis           struct {
-		L1 struct {
-			Number uint64 `json:"number"`
-		} `json:"l1"`
-	} `json:"genesis"`
-}
-
-func (o *Orchestrator) loadRollupInfo(chainName configs.L2ChainName) (rollupInfo, error) {
-	var info rollupInfo
-	path := filepath.Join(o.networksDir, string(chainName), "rollup.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return info, fmt.Errorf("failed to read rollup config %s: %w", path, err)
-	}
-	if err := json.Unmarshal(data, &info); err != nil {
-		return info, fmt.Errorf("failed to decode rollup config %s: %w", path, err)
-	}
-	if strings.TrimSpace(info.BatchInboxAddress) == "" {
-		return info, fmt.Errorf("batch_inbox_address is missing in %s", path)
-	}
-	return info, nil
-}
-
-func (o *Orchestrator) readCelestiaNamespace() (string, error) {
-	path := filepath.Join(o.localnetDir, "celestia", "configs", "op-alt-da.local.toml")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read %s: %w", path, err)
-	}
-
-	matches := celestiaNamespaceRegex.FindStringSubmatch(string(data))
-	if len(matches) != 2 {
-		return "", fmt.Errorf("namespace is not set in %s", path)
-	}
-	return strings.TrimSpace(matches[1]), nil
 }
 
 func (o *Orchestrator) runJustCommand(ctx context.Context, workingDir string, args ...string) (string, error) {
@@ -652,6 +592,25 @@ func resolveRollupSender(cfg configs.L2, chainName configs.L2ChainName) configs.
 	return sender
 }
 
+func opSuccinctMailboxComposeKey(chainName configs.L2ChainName) (string, error) {
+	switch chainName {
+	case configs.L2ChainNameRollupA:
+		return "MAILBOX_A", nil
+	case configs.L2ChainNameRollupB:
+		return "MAILBOX_B", nil
+	default:
+		return "", fmt.Errorf("unsupported chain for op-succinct mailbox address: %s", chainName)
+	}
+}
+
+func lookupOpSuccinctMailboxAddress(chainName configs.L2ChainName, composeEnv map[string]string) (string, error) {
+	key, err := opSuccinctMailboxComposeKey(chainName)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(composeEnv[key]), nil
+}
+
 func cloneEnvMap(src map[string]string) map[string]string {
 	dst := make(map[string]string, len(src))
 	for k, v := range src {
@@ -709,9 +668,6 @@ func opSuccinctRuntimeAltDAServerURL(chainName configs.L2ChainName) (string, err
 }
 
 func opSuccinctOracleFeature(cfg configs.L2) string {
-	if cfg.IsCelestiaAltDAEnabled() {
-		return "celestia"
-	}
 	if cfg.IsLocalOpAltDAEnabled() {
 		return "altda"
 	}
@@ -726,17 +682,6 @@ func opSuccinctRuntimeRPCURLs(chainName configs.L2ChainName) (string, string, er
 		return "http://op-geth-b:8545", "http://op-node-b:9545", nil
 	default:
 		return "", "", fmt.Errorf("unsupported chain for op-succinct runtime env: %s", chainName)
-	}
-}
-
-func opSuccinctRuntimeCelestiaIndexerRPCURL(chainName configs.L2ChainName) (string, error) {
-	switch chainName {
-	case configs.L2ChainNameRollupA:
-		return "http://op-celestia-indexer-a:57220", nil
-	case configs.L2ChainNameRollupB:
-		return "http://op-celestia-indexer-b:57220", nil
-	default:
-		return "", fmt.Errorf("unsupported chain for op-succinct Celestia indexer URL: %s", chainName)
 	}
 }
 

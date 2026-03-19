@@ -42,6 +42,37 @@ func TestNormalizePrivateKeyStripsAtMostOnePrefix(t *testing.T) {
 	}
 }
 
+func TestAltDAProviderDefaultsToLocalOpAltDA(t *testing.T) {
+	t.Parallel()
+
+	var cfg AltDAConfig
+	if got := cfg.ProviderName(); got != AltDAProviderOpAltDALocal {
+		t.Fatalf("expected default provider %q, got %q", AltDAProviderOpAltDALocal, got)
+	}
+}
+
+func TestL2ValidateRejectsRemovedCelestiaProvider(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.AltDA.Enabled = true
+	cfg.AltDA.Provider = "celestia"
+	cfg.AltDA.DAServer = "http://localhost:3100"
+	cfg.AltDA.DACommitmentType = AltDACommitmentTypeKeccak
+	cfg.AltDA.DAChallengeWindow = 1
+	cfg.AltDA.DAResolveWindow = 1
+	cfg.AltDA.MaxConcurrentDARequests = 1
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for removed Celestia provider")
+	}
+
+	if got := err.Error(); !strings.Contains(got, `l2.alt-da.provider must be "op-alt-da-local" when l2.alt-da.enabled is true`) {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
 func validL2Config() L2 {
 	return L2{
 		L1ChainID:         1,

@@ -18,31 +18,10 @@ type (
 	Config struct {
 		L1            L1            `mapstructure:"l1"`
 		L2            L2            `mapstructure:"l2"`
-		Celestia      Celestia      `mapstructure:"celestia"`
 		Observability Observability `mapstructure:"observability"`
 	}
 
 	L1 struct {
-	}
-
-	Celestia struct {
-		ProjectName                string         `mapstructure:"project-name"`
-		RuntimeDir                 string         `mapstructure:"runtime-dir"`
-		DataDir                    string         `mapstructure:"data-dir"`
-		AttachToL2Network          bool           `mapstructure:"attach-to-l2-network"`
-		ChainID                    string         `mapstructure:"chain-id"`
-		CeleniumEnabled            bool           `mapstructure:"celenium-enabled"`
-		CeleniumIndexerStartHeight uint64         `mapstructure:"celenium-indexer-start-height"`
-		CeleniumIndexer            Repository     `mapstructure:"celenium-indexer"`
-		CeleniumInterface          Repository     `mapstructure:"celenium-interface"`
-		Images                     CelestiaImages `mapstructure:"images"`
-	}
-
-	CelestiaImages struct {
-		CelestiaApp  string `mapstructure:"celestia-app"`
-		CelestiaNode string `mapstructure:"celestia-node"`
-		OpAltDA      string `mapstructure:"op-alt-da"`
-		CeleniumDB   string `mapstructure:"celenium-db"`
 	}
 
 	L2 struct {
@@ -170,7 +149,6 @@ const (
 	AltDACommitmentTypeKeccak  = "KeccakCommitment"
 	AltDACommitmentTypeGeneric = "GenericCommitment"
 
-	AltDAProviderCelestia     = "celestia"
 	AltDAProviderOpAltDALocal = "op-alt-da-local"
 )
 
@@ -205,10 +183,6 @@ func (c L2) AnyOpSuccinctChainEnabled() bool {
 	return len(c.EnabledOpSuccinctChains()) > 0
 }
 
-func (c L2) IsCelestiaAltDAEnabled() bool {
-	return c.AltDA.Enabled && c.AltDA.ProviderName() == AltDAProviderCelestia
-}
-
 func (c L2) IsLocalOpAltDAEnabled() bool {
 	return c.AltDA.Enabled && c.AltDA.ProviderName() == AltDAProviderOpAltDALocal
 }
@@ -216,7 +190,7 @@ func (c L2) IsLocalOpAltDAEnabled() bool {
 func (c AltDAConfig) ProviderName() string {
 	provider := strings.TrimSpace(c.Provider)
 	if provider == "" {
-		return AltDAProviderCelestia
+		return AltDAProviderOpAltDALocal
 	}
 	return provider
 }
@@ -330,12 +304,9 @@ func (c *L2) Validate() error {
 	}
 
 	if c.AltDA.Enabled {
-		switch c.AltDA.ProviderName() {
-		case AltDAProviderCelestia, AltDAProviderOpAltDALocal:
-		default:
+		if c.AltDA.ProviderName() != AltDAProviderOpAltDALocal {
 			errs = append(errs, fmt.Errorf(
-				"l2.alt-da.provider must be either %q or %q when l2.alt-da.enabled is true",
-				AltDAProviderCelestia,
+				"l2.alt-da.provider must be %q when l2.alt-da.enabled is true",
 				AltDAProviderOpAltDALocal,
 			))
 		}
@@ -418,53 +389,6 @@ func normalizePrivateKey(key string) string {
 	trimmed := strings.TrimSpace(key)
 	trimmed = strings.ToLower(trimmed)
 	return strings.TrimPrefix(trimmed, "0x")
-}
-
-func (c *Celestia) Validate() error {
-	var errs []error
-
-	if c.ProjectName == "" {
-		errs = append(errs, errors.New("celestia.project-name is required"))
-	}
-	if c.RuntimeDir == "" {
-		errs = append(errs, errors.New("celestia.runtime-dir is required"))
-	}
-	if c.DataDir == "" {
-		errs = append(errs, errors.New("celestia.data-dir is required"))
-	}
-	if c.ChainID == "" {
-		errs = append(errs, errors.New("celestia.chain-id is required"))
-	}
-	if c.Images.CelestiaApp == "" {
-		errs = append(errs, errors.New("celestia.images.celestia-app is required"))
-	}
-	if c.Images.CelestiaNode == "" {
-		errs = append(errs, errors.New("celestia.images.celestia-node is required"))
-	}
-	if c.Images.OpAltDA == "" {
-		errs = append(errs, errors.New("celestia.images.op-alt-da is required"))
-	}
-
-	if c.CeleniumEnabled {
-		if c.Images.CeleniumDB == "" {
-			errs = append(errs, errors.New("celestia.images.celenium-db is required when celestia.celenium-enabled is true"))
-		}
-		if c.CeleniumIndexerStartHeight == 0 {
-			errs = append(errs, errors.New("celestia.celenium-indexer-start-height must be positive when celestia.celenium-enabled is true"))
-		}
-		if err := validateRepository(c.CeleniumIndexer, "celestia.celenium-indexer"); err != nil {
-			errs = append(errs, err)
-		}
-		if err := validateRepository(c.CeleniumInterface, "celestia.celenium-interface"); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("Celestia configuration validation failed: %w", errors.Join(errs...))
-	}
-
-	return nil
 }
 
 func validateRepository(repo Repository, key string) error {
