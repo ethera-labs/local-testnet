@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
+	fsjson "github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem/json"
 	"github.com/ethera-labs/local-testnet/internal/l2/path"
 	"github.com/ethera-labs/local-testnet/internal/logger"
 )
@@ -170,12 +171,41 @@ func (o *Deployer) Apply(ctx context.Context, l1RpcURL, deployerPrivateKey, depl
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to run op-deployer apply: %w", err)
+		return o.decorateApplyError(err)
 	}
 
 	o.logger.Info("deployer apply completed successfully")
 
 	return nil
+}
+
+func (o *Deployer) decorateApplyError(runErr error) error {
+	if !looksLikeAlreadyDeployedError(runErr) {
+		return fmt.Errorf("failed to run op-deployer apply: %w", runErr)
+	}
+
+	const recoveryHint = "If this is the local Kurtosis L1, run `make clean-l1 && make clean-l2` before retrying. Otherwise, retry against a fresh L1."
+
+	stateManager := NewStateManager(o.stateDir, fsjson.NewReader())
+	state, err := stateManager.Load()
+	if err == nil && state.HasIncompleteProgress() {
+		return fmt.Errorf(
+			"failed to run op-deployer apply: detected partially applied L1 deployment state in %s. Some contracts were already deployed on L1, but the local op-deployer state never reached a full apply, so the retry cannot resume safely. %s: %w",
+			filepath.Join(o.stateDir, stateFile),
+			recoveryHint,
+			runErr,
+		)
+	}
+
+	return fmt.Errorf(
+		"failed to run op-deployer apply: op-deployer tried to deploy a contract to an address that already has code. %s: %w",
+		recoveryHint,
+		runErr,
+	)
+}
+
+func looksLikeAlreadyDeployedError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "contract already deployed")
 }
 
 func (o *Deployer) containerAccessibleL1RPCURL(ctx context.Context, raw string) (string, string, error) {
