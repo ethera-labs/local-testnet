@@ -1,7 +1,7 @@
 services:
   sidecar-a:
     build:
-      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#chore/specs} # default: remote chore/specs over SSH; override with SIDECAR_PATH
+      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#stage} # default: remote stage over SSH; override with SIDECAR_PATH
       dockerfile: build/Dockerfile
       ssh:
         - default
@@ -26,14 +26,14 @@ services:
       SIDECAR_LOG_LEVEL: "debug"
       SIDECAR_LOG_FORMAT: "pretty"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8090/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   sidecar-b:
     build:
-      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#chore/specs} # default: remote chore/specs over SSH; override with SIDECAR_PATH
+      context: ${SIDECAR_PATH:-git@github.com:ethera-labs/sidecar.git#stage} # default: remote stage over SSH; override with SIDECAR_PATH
       dockerfile: build/Dockerfile
       ssh:
         - default
@@ -58,7 +58,7 @@ services:
       SIDECAR_LOG_LEVEL: "debug"
       SIDECAR_LOG_FORMAT: "pretty"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8090/health"]
       interval: 10s
       timeout: 5s
       retries: 5
