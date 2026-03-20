@@ -2,18 +2,19 @@
 
 network:
   participants:
-  - el_type: geth
-    el_image: ethpandaops/geth:master
-    # Force archive EL so historical state / debug queries remain available.
-    el_storage_type: archive
-    # Ensure proof-capable state storage for eth_getProof and similar RPCs.
-    el_extra_params:
-      - --state.scheme=hash
-      - --syncmode=full
-    cl_type: lighthouse
-    cl_image: sigp/lighthouse:v7.0.0
-    validator_count: 128
-    count: 2
+    - el_type: geth
+      el_image: ethereum/client-go:v1.16.7
+      # Force archive EL so historical state / debug queries remain available.
+      el_storage_type: archive
+      # Ensure proof-capable state storage for eth_getProof and similar RPCs.
+      el_extra_params:
+        - --state.scheme=hash
+        - --syncmode=full
+      cl_type: lighthouse
+      cl_image: sigp/lighthouse:v8.0.1
+      validator_count: 128
+      count: 2
+      supernode: true
 
   # Keep empty by default to reduce host resource requirements.
   # Add "dora" manually if you need validator dashboard services.
@@ -26,7 +27,8 @@ network:
     electra_fork_epoch: 0
     fulu_fork_epoch: 100000000
     perfect_peerdas_enabled: false
-    
+
+
     # 74 = 32 validators * 2(number of el/cl nodes) + 10 (running on SSV/Anchor nodes)
     # aligns with validator_count configuration under participants section
     preregistered_validator_count: 266  # 128*2 + 10
@@ -70,9 +72,9 @@ nodes:
 
 # Docker images configuration
 images:
-  ssv: "node/ssv"
+  ssv: "ssvlabs/ssv-node:v2.4.2"
   anchor: "sigp/anchor:v1.2.0" # if you want to use locally build anchor change to `node/anchor`
-  monitor: "monitor"
+  monitor: "ssvlabs/ethereum2-monitor:v1.0.102"
   redis: "redis:7.4.2"
   postgres: "postgres:15"
-  foundry: "localssv/ssv-network" 
+  foundry: "localssv/ssv-network"
