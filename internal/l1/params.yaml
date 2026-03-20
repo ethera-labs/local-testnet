@@ -2,12 +2,13 @@
 
 network:
   participants:
-  - el_type: geth
-    el_image: ethereum/client-go:v1.15.10
-    cl_type: lighthouse
-    cl_image: sigp/lighthouse:v7.0.0
-    validator_count: 32
-    count: 2
+    - el_type: geth
+      el_image: ethereum/client-go:v1.16.7
+      cl_type: lighthouse
+      cl_image: sigp/lighthouse:v8.0.1
+      validator_count: 32
+      count: 2
+      supernode: true
 
   additional_services:
     - dora # Helps to see validators are working
@@ -18,8 +19,8 @@ network:
     deneb_fork_epoch: 0
     electra_fork_epoch: 0
     fulu_fork_epoch: 100000000
-    perfect_peerdas_enabled: true
-    
+    perfect_peerdas_enabled: false
+
     # 74 = 32 validators * 2(number of el/cl nodes) + 10 (running on SSV/Anchor nodes)
     # aligns with validator_count configuration under participants section
     preregistered_validator_count: 74
@@ -38,9 +39,9 @@ nodes:
 
 # Docker images configuration
 images:
-  ssv: "node/ssv"
-  anchor: "sigp/anchor:v0.3.1" # if you want to use locally build anchor change to `node/anchor`
-  monitor: "monitor"
+  ssv: "ssvlabs/ssv-node:v2.4.2"
+  anchor: "sigp/anchor:v1.2.0" # if you want to use locally build anchor change to `node/anchor`
+  monitor: "ssvlabs/ethereum2-monitor:v1.0.102"
   redis: "redis:7.4.2"
   postgres: "postgres:15"
-  foundry: "localssv/ssv-network" 
+  foundry: "localssv/ssv-network"
