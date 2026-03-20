@@ -60,8 +60,11 @@ func rawMessageIsNull(msg json.RawMessage) bool {
 type OpChainDeployment struct {
 	ID                      string     `json:"id"`
 	StartBlock              StartBlock `json:"startBlock"`
-	SystemConfigProxy       string     `json:"SystemConfigProxy"`
-	DisputeGameFactoryProxy string     `json:"DisputeGameFactoryProxy"`
+	AltDAChallengeProxy        string     `json:"AltDAChallengeProxy"`
+	AltDAChallengeImpl         string     `json:"AltDAChallengeImpl"`
+	SystemConfigProxy          string     `json:"SystemConfigProxy"`
+	DisputeGameFactoryProxy    string     `json:"DisputeGameFactoryProxy"`
+	AnchorStateRegistryProxy   string     `json:"AnchorStateRegistryProxy"`
 }
 
 // StartBlock represents the L1 block where the rollup starts

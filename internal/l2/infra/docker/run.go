@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -111,7 +112,12 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return "", fmt.Errorf("error waiting for container: %w", err)
+			if opts.AutoRemove && strings.Contains(err.Error(), "No such container") {
+				err = nil
+			}
+			if err != nil {
+				return "", fmt.Errorf("error waiting for container: %w", err)
+			}
 		}
 	case status := <-statusCh:
 		if err := waitForAttachDone(ctx, attachDone); err != nil {

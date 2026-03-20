@@ -31,7 +31,7 @@ func NewConfigurator() *Configurator {
 }
 
 // SetupRegistry creates the complete registry directory structure
-// This includes the network-level ethera.toml and individual rollup.toml for each chain
+// This includes the network-level compose.toml and individual rollup.toml for each chain
 func (c *Configurator) SetupRegistry(localnetDir string, cfg configs.L2, gameFactoryAddr common.Address) error {
 	registryNetworkDir := filepath.Join(localnetDir, "registry", "networks", cfg.EtheraNetworkName)
 	if err := os.MkdirAll(registryNetworkDir, 0755); err != nil {
@@ -40,8 +40,8 @@ func (c *Configurator) SetupRegistry(localnetDir string, cfg configs.L2, gameFac
 
 	c.logger.Info("created registry network directory", "path", registryNetworkDir)
 
-	if err := c.generateEtheraToml(registryNetworkDir, cfg, gameFactoryAddr); err != nil {
-		return fmt.Errorf("failed to generate ethera.toml: %w", err)
+	if err := c.generateComposeToml(registryNetworkDir, cfg, gameFactoryAddr); err != nil {
+		return fmt.Errorf("failed to generate compose.toml: %w", err)
 	}
 
 	for chainName, chainCfg := range cfg.ChainConfigs {
@@ -53,23 +53,23 @@ func (c *Configurator) SetupRegistry(localnetDir string, cfg configs.L2, gameFac
 	return nil
 }
 
-func (c *Configurator) generateEtheraToml(registryNetworkDir string, cfg configs.L2, gameFactoryAddr common.Address) error {
-	const etheraFileName = "ethera.toml"
+func (c *Configurator) generateComposeToml(registryNetworkDir string, cfg configs.L2, gameFactoryAddr common.Address) error {
+	const composeFileName = "compose.toml"
 
-	tmplContent, err := templatesFS.ReadFile("ethera.toml.tmpl")
+	tmplContent, err := templatesFS.ReadFile("compose.toml.tmpl")
 	if err != nil {
-		return fmt.Errorf("failed to read %s template: %w", etheraFileName, err)
+		return fmt.Errorf("failed to read %s template: %w", composeFileName, err)
 	}
 
-	tmpl, err := template.New(etheraFileName).Parse(string(tmplContent))
+	tmpl, err := template.New(composeFileName).Parse(string(tmplContent))
 	if err != nil {
-		return fmt.Errorf("failed to parse %s template: %w", etheraFileName, err)
+		return fmt.Errorf("failed to parse %s template: %w", composeFileName, err)
 	}
 
-	etheraTomlPath := filepath.Join(registryNetworkDir, etheraFileName)
-	file, err := os.Create(etheraTomlPath)
+	composeTomlPath := filepath.Join(registryNetworkDir, composeFileName)
+	file, err := os.Create(composeTomlPath)
 	if err != nil {
-		return fmt.Errorf("failed to create %s: %w", etheraFileName, err)
+		return fmt.Errorf("failed to create %s: %w", composeFileName, err)
 	}
 	defer file.Close()
 
@@ -88,10 +88,10 @@ func (c *Configurator) generateEtheraToml(registryNetworkDir string, cfg configs
 	}
 
 	if err := tmpl.Execute(file, data); err != nil {
-		return fmt.Errorf("failed to execute %s template: %w", etheraFileName, err)
+		return fmt.Errorf("failed to execute %s template: %w", composeFileName, err)
 	}
 
-	c.logger.Info("created network registry configuration", "path", etheraTomlPath)
+	c.logger.Info("created network registry configuration", "path", composeTomlPath)
 
 	return nil
 }

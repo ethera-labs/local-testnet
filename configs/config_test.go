@@ -51,6 +51,62 @@ func TestAltDAProviderDefaultsToLocalOpAltDA(t *testing.T) {
 	}
 }
 
+func TestAltDASkipL1DeployDefaultsFalse(t *testing.T) {
+	t.Parallel()
+
+	var cfg AltDAConfig
+	if cfg.SkipL1Deploy {
+		t.Fatal("expected skip-l1-deploy to default to false")
+	}
+}
+
+func TestL2ValidateRejectsIncompleteAltDAConfiguredAddresses(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.AltDA.Enabled = true
+	cfg.AltDA.Provider = AltDAProviderOpAltDALocal
+	cfg.AltDA.DAServer = "http://localhost:3100"
+	cfg.AltDA.DACommitmentType = AltDACommitmentTypeKeccak
+	cfg.AltDA.DAChallengeWindow = 1
+	cfg.AltDA.DAResolveWindow = 1
+	cfg.AltDA.MaxConcurrentDARequests = 1
+	cfg.AltDA.ChallengeProxyAddress = "0x1111111111111111111111111111111111111111"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for incomplete alt-da configured addresses")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.alt-da.challenge-proxy-address and l2.alt-da.challenge-impl-address must be set together") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestL2ValidateRejectsInvalidAltDAConfiguredAddresses(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.AltDA.Enabled = true
+	cfg.AltDA.Provider = AltDAProviderOpAltDALocal
+	cfg.AltDA.DAServer = "http://localhost:3100"
+	cfg.AltDA.DACommitmentType = AltDACommitmentTypeKeccak
+	cfg.AltDA.DAChallengeWindow = 1
+	cfg.AltDA.DAResolveWindow = 1
+	cfg.AltDA.MaxConcurrentDARequests = 1
+	cfg.AltDA.ChallengeProxyAddress = "proxy"
+	cfg.AltDA.ChallengeImplAddress = "0x2222222222222222222222222222222222222222"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for invalid alt-da proxy address")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.alt-da.challenge-proxy-address must be a valid hex address") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
 func TestL2ValidateRejectsRemovedCelestiaProvider(t *testing.T) {
 	t.Parallel()
 

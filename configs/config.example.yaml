@@ -8,6 +8,9 @@ l2:
   l1-cl-url: http://127.0.0.2:8080
   ethera-labs-name: network-name # Ethera Labs network name for publisher registry, e.g. hoodi
   coordinator-private-key: 0x0000000000000000000000000000000000000000000000000000000000000000
+  # Optional: override the sequencer key used for op-geth/op-node.
+  # If omitted, falls back to coordinator-private-key.
+  sequencer-private-key: ""
   wallet:
     private-key: 0000000000000000000000000000000000000000000000000000000000000000
     address: 0x0000000000000000000000000000000000000000000
@@ -31,12 +34,24 @@ l2:
     enabled: false  # requires flashblocks and sidecar
     port: 3000
   op-succinct:
+    release-build: false  # use debug builds for faster compilation; set true for optimized binaries
+    # Dedicated wallet for op-succinct L1 contract deployments.
+    # Must differ from l2.wallet to avoid nonce conflicts with the batcher/proposer.
+    # Fund this address on L1 before running op-succinct setup.
+    deployer:
+      private-key: ""
+      address: ""
     rollup-a:
       enabled: false
     rollup-b:
       enabled: false
   alt-da:
     enabled: false
+    skip-l1-deploy: false
+    # Optional: set both addresses to reuse an existing Alt-DA L1 deployment
+    # instead of discovering it from .localnet/state/state.json.
+    challenge-proxy-address: ""
+    challenge-impl-address: ""
     provider: op-alt-da-local
     da-server: http://host.docker.internal:3100
     verify-on-read: true

@@ -42,7 +42,12 @@ func (o *Orchestrator) prepareOpSuccinctPrebuiltBinary(ctx context.Context, cfg 
 		return fmt.Errorf("failed to create op-succinct prebuilt dir: %w", err)
 	}
 
-	args := []string{"build", "--release", "--bin", "validity", "--features", feature}
+	args := []string{"build", "--bin", "validity", "--features", feature}
+	profile := "debug"
+	if cfg.OpSuccinct.ReleaseBuild {
+		args = append(args, "--release")
+		profile = "release"
+	}
 	cmd := exec.CommandContext(ctx, "cargo", args...)
 	cmd.Dir = opSuccinctPath
 	cmd.Env = append(os.Environ(),
@@ -54,12 +59,12 @@ func (o *Orchestrator) prepareOpSuccinctPrebuiltBinary(ctx context.Context, cfg 
 	cmd.Stdout = io.MultiWriter(os.Stdout, &output)
 	cmd.Stderr = io.MultiWriter(os.Stderr, &output)
 
-	o.logger.With("path", opSuccinctPath, "feature", feature).Info("building host op-succinct validity binary")
+	o.logger.With("path", opSuccinctPath, "feature", feature, "profile", profile).Info("building host op-succinct validity binary")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build op-succinct validity binary in %s: %w", opSuccinctPath, err)
 	}
 
-	srcPath := filepath.Join(targetDir, "release", "validity")
+	srcPath := filepath.Join(targetDir, profile, "validity")
 	if err := copyFile(srcPath, dstPath); err != nil {
 		return fmt.Errorf("failed to stage prebuilt op-succinct validity binary: %w", err)
 	}
@@ -75,6 +80,7 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 	cfg configs.L2,
 	composeEnv map[string]string,
 	disputeGameFactoryAddresses map[configs.L2ChainName]common.Address,
+	anchorStateRegistryAddresses map[configs.L2ChainName]common.Address,
 	opSuccinctPath string,
 ) error {
 	baseEnvPath := filepath.Join(opSuccinctPath, ".env")
@@ -139,12 +145,10 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 		// Always force fresh per-run contract setup to avoid stale addresses copied from base .env.
 		envVars["L2OO_ADDRESS"] = ""
 		envVars["VERIFIER_ADDRESS"] = ""
-		if strings.TrimSpace(envVars["PRIVATE_KEY"]) == "" {
-			envVars["PRIVATE_KEY"] = sender.PrivateKey
-		}
-		if strings.TrimSpace(envVars["PROPOSER_ADDRESSES"]) == "" {
-			envVars["PROPOSER_ADDRESSES"] = sender.Address
-		}
+		// Always use the resolved sender key to avoid nonce conflicts
+		// with batcher/proposer when a dedicated deployer key is configured.
+		envVars["PRIVATE_KEY"] = sender.PrivateKey
+		envVars["PROPOSER_ADDRESSES"] = sender.Address
 		if rustLog := strings.TrimSpace(envVars["RUST_LOG"]); rustLog == "" || strings.EqualFold(rustLog, "info") {
 			envVars["RUST_LOG"] = "debug"
 		}
@@ -167,6 +171,14 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 			envVars["SAFE_DB_FALLBACK"] = "true"
 		}
 		envVars["DGF_ADDRESS"] = disputeGameFactory.Hex()
+		if anchorStateRegistry, ok := anchorStateRegistryAddresses[instance.chainName]; ok && anchorStateRegistry != (common.Address{}) {
+			envVars["ANCHOR_STATE_REGISTRY"] = anchorStateRegistry.Hex()
+		}
+		// Allow deploy-oracle to succeed immediately after rollup startup
+		// without waiting for L2 finalization (default requires 1800 finalized blocks).
+		if strings.TrimSpace(envVars["STARTING_BLOCK_NUMBER"]) == "" {
+			envVars["STARTING_BLOCK_NUMBER"] = "1"
+		}
 		// Mailbox addresses are only known after L2 helper contracts are deployed.
 		// Populate them early when available so repeated runs and contract-only flows
 		// do not depend on later mutation.
@@ -297,8 +309,21 @@ func (o *Orchestrator) setupOpSuccinct(ctx context.Context, cfg configs.L2, opSu
 		}
 
 		if useSetDisputeGameCalls {
+			// set-dispute-game-impl calls factory.setImplementation on the DGF,
+			// which is owned by the wallet key (deployer from Phase 1).
+			// Temporarily swap PRIVATE_KEY to the wallet key for this call.
+			if err := setEnvValue(workEnvPath, "PRIVATE_KEY", cfg.Wallet.PrivateKey); err != nil {
+				return fmt.Errorf("failed to set wallet key for set-dispute-game-impl (%s): %w", instance.chainName, err)
+			}
 			if _, err := o.runJustCommand(ctx, opSuccinctPath, "set-dispute-game-impl"); err != nil {
 				return fmt.Errorf("set-dispute-game-impl failed for %s: %w", instance.chainName, err)
+			}
+
+			// set-dispute-game-factory calls setDisputeGameFactory on the L2OO,
+			// which is owned by the deployer key (deployed in deploy-oracle above).
+			sender := resolveRollupSender(cfg, instance.chainName)
+			if err := setEnvValue(workEnvPath, "PRIVATE_KEY", sender.PrivateKey); err != nil {
+				return fmt.Errorf("failed to restore deployer key for set-dispute-game-factory (%s): %w", instance.chainName, err)
 			}
 			if _, err := o.runJustCommand(ctx, opSuccinctPath, "set-dispute-game-factory"); err != nil {
 				return fmt.Errorf("set-dispute-game-factory failed for %s: %w", instance.chainName, err)
@@ -458,6 +483,12 @@ func (o *Orchestrator) syncOpSuccinctMultiEnvFiles(cfg configs.L2, composeEnv ma
 func (o *Orchestrator) runJustCommand(ctx context.Context, workingDir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "just", args...)
 	cmd.Dir = workingDir
+	// Set a high priority fee so forge script transactions land quickly
+	// on congested L1 networks (e.g. Hoodi with a large mempool backlog).
+	env := os.Environ()
+	env = appendEnvIfUnset(env, "ETH_GAS_PRICE", "10gwei")
+	env = appendEnvIfUnset(env, "ETH_PRIORITY_GAS_PRICE", "3gwei")
+	cmd.Env = env
 
 	var output bytes.Buffer
 	cmd.Stdout = io.MultiWriter(os.Stdout, &output)
@@ -468,6 +499,16 @@ func (o *Orchestrator) runJustCommand(ctx context.Context, workingDir string, ar
 	}
 
 	return output.String(), nil
+}
+
+func appendEnvIfUnset(environ []string, key, value string) []string {
+	prefix := key + "="
+	for _, e := range environ {
+		if strings.HasPrefix(e, prefix) {
+			return environ
+		}
+	}
+	return append(environ, prefix+value)
 }
 
 func (o *Orchestrator) listJustRecipes(ctx context.Context, workingDir string) (map[string]bool, error) {
@@ -576,6 +617,12 @@ func extractLastAddress(text string) (string, bool) {
 }
 
 func resolveRollupSender(cfg configs.L2, chainName configs.L2ChainName) configs.Wallet {
+	// Prefer the dedicated op-succinct deployer wallet to avoid nonce
+	// conflicts with the batcher/proposer which share the main wallet key.
+	if cfg.OpSuccinct.Deployer.PrivateKey != "" {
+		return cfg.OpSuccinct.Deployer
+	}
+
 	chainCfg, ok := cfg.ChainConfigs[chainName]
 	if !ok {
 		return cfg.Wallet

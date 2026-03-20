@@ -24,11 +24,12 @@ Orchestrator coordinates Phase 1: L1 deployment
 */
 type (
 	DeploymentState struct {
-		DisputeGameFactoryAddress        common.Address
-		DisputeGameFactoryImplAddressOP  common.Address //TODO: Determine the necessity of this variable's usage.
-		DisputeGameFactoryProxyAddresses map[configs.L2ChainName]common.Address
-		StartBlocks                      map[configs.L2ChainName]StartBlock
-		SystemConfigProxyAddresses       map[configs.L2ChainName]common.Address
+		DisputeGameFactoryAddress          common.Address
+		DisputeGameFactoryImplAddressOP    common.Address //TODO: Determine the necessity of this variable's usage.
+		DisputeGameFactoryProxyAddresses   map[configs.L2ChainName]common.Address
+		AnchorStateRegistryProxyAddresses  map[configs.L2ChainName]common.Address
+		StartBlocks                        map[configs.L2ChainName]StartBlock
+		SystemConfigProxyAddresses         map[configs.L2ChainName]common.Address
 	}
 
 	StartBlock struct {
@@ -75,7 +76,12 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	defer dockerClient.Close()
 
 	o.logger.Info("instantiating Deployer")
-	opDeployer := deployer.NewDeployer(o.rootDir, o.stateDir, cfg.Images[configs.ImageNameOpDeployer].Tag, dockerClient)
+	opDeployer := deployer.NewDeployer(
+		o.rootDir,
+		o.stateDir,
+		cfg.Images[configs.ImageNameOpDeployer].Tag,
+		dockerClient,
+	)
 
 	o.logger.Info("initializing Deployer")
 	if err := opDeployer.Init(ctx, cfg.L1ChainID, cfg.ChainConfigs); err != nil {
@@ -95,13 +101,17 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		coordinatorAddress,
 		cfg.L1ChainID,
 		cfg.ChainConfigs,
-		cfg.AltDA,
+		deployer.AltDAConfigForApply(cfg.AltDA),
 	); err != nil {
 		return deploymentState, fmt.Errorf("failed to write intent: %w", err)
 	}
 
 	if err := opDeployer.Apply(ctx, cfg.L1ElURL, cfg.Wallet.PrivateKey, cfg.DeploymentTarget); err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy L1 contracts: %w", err)
+	}
+
+	if err := deployer.FinalizeStateForAltDASkip(o.stateDir, cfg); err != nil {
+		return deploymentState, fmt.Errorf("failed to finalize alt-da skip state: %w", err)
 	}
 
 	opState, err := stateManager.Load()
@@ -121,6 +131,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	startBlocks := make(map[configs.L2ChainName]StartBlock)
 	systemConfigProxyAddresses := make(map[configs.L2ChainName]common.Address)
 	disputeGameFactoryProxyAddresses := make(map[configs.L2ChainName]common.Address)
+	anchorStateRegistryProxyAddresses := make(map[configs.L2ChainName]common.Address)
 	for _, opChain := range opState.OpChainDeployments {
 		chainIDInt, err := strconv.ParseInt(opChain.ID, 0, 64)
 		if err != nil {
@@ -135,17 +146,19 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 				}
 				systemConfigProxyAddresses[chainName] = common.HexToAddress(opChain.SystemConfigProxy)
 				disputeGameFactoryProxyAddresses[chainName] = common.HexToAddress(opChain.DisputeGameFactoryProxy)
+				anchorStateRegistryProxyAddresses[chainName] = common.HexToAddress(opChain.AnchorStateRegistryProxy)
 				break
 			}
 		}
 	}
 
 	deploymentState = DeploymentState{
-		DisputeGameFactoryAddress:        gameFactoryAddr,
-		DisputeGameFactoryImplAddressOP:  common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
-		DisputeGameFactoryProxyAddresses: disputeGameFactoryProxyAddresses,
-		StartBlocks:                      startBlocks,
-		SystemConfigProxyAddresses:       systemConfigProxyAddresses,
+		DisputeGameFactoryAddress:         gameFactoryAddr,
+		DisputeGameFactoryImplAddressOP:   common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
+		DisputeGameFactoryProxyAddresses:  disputeGameFactoryProxyAddresses,
+		AnchorStateRegistryProxyAddresses: anchorStateRegistryProxyAddresses,
+		StartBlocks:                       startBlocks,
+		SystemConfigProxyAddresses:        systemConfigProxyAddresses,
 	}
 
 	return deploymentState, nil

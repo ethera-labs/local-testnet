@@ -85,8 +85,13 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["L1_CL_URL"] = cfg.L1ClURL
 	env["L1_CHAIN_ID"] = fmt.Sprintf("%d", cfg.L1ChainID)
 	env["ETHERA_NETWORK_NAME"] = cfg.EtheraNetworkName
+	env["L1_COMPOSE_NETWORK_NAME"] = cfg.EtheraNetworkName
 	env["COORDINATOR_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
-	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
+	sequencerPrivateKey := cfg.SequencerPrivateKey
+	if strings.TrimSpace(sequencerPrivateKey) == "" {
+		sequencerPrivateKey = cfg.CoordinatorPrivateKey
+	}
+	env["SEQUENCER_PRIVATE_KEY"] = sequencerPrivateKey
 	env["SP_L1_SUPERBLOCK_CONTRACT"] = ""
 
 	env["PUBLISHER_PATH"] = publisherPath
@@ -97,6 +102,11 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_SUCCINCT_ENV_FILE_B"] = filepath.Join(rootHost, ".localnet", "op-succinct", "rollup-b.env")
 	env["OP_SUCCINCT_A_DOCKERFILE"] = "./validity/Dockerfile"
 	env["OP_SUCCINCT_B_DOCKERFILE"] = "./validity/Dockerfile"
+	if cfg.OpSuccinct.ReleaseBuild {
+		env["OP_SUCCINCT_CARGO_PROFILE"] = "release"
+	} else {
+		env["OP_SUCCINCT_CARGO_PROFILE"] = "debug"
+	}
 	if cfg.IsLocalOpAltDAEnabled() {
 		altDADockerfile := filepath.Join(rootHost, "internal", "l2", "infra", "docker", "op-succinct.altda.Dockerfile")
 		prebuiltDockerfile := filepath.Join(rootHost, "internal", "l2", "infra", "docker", "op-succinct.altda.prebuilt.Dockerfile")

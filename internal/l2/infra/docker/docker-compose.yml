@@ -2,7 +2,9 @@ services:
   publisher:
     build:
       context: ${PUBLISHER_PATH}
-      dockerfile: Dockerfile
+      dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/publisher.Dockerfile
+      ssh:
+        - default
     image: local/publisher:dev
     container_name: publisher
     labels:
@@ -25,6 +27,7 @@ services:
       L1_FROM_ADDRESS: "${SP_L1_FROM_ADDRESS:-${WALLET_ADDRESS}}"
       L1_DISPUTE_GAME_FACTORY: "${SP_L1_DISPUTE_GAME_FACTORY}"
       L1_CHAIN_ID: "${L1_CHAIN_ID}"
+      L1_COMPOSE_NETWORK_NAME: "${L1_COMPOSE_NETWORK_NAME}"
       L1_ETHERA_NETWORK_NAME: "${ETHERA_NETWORK_NAME}"
       REGISTRY_PATH: "/workspace/.localnet/registry"  # Custom registry with local chain definitions
     volumes:
@@ -41,7 +44,7 @@ services:
   op-geth-a:
     build:
       context: ${OP_GETH_PATH}
-      dockerfile: Dockerfile
+      dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-geth.Dockerfile
     image: local/op-geth:dev
     container_name: op-geth-a
     labels:
@@ -85,11 +88,12 @@ services:
       - |
         set -eu
 
-        COORDINATOR_KEY=$${COORDINATOR_PRIVATE_KEY:-}
+        COORDINATOR_KEY=$$(printf '%s' "$${COORDINATOR_PRIVATE_KEY:-}" | sed 's/^0x//')
         if [ -z "$$COORDINATOR_KEY" ]; then
           echo "[error] COORDINATOR_PRIVATE_KEY is required" >&2
           exit 1
         fi
+        SEQUENCER_KEY=$$(printf '%s' "$${SEQUENCER_PRIVATE_KEY:-}" | sed 's/^0x//')
 
         # Initialize geth if needed
         if [ ! -f /data/geth/chaindata/CURRENT ]; then
@@ -107,7 +111,14 @@ services:
 
         echo "[*] Starting geth"
 
-        exec geth \
+        GETH_HELP_FILE=$$(mktemp)
+        if ! geth --help >"$$GETH_HELP_FILE" 2>&1; then
+          cat "$$GETH_HELP_FILE" >&2
+          rm -f "$$GETH_HELP_FILE"
+          exit 1
+        fi
+
+        set -- geth \
           --verbosity=4 \
           --datadir /data \
           --http \
@@ -130,7 +141,24 @@ services:
           --metrics \
           --metrics.addr=0.0.0.0 \
           --metrics.port=6060 \
-          --rollup.computependingblock=true
+          --rollup.computependingblock=true \
+          --registry.path=/registry \
+          --sp.addr=publisher:8080
+
+        if grep -q -- '--coordinator.key' "$$GETH_HELP_FILE"; then
+          set -- "$$@" "--coordinator.key=$${COORDINATOR_KEY}"
+        fi
+        if grep -q -- '--sequencer.key' "$$GETH_HELP_FILE"; then
+          if [ -z "$$SEQUENCER_KEY" ]; then
+            echo "[error] SEQUENCER_PRIVATE_KEY is required by this geth build" >&2
+            rm -f "$$GETH_HELP_FILE"
+            exit 1
+          fi
+          set -- "$$@" "--sequencer.key=$${SEQUENCER_KEY}"
+        fi
+
+        rm -f "$$GETH_HELP_FILE"
+        exec "$$@"
 
   op-alt-da-a:
     build:
@@ -291,7 +319,7 @@ services:
   op-geth-b:
     build:
       context: ${OP_GETH_PATH}
-      dockerfile: Dockerfile
+      dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-geth.Dockerfile
     image: local/op-geth:dev
     container_name: op-geth-b
     labels:
@@ -336,11 +364,12 @@ services:
       - |
         set -eu
 
-        COORDINATOR_KEY=$${COORDINATOR_PRIVATE_KEY:-}
+        COORDINATOR_KEY=$$(printf '%s' "$${COORDINATOR_PRIVATE_KEY:-}" | sed 's/^0x//')
         if [ -z "$$COORDINATOR_KEY" ]; then
           echo "[error] COORDINATOR_PRIVATE_KEY is required" >&2
           exit 1
         fi
+        SEQUENCER_KEY=$$(printf '%s' "$${SEQUENCER_PRIVATE_KEY:-}" | sed 's/^0x//')
 
         # Initialize geth if needed
         if [ ! -f /data/geth/chaindata/CURRENT ]; then
@@ -358,7 +387,14 @@ services:
 
         echo "[*] Starting geth"
 
-        exec geth \
+        GETH_HELP_FILE=$$(mktemp)
+        if ! geth --help >"$$GETH_HELP_FILE" 2>&1; then
+          cat "$$GETH_HELP_FILE" >&2
+          rm -f "$$GETH_HELP_FILE"
+          exit 1
+        fi
+
+        set -- geth \
           --verbosity=4 \
           --datadir /data \
           --http \
@@ -384,7 +420,24 @@ services:
           --metrics \
           --metrics.addr=0.0.0.0 \
           --metrics.port=6060 \
-          --rollup.computependingblock=true
+          --rollup.computependingblock=true \
+          --registry.path=/registry \
+          --sp.addr=publisher:8080
+
+        if grep -q -- '--coordinator.key' "$$GETH_HELP_FILE"; then
+          set -- "$$@" "--coordinator.key=$${COORDINATOR_KEY}"
+        fi
+        if grep -q -- '--sequencer.key' "$$GETH_HELP_FILE"; then
+          if [ -z "$$SEQUENCER_KEY" ]; then
+            echo "[error] SEQUENCER_PRIVATE_KEY is required by this geth build" >&2
+            rm -f "$$GETH_HELP_FILE"
+            exit 1
+          fi
+          set -- "$$@" "--sequencer.key=$${SEQUENCER_KEY}"
+        fi
+
+        rm -f "$$GETH_HELP_FILE"
+        exec "$$@"
 
   op-node-b:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:${OP_NODE_IMAGE_TAG}
@@ -500,6 +553,9 @@ services:
     build:
       context: ${OP_SUCCINCT_PATH}
       dockerfile: ${OP_SUCCINCT_A_DOCKERFILE:-./validity/Dockerfile}
+      args:
+        CARGO_PROFILE: ${OP_SUCCINCT_CARGO_PROFILE:-debug}
+        CARGO_BUILD_JOBS: ${OP_SUCCINCT_BUILD_JOBS:-2}
     image: local/op-succinct:dev
     container_name: op-succinct-a
     labels:
@@ -526,6 +582,7 @@ services:
         exec /usr/local/bin/validity-proposer
     volumes:
       - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
+      - op-succinct-sp1-cache:/root/.sp1/circuits
     restart: unless-stopped
 
   op-succinct-db-b:
@@ -546,6 +603,9 @@ services:
     build:
       context: ${OP_SUCCINCT_PATH}
       dockerfile: ${OP_SUCCINCT_B_DOCKERFILE:-./validity/Dockerfile}
+      args:
+        CARGO_PROFILE: ${OP_SUCCINCT_CARGO_PROFILE:-debug}
+        CARGO_BUILD_JOBS: ${OP_SUCCINCT_BUILD_JOBS:-2}
     image: local/op-succinct:dev
     container_name: op-succinct-b
     labels:
@@ -572,6 +632,7 @@ services:
         exec /usr/local/bin/validity-proposer
     volumes:
       - ${OP_SUCCINCT_PATH}/configs/L1:/app/configs/L1:ro
+      - op-succinct-sp1-cache:/root/.sp1/circuits
     restart: unless-stopped
 
 volumes:
@@ -583,6 +644,7 @@ volumes:
   op-alt-da-b-data:
   op-succinct-db-a:
   op-succinct-db-b:
+  op-succinct-sp1-cache:
 
 networks:
   localnet-l2:

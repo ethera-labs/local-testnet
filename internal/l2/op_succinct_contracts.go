@@ -44,12 +44,17 @@ var opSuccinctContractsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		anchorStateRegistryProxyAddresses, err := loadAnchorStateRegistryProxyAddresses(stateDir, resolvedCfg)
+		if err != nil {
+			return err
+		}
 
 		runtimeOrchestrator := l2runtime.NewOrchestrator(rootDir, localnetDir, networksDir, servicesDir)
 		if err := runtimeOrchestrator.DeployOpSuccinctContractsOnly(
 			cmd.Context(),
 			resolvedCfg,
 			disputeGameFactoryProxyAddresses,
+			anchorStateRegistryProxyAddresses,
 		); err != nil {
 			return fmt.Errorf("op-succinct contract-only deployment failed: %w", err)
 		}
@@ -57,6 +62,36 @@ var opSuccinctContractsCmd = &cobra.Command{
 		slog.Info("op-succinct contract-only deployment completed successfully")
 		return nil
 	},
+}
+
+func loadAnchorStateRegistryProxyAddresses(stateDir string, cfg configs.L2) (map[configs.L2ChainName]common.Address, error) {
+	stateManager := deployer.NewStateManager(stateDir, json.NewReader())
+	state, err := stateManager.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load state from %s/state.json: %w", stateDir, err)
+	}
+
+	chainIDToName := make(map[int64]configs.L2ChainName, len(cfg.ChainConfigs))
+	for chainName, chainCfg := range cfg.ChainConfigs {
+		chainIDToName[int64(chainCfg.ID)] = chainName
+	}
+
+	addresses := make(map[configs.L2ChainName]common.Address, len(cfg.ChainConfigs))
+	for _, opChain := range state.OpChainDeployments {
+		chainID, err := strconv.ParseInt(opChain.ID, 0, 64)
+		if err != nil {
+			continue
+		}
+		chainName, ok := chainIDToName[chainID]
+		if !ok {
+			continue
+		}
+		if addr := common.HexToAddress(opChain.AnchorStateRegistryProxy); addr != (common.Address{}) {
+			addresses[chainName] = addr
+		}
+	}
+
+	return addresses, nil
 }
 
 func loadDisputeGameFactoryProxyAddresses(stateDir string, cfg configs.L2) (map[configs.L2ChainName]common.Address, error) {

@@ -89,7 +89,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		if opSuccinctPath == "" {
 			return nil, fmt.Errorf("OP_SUCCINCT_PATH is empty")
 		}
-		if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, deploymentState.DisputeGameFactoryProxyAddresses, opSuccinctPath); err != nil {
+		if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, deploymentState.DisputeGameFactoryProxyAddresses, deploymentState.AnchorStateRegistryProxyAddresses, opSuccinctPath); err != nil {
 			return nil, fmt.Errorf("failed to prepare op-succinct env files: %w", err)
 		}
 	} else {
@@ -296,6 +296,7 @@ func (o *Orchestrator) DeployOpSuccinctContractsOnly(
 	ctx context.Context,
 	cfg configs.L2,
 	disputeGameFactoryProxyAddresses map[configs.L2ChainName]common.Address,
+	anchorStateRegistryProxyAddresses map[configs.L2ChainName]common.Address,
 ) error {
 	enabledOpSuccinctChains := cfg.EnabledOpSuccinctChains()
 	opSuccinctEnabled := isOpSuccinctEnabled(cfg, enabledOpSuccinctChains)
@@ -314,7 +315,7 @@ func (o *Orchestrator) DeployOpSuccinctContractsOnly(
 		return fmt.Errorf("OP_SUCCINCT_PATH is empty")
 	}
 
-	if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, disputeGameFactoryProxyAddresses, opSuccinctPath); err != nil {
+	if err := o.prepareOpSuccinctEnvFiles(cfg, envVars, disputeGameFactoryProxyAddresses, anchorStateRegistryProxyAddresses, opSuccinctPath); err != nil {
 		return fmt.Errorf("failed to prepare op-succinct env files: %w", err)
 	}
 	if err := o.setupOpSuccinct(ctx, cfg, opSuccinctPath, envVars); err != nil {

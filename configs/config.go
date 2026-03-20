@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var Values Config
@@ -31,6 +33,7 @@ type (
 		EtheraNetworkName     string                        `mapstructure:"ethera-labs-name"`
 		Wallet                Wallet                        `mapstructure:"wallet"`
 		CoordinatorPrivateKey string                        `mapstructure:"coordinator-private-key"`
+		SequencerPrivateKey   string                        `mapstructure:"sequencer-private-key"`
 		Repositories          map[RepositoryName]Repository `mapstructure:"repositories"`
 		ChainConfigs          map[L2ChainName]Chain         `mapstructure:"chain-configs"`
 		Images                map[ImageName]Image           `mapstructure:"images"`
@@ -69,8 +72,10 @@ type (
 	}
 
 	OpSuccinctConfig struct {
-		RollupA OpSuccinctInstanceConfig `mapstructure:"rollup-a"`
-		RollupB OpSuccinctInstanceConfig `mapstructure:"rollup-b"`
+		RollupA      OpSuccinctInstanceConfig `mapstructure:"rollup-a"`
+		RollupB      OpSuccinctInstanceConfig `mapstructure:"rollup-b"`
+		ReleaseBuild bool                     `mapstructure:"release-build"`
+		Deployer     Wallet                   `mapstructure:"deployer"`
 	}
 
 	OpSuccinctInstanceConfig struct {
@@ -79,6 +84,9 @@ type (
 
 	AltDAConfig struct {
 		Enabled                    bool   `mapstructure:"enabled"`
+		SkipL1Deploy               bool   `mapstructure:"skip-l1-deploy"`
+		ChallengeProxyAddress      string `mapstructure:"challenge-proxy-address"`
+		ChallengeImplAddress       string `mapstructure:"challenge-impl-address"`
 		Provider                   string `mapstructure:"provider"`
 		DAServer                   string `mapstructure:"da-server"`
 		VerifyOnRead               bool   `mapstructure:"verify-on-read"`
@@ -246,6 +254,17 @@ func (c *L2) Validate() error {
 		} else if err := validateRepository(repo, fmt.Sprintf("l2.repositories.%s", RepositoryNameOpSuccinct)); err != nil {
 			errs = append(errs, err)
 		}
+
+		deployer := c.OpSuccinct.Deployer
+		if deployer.PrivateKey == "" {
+			errs = append(errs, errors.New("l2.op-succinct.deployer.private-key is required when op-succinct is enabled (must differ from l2.wallet to avoid nonce conflicts with batcher/proposer)"))
+		}
+		if deployer.Address == "" && deployer.PrivateKey != "" {
+			errs = append(errs, errors.New("l2.op-succinct.deployer.address is required when deployer private-key is set"))
+		}
+		if deployer.PrivateKey != "" && normalizePrivateKey(deployer.PrivateKey) == normalizePrivateKey(c.Wallet.PrivateKey) {
+			errs = append(errs, errors.New("l2.op-succinct.deployer.private-key must differ from l2.wallet.private-key to avoid nonce conflicts with batcher/proposer"))
+		}
 	}
 
 	requiredImages := []ImageName{ImageNameOpDeployer, ImageNameOpNode, ImageNameOpProposer, ImageNameOpBatcher}
@@ -321,6 +340,18 @@ func (c *L2) Validate() error {
 			errs = append(errs, errors.New("l2.alt-da.da-commitment-type is required when l2.alt-da.enabled is true"))
 		} else if c.AltDA.DACommitmentType != AltDACommitmentTypeKeccak && c.AltDA.DACommitmentType != AltDACommitmentTypeGeneric {
 			errs = append(errs, errors.New("l2.alt-da.da-commitment-type must be either 'KeccakCommitment' or 'GenericCommitment'"))
+		}
+
+		proxyAddr := strings.TrimSpace(c.AltDA.ChallengeProxyAddress)
+		implAddr := strings.TrimSpace(c.AltDA.ChallengeImplAddress)
+		if (proxyAddr == "") != (implAddr == "") {
+			errs = append(errs, errors.New("l2.alt-da.challenge-proxy-address and l2.alt-da.challenge-impl-address must be set together"))
+		}
+		if proxyAddr != "" && !common.IsHexAddress(proxyAddr) {
+			errs = append(errs, errors.New("l2.alt-da.challenge-proxy-address must be a valid hex address"))
+		}
+		if implAddr != "" && !common.IsHexAddress(implAddr) {
+			errs = append(errs, errors.New("l2.alt-da.challenge-impl-address must be a valid hex address"))
 		}
 
 		if c.AltDA.DAChallengeWindow == 0 {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethera-labs/local-testnet/configs"
 	fsjson "github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem/json"
 )
 
@@ -70,5 +71,18 @@ func TestDecorateApplyErrorPassesThroughOtherFailures(t *testing.T) {
 	msg := err.Error()
 	if msg != "failed to run op-deployer apply: rpc dial failed" {
 		t.Fatalf("unexpected error message %q", msg)
+	}
+}
+
+func TestAltDAConfigForApplyStripsAltDAWhenSkippingL1Deploy(t *testing.T) {
+	t.Parallel()
+
+	got := AltDAConfigForApply(configs.AltDAConfig{
+		Enabled:          true,
+		SkipL1Deploy:     true,
+		DACommitmentType: configs.AltDACommitmentTypeKeccak,
+	})
+	if got.Enabled {
+		t.Fatalf("expected AltDAConfigForApply to strip alt-da from apply intent, got %+v", got)
 	}
 }
