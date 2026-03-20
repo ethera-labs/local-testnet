@@ -16,7 +16,7 @@ The L1 command deploys a complete Ethereum network with:
 
 ## Prerequisites
 
-- [Kurtosis](https://docs.kurtosis.com/install) - Container orchestration platform
+- [Kurtosis](https://docs.kurtosis.com/install) >= 1.15.2 - Container orchestration platform. The `ssv-mini` package depends on `ethereum-package` which requires `publish_udp` support in `ServiceConfig`, introduced in [Kurtosis 1.15.2](https://github.com/kurtosis-tech/kurtosis/releases/tag/1.15.2).
 - Docker - For running containerized services
 
 ## Configuration
@@ -97,5 +97,8 @@ kurtosis service logs localnet <service-name> -f
 
 **Issue:** Port conflicts
 **Solution:** Ensure ports 8545 (EL RPC) and 5052 (CL REST) are available
+
+**Issue:** `ServiceConfig: unexpected keyword argument "publish_udp"`
+**Solution:** Upgrade Kurtosis to >= 1.15.2 and update the Go SDK to match.
 
 For more details, see the [main README](../../README.md).

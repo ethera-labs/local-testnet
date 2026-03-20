@@ -11,7 +11,7 @@ development environment for testing Ethereum applications with multiple L2 rollu
 
 - Docker and Docker Compose
 - Go 1.25+
-- Kurtosis (for L1 network)
+- Kurtosis >= 1.15.2 (for L1 network)
 - Foundry/Forge (for L2 commands)
 - [just](https://github.com/casey/just) (for L2 commands)
 - jq (for L2 commands)
