@@ -91,8 +91,10 @@ export default function MintForm({ onSelectFlow }: MintFormProps) {
         amountA && amountB ? 'minting_both' : amountA ? 'minting_a' : 'minting_b'
       setFlowStep(mintStep)
 
-      if (amountA) await submitMint('A', amountA)
-      if (amountB) await submitMint('B', amountB)
+      await Promise.all([
+        amountA ? submitMint('A', amountA) : Promise.resolve(),
+        amountB ? submitMint('B', amountB) : Promise.resolve(),
+      ])
 
       setFlowStep('complete')
       setTimeout(() => setFlowStep('idle'), 800)

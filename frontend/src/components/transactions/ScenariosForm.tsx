@@ -203,6 +203,8 @@ export default function ScenariosForm() {
           setStates(prev => ({ ...prev, [id]: { running: false, outcome: 'aborted' } }))
         }
       }).catch(err => {
+        updateTransaction(txHashA, { status: 'aborted', decision: false, decidedAt: new Date() })
+        updateTransaction(txHashB, { status: 'aborted', decision: false, decidedAt: new Date() })
         setStates(prev => ({ ...prev, [id]: { running: false, error: err instanceof Error ? err.message : 'timeout' } }))
       })
 

@@ -291,7 +291,7 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 			return fmt.Errorf("failed to prepare sidecar docker file for build: %w", err)
 		}
 		dockerFiles = append(dockerFiles, sidecarDockerPath)
-		services = append(services, "sidecar-a", "sidecar-b")
+		services = append(services, "op-rbuilder-a", "op-rbuilder-b", "sidecar-a", "sidecar-b")
 	}
 
 	if len(dockerFiles) > 1 {

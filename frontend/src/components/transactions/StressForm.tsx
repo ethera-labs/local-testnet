@@ -117,6 +117,8 @@ export default function StressForm() {
         }))
       }
     }).catch(() => {
+      updateTransaction(txHashA, { status: 'aborted', decision: false, decidedAt: new Date() })
+      updateTransaction(txHashB, { status: 'aborted', decision: false, decidedAt: new Date() })
       setProgress(prev => ({
         ...prev,
         [testId]: { ...prev[testId], errors: prev[testId].errors + 1 },
