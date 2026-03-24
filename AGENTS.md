@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-This Go 1.25 project orchestrates a local L1/L2 stack for Compose Network contributors. Follow the practices below to keep the control plane predictable and easy to debug.
+This Go 1.25 project orchestrates a local L1/L2 stack for Ethera Labs contributors. Follow the practices below to keep the control plane predictable and easy to debug.
 
 ## Project Structure & Module Organization
 - `cmd/localnet` contains the Cobra CLI entry point that wires configuration and subcommands.
