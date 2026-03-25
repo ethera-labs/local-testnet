@@ -35,6 +35,20 @@ l2:
     port: 3000
   op-succinct:
     release-build: false  # use debug builds for faster compilation; set true for optimized binaries
+    mock-proofs: true     # true = deploy mock verifier + CPU prover (fast, no real proofs)
+                          # false = use real SP1 verifier + real proof generation
+    sp1-prover: ""        # SP1_PROVER override: "cpu" (default for mock), "network" (default for real), "cuda"
+    sp1-private-key: ""   # SP1_PRIVATE_KEY for Succinct prover network authentication (required when sp1-prover=network)
+    verifier-address: ""  # On-chain SP1 verifier contract address (required when mock-proofs is false)
+    # Proving parameters (applied when set; otherwise inherits from op-succinct .env)
+    range-proof-strategy: ""   # e.g. "auction"
+    agg-proof-strategy: ""     # e.g. "auction"
+    range-cycle-limit: ""      # e.g. "100000000000"
+    range-gas-limit: ""        # e.g. "17000000000"
+    agg-gas-limit: ""          # e.g. "2000000000"
+    max-price-per-pgu: ""      # e.g. "210000000"
+    auction-timeout: ""        # e.g. "240" (seconds, default: 60)
+    min-l2-block: ""           # e.g. "2500" (skip proving below this L2 block, default: 0)
     # Dedicated wallet for op-succinct L1 contract deployments.
     # Must differ from l2.wallet to avoid nonce conflicts with the batcher/proposer.
     # Fund this address on L1 before running op-succinct setup.

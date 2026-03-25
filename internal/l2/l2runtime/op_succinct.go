@@ -155,18 +155,28 @@ func (o *Orchestrator) prepareOpSuccinctEnvFiles(
 		if strings.TrimSpace(envVars["RUST_BACKTRACE"]) == "" {
 			envVars["RUST_BACKTRACE"] = "1"
 		}
-		// Reduce peak memory on constrained Docker Desktop environments.
-		// SP1's program cache can be several GB; disabling it avoids startup OOMs.
-		if strings.TrimSpace(envVars["SP1_DISABLE_PROGRAM_CACHE"]) == "" {
-			envVars["SP1_DISABLE_PROGRAM_CACHE"] = "true"
-		}
-		// Force CPU prover path in local fake-proof mode; avoids accidental CUDA/network usage.
+		// Set SP1 prover configuration based on mock-proofs mode.
 		if strings.TrimSpace(envVars["SP1_PROVER"]) == "" {
-			envVars["SP1_PROVER"] = "cpu"
+			envVars["SP1_PROVER"] = cfg.OpSuccinct.EffectiveSP1Prover()
 		}
-		if strings.TrimSpace(envVars["CUDA_VISIBLE_DEVICES"]) == "" {
-			envVars["CUDA_VISIBLE_DEVICES"] = "-1"
+		envVars["OP_SUCCINCT_MOCK"] = strconv.FormatBool(cfg.OpSuccinct.IsMockProofs())
+		if cfg.OpSuccinct.IsMockProofs() {
+			// Reduce peak memory on constrained Docker Desktop environments.
+			// SP1's program cache can be several GB; disabling it avoids startup OOMs.
+			if strings.TrimSpace(envVars["SP1_DISABLE_PROGRAM_CACHE"]) == "" {
+				envVars["SP1_DISABLE_PROGRAM_CACHE"] = "true"
+			}
+			if strings.TrimSpace(envVars["CUDA_VISIBLE_DEVICES"]) == "" {
+				envVars["CUDA_VISIBLE_DEVICES"] = "-1"
+			}
 		}
+		if cfg.OpSuccinct.SP1PrivateKey != "" {
+			envVars["NETWORK_PRIVATE_KEY"] = cfg.OpSuccinct.SP1PrivateKey
+		}
+		if cfg.OpSuccinct.VerifierAddress != "" {
+			envVars["VERIFIER_ADDRESS"] = cfg.OpSuccinct.VerifierAddress
+		}
+		applyOpSuccinctRuntimeParams(cfg, envVars)
 		if strings.TrimSpace(envVars["SAFE_DB_FALLBACK"]) == "" {
 			envVars["SAFE_DB_FALLBACK"] = "true"
 		}
@@ -264,27 +274,39 @@ func (o *Orchestrator) setupOpSuccinct(ctx context.Context, cfg configs.L2, opSu
 			return fmt.Errorf("failed to set MAILBOX_ADDRESS for %s: %w", instance.chainName, err)
 		}
 
-		o.logger.With("chain", instance.chainName, "env_file", instance.envFile).Info("running op-succinct setup calls")
+		o.logger.With("chain", instance.chainName, "env_file", instance.envFile, "mock_proofs", cfg.OpSuccinct.IsMockProofs()).Info("running op-succinct setup calls")
 		if err := copyFile(instance.envFile, workEnvPath); err != nil {
 			return fmt.Errorf("failed to activate op-succinct env for %s: %w", instance.chainName, err)
 		}
 
-		mockVerifierOutput, err := o.runJustCommand(ctx, opSuccinctPath, "deploy-mock-verifier")
-		if err != nil {
-			return fmt.Errorf("deploy-mock-verifier failed for %s: %w", instance.chainName, err)
-		}
-		if verifierAddress, ok := extractLastAddress(mockVerifierOutput); ok {
-			if err := setEnvValue(instance.envFile, "VERIFIER_ADDRESS", verifierAddress); err != nil {
-				return fmt.Errorf("failed to set VERIFIER_ADDRESS for %s: %w", instance.chainName, err)
+		if cfg.OpSuccinct.IsMockProofs() {
+			mockVerifierOutput, err := o.runJustCommand(ctx, opSuccinctPath, "deploy-mock-verifier")
+			if err != nil {
+				return fmt.Errorf("deploy-mock-verifier failed for %s: %w", instance.chainName, err)
 			}
-			if err := setEnvValue(workEnvPath, "VERIFIER_ADDRESS", verifierAddress); err != nil {
-				return fmt.Errorf("failed to update active VERIFIER_ADDRESS for %s: %w", instance.chainName, err)
+			if verifierAddress, ok := extractLastAddress(mockVerifierOutput); ok {
+				if err := setEnvValue(instance.envFile, "VERIFIER_ADDRESS", verifierAddress); err != nil {
+					return fmt.Errorf("failed to set VERIFIER_ADDRESS for %s: %w", instance.chainName, err)
+				}
+				if err := setEnvValue(workEnvPath, "VERIFIER_ADDRESS", verifierAddress); err != nil {
+					return fmt.Errorf("failed to update active VERIFIER_ADDRESS for %s: %w", instance.chainName, err)
+				}
+			} else {
+				existingVerifier := mustGetEnvValue(instance.envFile, "VERIFIER_ADDRESS")
+				if existingVerifier == "" {
+					return fmt.Errorf("could not determine VERIFIER_ADDRESS for %s", instance.chainName)
+				}
 			}
 		} else {
+			// Real proofs: use the VERIFIER_ADDRESS from config or base .env (the on-chain SP1 verifier).
 			existingVerifier := mustGetEnvValue(instance.envFile, "VERIFIER_ADDRESS")
 			if existingVerifier == "" {
-				return fmt.Errorf("could not determine VERIFIER_ADDRESS for %s", instance.chainName)
+				return fmt.Errorf("VERIFIER_ADDRESS is required for real proofs; set l2.op-succinct.verifier-address in config or VERIFIER_ADDRESS in op-succinct .env (chain %s)", instance.chainName)
 			}
+			if err := setEnvValue(workEnvPath, "VERIFIER_ADDRESS", existingVerifier); err != nil {
+				return fmt.Errorf("failed to update active VERIFIER_ADDRESS for %s: %w", instance.chainName, err)
+			}
+			o.logger.With("chain", instance.chainName, "verifier", existingVerifier).Info("using real SP1 verifier")
 		}
 
 		// Always pass an explicit feature so deploy-oracle rebuilds fetch-l2oo-config for the
@@ -393,15 +415,27 @@ func (o *Orchestrator) finalizeOpSuccinctRuntimeEnvFiles(cfg configs.L2, compose
 		if strings.TrimSpace(envVars["RUST_BACKTRACE"]) == "" {
 			envVars["RUST_BACKTRACE"] = "1"
 		}
-		if strings.TrimSpace(envVars["SP1_DISABLE_PROGRAM_CACHE"]) == "" {
-			envVars["SP1_DISABLE_PROGRAM_CACHE"] = "true"
-		}
 		if strings.TrimSpace(envVars["SP1_PROVER"]) == "" {
-			envVars["SP1_PROVER"] = "cpu"
+			envVars["SP1_PROVER"] = cfg.OpSuccinct.EffectiveSP1Prover()
 		}
-		if strings.TrimSpace(envVars["CUDA_VISIBLE_DEVICES"]) == "" {
-			envVars["CUDA_VISIBLE_DEVICES"] = "-1"
+		envVars["OP_SUCCINCT_MOCK"] = strconv.FormatBool(cfg.OpSuccinct.IsMockProofs())
+		if cfg.OpSuccinct.IsMockProofs() {
+			if strings.TrimSpace(envVars["SP1_DISABLE_PROGRAM_CACHE"]) == "" {
+				envVars["SP1_DISABLE_PROGRAM_CACHE"] = "true"
+			}
+			if strings.TrimSpace(envVars["CUDA_VISIBLE_DEVICES"]) == "" {
+				envVars["CUDA_VISIBLE_DEVICES"] = "-1"
+			}
 		}
+		if cfg.OpSuccinct.SP1PrivateKey != "" {
+			envVars["NETWORK_PRIVATE_KEY"] = cfg.OpSuccinct.SP1PrivateKey
+		}
+		if cfg.OpSuccinct.VerifierAddress != "" {
+			envVars["VERIFIER_ADDRESS"] = cfg.OpSuccinct.VerifierAddress
+		}
+		applyOpSuccinctRuntimeParams(cfg, envVars)
+		// Set publisher URL for the Docker network so the proposer can submit proofs.
+		envVars["SHARED_PUBLISHER_URL"] = "http://publisher:8081/v1/proofs/op-succinct"
 		mailboxAddress, err := lookupOpSuccinctMailboxAddress(instance.chainName, composeEnv)
 		if err != nil {
 			return err
@@ -750,6 +784,25 @@ func hostAccessibleRPCURL(raw string) string {
 
 	parsed.Host = net.JoinHostPort("127.0.0.1", port)
 	return parsed.String()
+}
+
+// applyOpSuccinctRuntimeParams sets op-succinct proving parameters from config
+// into the env map. Values from config take precedence; base .env values are
+// kept when the config field is empty.
+func applyOpSuccinctRuntimeParams(cfg configs.L2, envVars map[string]string) {
+	setIfConfigured := func(key, value string) {
+		if value != "" {
+			envVars[key] = value
+		}
+	}
+	setIfConfigured("RANGE_PROOF_STRATEGY", cfg.OpSuccinct.RangeProofStrategy)
+	setIfConfigured("AGG_PROOF_STRATEGY", cfg.OpSuccinct.AggProofStrategy)
+	setIfConfigured("RANGE_CYCLE_LIMIT", cfg.OpSuccinct.RangeCycleLimit)
+	setIfConfigured("RANGE_GAS_LIMIT", cfg.OpSuccinct.RangeGasLimit)
+	setIfConfigured("AGG_GAS_LIMIT", cfg.OpSuccinct.AggGasLimit)
+	setIfConfigured("MAX_PRICE_PER_PGU", cfg.OpSuccinct.MaxPricePerPGU)
+	setIfConfigured("AUCTION_TIMEOUT", cfg.OpSuccinct.AuctionTimeout)
+	setIfConfigured("MIN_L2_BLOCK", cfg.OpSuccinct.MinL2Block)
 }
 
 func isTruthyEnvValue(value string) bool {

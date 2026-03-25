@@ -72,10 +72,22 @@ type (
 	}
 
 	OpSuccinctConfig struct {
-		RollupA      OpSuccinctInstanceConfig `mapstructure:"rollup-a"`
-		RollupB      OpSuccinctInstanceConfig `mapstructure:"rollup-b"`
-		ReleaseBuild bool                     `mapstructure:"release-build"`
-		Deployer     Wallet                   `mapstructure:"deployer"`
+		RollupA            OpSuccinctInstanceConfig `mapstructure:"rollup-a"`
+		RollupB            OpSuccinctInstanceConfig `mapstructure:"rollup-b"`
+		ReleaseBuild       bool                     `mapstructure:"release-build"`
+		Deployer           Wallet                   `mapstructure:"deployer"`
+		MockProofs         *bool                    `mapstructure:"mock-proofs"`
+		SP1Prover          string                   `mapstructure:"sp1-prover"`
+		SP1PrivateKey      string                   `mapstructure:"sp1-private-key"`
+		VerifierAddress    string                   `mapstructure:"verifier-address"`
+		RangeProofStrategy string                   `mapstructure:"range-proof-strategy"`
+		AggProofStrategy   string                   `mapstructure:"agg-proof-strategy"`
+		RangeCycleLimit    string                   `mapstructure:"range-cycle-limit"`
+		RangeGasLimit      string                   `mapstructure:"range-gas-limit"`
+		AggGasLimit        string                   `mapstructure:"agg-gas-limit"`
+		MaxPricePerPGU     string                   `mapstructure:"max-price-per-pgu"`
+		AuctionTimeout     string                   `mapstructure:"auction-timeout"`
+		MinL2Block         string                   `mapstructure:"min-l2-block"`
 	}
 
 	OpSuccinctInstanceConfig struct {
@@ -265,6 +277,29 @@ func (c *L2) Validate() error {
 		if deployer.PrivateKey != "" && normalizePrivateKey(deployer.PrivateKey) == normalizePrivateKey(c.Wallet.PrivateKey) {
 			errs = append(errs, errors.New("l2.op-succinct.deployer.private-key must differ from l2.wallet.private-key to avoid nonce conflicts with batcher/proposer"))
 		}
+
+		if c.OpSuccinct.SP1Prover != "" {
+			validProvers := []string{"cpu", "network", "cuda"}
+			found := false
+			for _, v := range validProvers {
+				if c.OpSuccinct.SP1Prover == v {
+					found = true
+					break
+				}
+			}
+			if !found {
+				errs = append(errs, fmt.Errorf("l2.op-succinct.sp1-prover must be one of: cpu, network, cuda (got %q)", c.OpSuccinct.SP1Prover))
+			}
+		}
+
+		if !c.OpSuccinct.IsMockProofs() {
+			if c.OpSuccinct.VerifierAddress == "" {
+				errs = append(errs, errors.New("l2.op-succinct.verifier-address is required when mock-proofs is false"))
+			}
+			if c.OpSuccinct.EffectiveSP1Prover() == "network" && c.OpSuccinct.SP1PrivateKey == "" {
+				errs = append(errs, errors.New("l2.op-succinct.sp1-private-key is required when mock-proofs is false and sp1-prover is 'network'"))
+			}
+		}
 	}
 
 	requiredImages := []ImageName{ImageNameOpDeployer, ImageNameOpNode, ImageNameOpProposer, ImageNameOpBatcher}
@@ -444,4 +479,25 @@ func isOpSuccinctEnabled(enabled *bool, defaultEnabled bool) bool {
 		return defaultEnabled
 	}
 	return *enabled
+}
+
+// IsMockProofs returns whether op-succinct should use mock proofs.
+// Defaults to true (mock mode) when unset for backward compatibility.
+func (c OpSuccinctConfig) IsMockProofs() bool {
+	if c.MockProofs == nil {
+		return true
+	}
+	return *c.MockProofs
+}
+
+// EffectiveSP1Prover returns the SP1_PROVER value to use.
+// In mock mode defaults to "cpu"; in real mode defaults to "network".
+func (c OpSuccinctConfig) EffectiveSP1Prover() string {
+	if c.SP1Prover != "" {
+		return c.SP1Prover
+	}
+	if c.IsMockProofs() {
+		return "cpu"
+	}
+	return "network"
 }
