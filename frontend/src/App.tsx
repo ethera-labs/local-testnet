@@ -5,7 +5,7 @@ import TransactionFlowPanel, {
 } from './components/visualization/TransactionFlowPanel'
 import TransactionPanel from './components/transactions/TransactionPanel'
 import { useTransactionStore } from './stores/transactionStore'
-import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, checkChainConnectivity } from './api/rollup'
+import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, checkChainConnectivity, getProvider } from './api/rollup'
 import { checkHealth } from './api/sidecar'
 import { FLASHBLOCKS_ENABLED, SIDECAR_A_URL, SIDECAR_B_URL } from './config/chains'
 
@@ -49,6 +49,37 @@ function App() {
     const interval = setInterval(poll, 5000)
     return () => clearInterval(interval)
   }, [setCurrentStatus])
+
+  const { updateTransaction } = useTransactionStore()
+  useEffect(() => {
+    const pending = transactions.filter(
+      (tx) => tx.status !== 'committed' && tx.status !== 'aborted'
+    )
+    if (pending.length === 0) return
+
+    const check = async () => {
+      await Promise.all(
+        pending.map(async (tx) => {
+          try {
+            const provider = getProvider(tx.chainId === CHAIN_A_ID ? 'A' : 'B')
+            const receipt = await provider.getTransactionReceipt(tx.instanceId)
+            if (receipt) {
+              updateTransaction(tx.instanceId, {
+                status: receipt.status === 1 ? 'committed' : 'aborted',
+                decision: receipt.status === 1,
+                decidedAt: new Date(),
+              })
+            }
+          } catch {
+            // ignore — tx may not be on-chain yet
+          }
+        })
+      )
+    }
+
+    const interval = setInterval(check, 2000)
+    return () => clearInterval(interval)
+  }, [transactions, updateTransaction])
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id)
