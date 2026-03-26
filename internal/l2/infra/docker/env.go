@@ -73,16 +73,6 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
-	if opRbuilderPath, ok, err := b.resolveOptionalLocalRepoPath("OP_RBUILDER_PATH", "op-rbuilder"); err != nil {
-		return nil, fmt.Errorf("failed to resolve OP_RBUILDER_PATH: %w", err)
-	} else if ok {
-		env["OP_RBUILDER_PATH"] = opRbuilderPath
-	}
-	if sidecarPath, ok, err := b.resolveOptionalLocalRepoPath("SIDECAR_PATH", "sidecar"); err != nil {
-		return nil, fmt.Errorf("failed to resolve SIDECAR_PATH: %w", err)
-	} else if ok {
-		env["SIDECAR_PATH"] = sidecarPath
-	}
 
 	env["ROLLUP_A_CHAIN_ID"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].ID)
 	env["ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].RPCPort)
@@ -202,40 +192,3 @@ func expandUserHome(p string) string {
 	return filepath.Join(home, p[2:])
 }
 
-func (b *EnvBuilder) resolveOptionalLocalRepoPath(envKey, siblingDir string) (string, bool, error) {
-	if raw, ok := os.LookupEnv(envKey); ok && strings.TrimSpace(raw) != "" {
-		resolved, err := b.resolveArbitraryPath(raw)
-		return resolved, true, err
-	}
-
-	candidate := filepath.Clean(filepath.Join(b.rootDir, "..", siblingDir))
-	info, err := os.Stat(candidate)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", false, nil
-		}
-		return "", false, err
-	}
-	if !info.IsDir() {
-		return "", false, nil
-	}
-
-	resolved, err := b.resolveArbitraryPath(candidate)
-	if err != nil {
-		return "", false, err
-	}
-	return resolved, true, nil
-}
-
-func (b *EnvBuilder) resolveArbitraryPath(raw string) (string, error) {
-	expanded := expandUserHome(raw)
-
-	var resolvedPath string
-	if filepath.IsAbs(expanded) {
-		resolvedPath = expanded
-	} else {
-		resolvedPath = filepath.Clean(filepath.Join(b.rootDir, expanded))
-	}
-
-	return path.GetHostPath(resolvedPath)
-}
