@@ -45,6 +45,10 @@ Manages the Layer 1 Ethereum test network using Kurtosis. Deploys execution and 
 
 Manages Layer 2 rollup networks. Orchestrates a three-phase deployment process for multiple OP Stack rollups.
 
+L2 can also run in AltDA mode, which routes batch data through per-rollup DA servers instead of posting calldata to
+L1. For long-lived environments, combine this with `l2.alt-da.skip-l1-deploy=true` and preprovisioned challenge
+contract addresses.
+
 Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
 temporary setup for local integration and should move to stable, production-ready defaults later. For day-to-day
 development, prefer local overrides such as `OP_RBUILDER_PATH` and `SIDECAR_PATH`, or ensure your SSH agent is
@@ -74,6 +78,7 @@ make run
 # Or run specific components:
 make run-l1              # Start L1 network
 make run-l2              # Start L2 networks
+make run-l2 L2_ARGS="--alt-da-enabled"  # Start L2 with per-rollup AltDA servers
 make run-l2-compile      # Compile L2 contracts from publisher repo
 make run-observability   # Start observability stack
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack with Ethera Labs Console
@@ -99,7 +104,7 @@ make clean-observability # Clean observability stack
 ```
 
 Configuration is managed via `configs/config.yaml`. Use `configs/config.example.yaml` or
-`configs/config.sepolia.yaml` as a starting point.
+`configs/config.sepolia.yaml` as a starting point. AltDA-specific settings live under `l2.alt-da`.
 
 ## 📜 Viewing Logs
 

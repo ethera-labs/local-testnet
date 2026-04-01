@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.frontend.yml
+//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.frontend.yml docker-compose.altda.yml
 var embeddedComposeFS embed.FS
 
 const (
@@ -15,6 +15,7 @@ const (
 	composeFlashblocksFileName = "docker-compose.flashblocks.yml"
 	composeSidecarFileName     = "docker-compose.sidecar.yml"
 	composeFrontendFileName    = "docker-compose.frontend.yml"
+	composeAltDAFileName       = "docker-compose.altda.yml"
 )
 
 // EnsureComposeFile ensures the docker-compose.yml file exists in the specified directory
@@ -122,5 +123,26 @@ func EnsureFrontendComposeFile(localnetDir string) (string, error) {
 	if err := os.WriteFile(composePath, content, 0644); err != nil {
 		return "", fmt.Errorf("failed to write %s: %w", composeFrontendFileName, err)
 	}
+	return composePath, nil
+}
+
+// EnsureAltDAComposeFile ensures the docker-compose.altda.yml file exists
+// in the specified directory and returns its path.
+func EnsureAltDAComposeFile(localnetDir string) (string, error) {
+	composePath := filepath.Join(localnetDir, composeAltDAFileName)
+
+	content, err := embeddedComposeFS.ReadFile(composeAltDAFileName)
+	if err != nil {
+		return "", fmt.Errorf("failed to read embedded %s: %w", composeAltDAFileName, err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
+		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
+	}
+
+	if err := os.WriteFile(composePath, content, 0644); err != nil {
+		return "", fmt.Errorf("failed to write %s: %w", composeAltDAFileName, err)
+	}
+
 	return composePath, nil
 }

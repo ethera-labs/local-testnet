@@ -75,6 +75,16 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 
 	var flashblocksDockerPath string
 	var sidecarDockerPath string
+	var altDADockerPath string
+
+	if cfg.AltDA.Enabled {
+		o.logger.Info("altDA enabled, configuring DA server services")
+		altDADockerPath, err = docker.EnsureAltDAComposeFile(o.localnetDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare altDA docker file: %w", err)
+		}
+		serviceManager.WithAltDA(altDADockerPath)
+	}
 
 	if cfg.Flashblocks.Enabled {
 		o.logger.Info("flashblocks enabled, configuring services to use rollup-boost")
@@ -277,6 +287,15 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 	}
 
 	dockerFiles := []string{dockerFilePath}
+
+	if cfg.AltDA.Enabled {
+		altDADockerPath, err := docker.EnsureAltDAComposeFile(o.localnetDir)
+		if err != nil {
+			return fmt.Errorf("failed to prepare altDA docker file for build: %w", err)
+		}
+		dockerFiles = append(dockerFiles, altDADockerPath)
+		services = append(services, "op-alt-da-a")
+	}
 
 	// Sidecar requires flashblocks, so add flashblocks docker file first
 	if cfg.Sidecar.Enabled {

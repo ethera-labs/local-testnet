@@ -14,9 +14,11 @@ type ImplementationsDeployment struct {
 
 // OpChainDeployment represents per-chain L1 contracts
 type OpChainDeployment struct {
-	ID                string     `json:"id"`
-	StartBlock        StartBlock `json:"startBlock"`
-	SystemConfigProxy string     `json:"SystemConfigProxy"`
+	ID                  string     `json:"id"`
+	StartBlock          StartBlock `json:"startBlock"`
+	SystemConfigProxy   string     `json:"SystemConfigProxy"`
+	AltDAChallengeProxy string     `json:"AltDAChallengeProxy"`
+	AltDAChallengeImpl  string     `json:"AltDAChallengeImpl"`
 }
 
 // StartBlock represents the L1 block where the rollup starts

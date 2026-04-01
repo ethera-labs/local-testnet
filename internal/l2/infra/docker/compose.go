@@ -11,13 +11,13 @@ import (
 
 // DockerBuild builds docker compose services.
 func ComposeBuild(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
-	args := append([]string{"build", "--parallel"}, services...)
+	args := composeBuildArgs(services)
 	return composeRun(ctx, composeFilePath, env, args...)
 }
 
 // ComposeBuildMultiFile builds docker compose services using multiple compose files.
 func ComposeBuildMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
-	args := append([]string{"build", "--parallel"}, services...)
+	args := composeBuildArgs(services)
 	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
 }
 

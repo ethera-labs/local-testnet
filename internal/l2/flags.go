@@ -91,6 +91,7 @@ var (
 		{"flashblocks-enabled", "l2.flashblocks.enabled", false, "Enable flashblocks support (op-rbuilder and rollup-boost)"},
 		{"sidecar-enabled", "l2.sidecar.enabled", false, "Enable sidecar for cross-chain coordination (requires flashblocks)"},
 		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Ethera Labs Console (requires flashblocks and sidecar)"},
+		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},
 	}
 )
 

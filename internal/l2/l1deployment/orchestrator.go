@@ -94,12 +94,19 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		coordinatorAddress,
 		cfg.L1ChainID,
 		cfg.ChainConfigs,
+		cfg.AltDA,
 	); err != nil {
 		return deploymentState, fmt.Errorf("failed to write intent: %w", err)
 	}
 
 	if err := opDeployer.Apply(ctx, cfg.L1ElURL, cfg.Wallet.PrivateKey, cfg.DeploymentTarget); err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy L1 contracts: %w", err)
+	}
+
+	if cfg.AltDA.SkipL1Deploy && cfg.AltDA.ChallengeProxyAddress != "" {
+		if err := stateManager.PatchAltDAState(cfg.AltDA); err != nil {
+			return deploymentState, fmt.Errorf("failed to patch AltDA state: %w", err)
+		}
 	}
 
 	opState, err := stateManager.Load()

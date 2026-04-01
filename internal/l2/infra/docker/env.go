@@ -13,8 +13,8 @@ import (
 )
 
 // EnvBuilder constructs environment variables for docker-compose operations.
-// It handles path resolution for both local development (local-path) and
-// production (cloned repositories) scenarios.
+// It handles path resolution for both operator-supplied local checkouts
+// (`local-path`) and workspace-managed clones under `.localnet/services`.
 type EnvBuilder struct {
 	rootDir     string
 	networksDir string
@@ -30,7 +30,8 @@ func NewEnvBuilder(rootDir, networksDir, servicesDir string) *EnvBuilder {
 }
 
 // BuildComposeEnv builds environment variables for docker-compose.
-// The gameFactoryAddr parameter can be empty (zero address) for dev deployments.
+// gameFactoryAddr may be the zero address during bootstrap before dispute-game
+// contract addresses are known.
 func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
 	env := make(map[string]string)
 
@@ -73,6 +74,15 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
+
+	if cfg.AltDA.Enabled {
+		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve ethera-contracts path for AltDA DA server build: %w", err)
+		}
+		env["COMPOSE_CONTRACTS_PATH"] = composeContractsPath
+	}
+	env["ALTDA_USE_GENERIC_COMMITMENT"] = fmt.Sprintf("%t", cfg.AltDA.CommitmentType() == configs.AltDACommitmentTypeGeneric)
 
 	env["ROLLUP_A_CHAIN_ID"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].ID)
 	env["ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].RPCPort)

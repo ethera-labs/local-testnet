@@ -39,6 +39,7 @@ type (
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
+		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 	}
 
 	FrontendConfig struct {
@@ -62,6 +63,30 @@ type (
 		Enabled        bool `mapstructure:"enabled"`
 		RollupAAPIPort int  `mapstructure:"rollup-a-api-port"`
 		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
+	}
+
+	// AltDAConfig controls Alternative Data Availability (AltDA) mode for the OP Stack.
+	// When enabled, op-batcher publishes batches to the configured DA service instead of L1,
+	// and op-node derives from that service. In localnet this is modeled with one DA server
+	// per rollup so the runtime stays close to long-lived environment topology.
+	AltDAConfig struct {
+		Enabled          bool   `mapstructure:"enabled"`
+		DACommitmentType string `mapstructure:"da-commitment-type"`
+
+		// When true, op-deployer reuses existing AltDA challenge contracts instead of
+		// deploying new ones. Use this only for long-lived environments where those
+		// addresses are already provisioned and managed outside localnet.
+		SkipL1Deploy          bool   `mapstructure:"skip-l1-deploy"`
+		ChallengeProxyAddress string `mapstructure:"challenge-proxy-address"`
+		ChallengeImplAddress  string `mapstructure:"challenge-impl-address"`
+
+		// Challenge contract parameters used only when localnet owns AltDA contract deployment.
+		// Zero values keep the deployer defaults: DAChallengeWindow=100, DAResolveWindow=100,
+		// and DABondSize=1.
+		DAChallengeWindow          uint64 `mapstructure:"da-challenge-window"`
+		DAResolveWindow            uint64 `mapstructure:"da-resolve-window"`
+		DABondSize                 uint64 `mapstructure:"da-bond-size"`
+		DAResolverRefundPercentage uint64 `mapstructure:"da-resolver-refund-percentage"`
 	}
 
 	DisputeConfig struct {
@@ -114,7 +139,46 @@ const (
 
 	L2ChainNameRollupA L2ChainName = "rollup-a"
 	L2ChainNameRollupB L2ChainName = "rollup-b"
+
+	AltDACommitmentTypeKeccak  = "KeccakCommitment"
+	AltDACommitmentTypeGeneric = "GenericCommitment"
+
+	altDADefaultChallengeWindow = 100
+	altDADefaultResolveWindow   = 100
+	altDADefaultBondSize        = 1
 )
+
+// CommitmentType returns the configured DA commitment type, defaulting to KeccakCommitment.
+func (c AltDAConfig) CommitmentType() string {
+	if c.DACommitmentType != "" {
+		return c.DACommitmentType
+	}
+	return AltDACommitmentTypeKeccak
+}
+
+// ChallengeWindow returns the challenge window, applying the default when zero.
+func (c AltDAConfig) ChallengeWindow() uint64 {
+	if c.DAChallengeWindow > 0 {
+		return c.DAChallengeWindow
+	}
+	return altDADefaultChallengeWindow
+}
+
+// ResolveWindow returns the resolve window, applying the default when zero.
+func (c AltDAConfig) ResolveWindow() uint64 {
+	if c.DAResolveWindow > 0 {
+		return c.DAResolveWindow
+	}
+	return altDADefaultResolveWindow
+}
+
+// BondSize returns the challenge bond size, applying the default when zero.
+func (c AltDAConfig) BondSize() uint64 {
+	if c.DABondSize > 0 {
+		return c.DABondSize
+	}
+	return altDADefaultBondSize
+}
 
 func (c *L2) Validate() error {
 	var errs []error
@@ -200,6 +264,24 @@ func (c *L2) Validate() error {
 		errs = append(errs, errors.New("l2.deployment-target is required"))
 	} else if c.DeploymentTarget != "live" && c.DeploymentTarget != "calldata" {
 		errs = append(errs, errors.New("l2.deployment-target must be either 'live' or 'calldata'"))
+	}
+
+	if c.AltDA.Enabled {
+		ct := c.AltDA.CommitmentType()
+		if ct != AltDACommitmentTypeKeccak && ct != AltDACommitmentTypeGeneric {
+			errs = append(errs, fmt.Errorf("l2.alt-da.da-commitment-type must be %q or %q (got %q)", AltDACommitmentTypeKeccak, AltDACommitmentTypeGeneric, ct))
+		}
+		if c.AltDA.SkipL1Deploy {
+			if c.AltDA.ChallengeProxyAddress == "" {
+				errs = append(errs, errors.New("l2.alt-da.challenge-proxy-address is required when skip-l1-deploy is true"))
+			}
+			if c.AltDA.ChallengeImplAddress == "" {
+				errs = append(errs, errors.New("l2.alt-da.challenge-impl-address is required when skip-l1-deploy is true"))
+			}
+		}
+		if c.AltDA.DAResolverRefundPercentage > 100 {
+			errs = append(errs, errors.New("l2.alt-da.da-resolver-refund-percentage must be between 0 and 100"))
+		}
 	}
 
 	// Validate dispute config
