@@ -14,6 +14,7 @@ import (
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/contracts"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/crypto"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/genesis"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2config/opsuccinct"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/rollup"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/runtime"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/secrets"
@@ -67,12 +68,13 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	var (
 		writer = json.NewWriter()
 
-		opDeployer   = deployer.NewDeployer(o.rootDir, o.stateDir, cfg.Images[configs.ImageNameOpDeployer].Tag, dockerClient)
-		genesisGen   = genesis.NewGenerator(opDeployer, dockerClient, writer, o.rootDir, o.localnetDir, o.servicesDir, o.networksDir, opGethPath)
-		rollupGen    = rollup.NewGenerator(json.NewReader(), opDeployer, writer, o.localnetDir)
-		secretsGen   = secrets.NewGenerator(writer)
-		contractsGen = contracts.NewGenerator(writer)
-		runtimeGen   = runtime.NewGenerator()
+		opDeployer    = deployer.NewDeployer(o.rootDir, o.stateDir, cfg.Images[configs.ImageNameOpDeployer].Tag, dockerClient)
+		genesisGen    = genesis.NewGenerator(opDeployer, dockerClient, writer, o.rootDir, o.localnetDir, o.servicesDir, o.networksDir, opGethPath)
+		rollupGen     = rollup.NewGenerator(json.NewReader(), opDeployer, writer, o.localnetDir)
+		secretsGen    = secrets.NewGenerator(writer)
+		contractsGen  = contracts.NewGenerator(writer)
+		opSuccinctGen = opsuccinct.NewGenerator()
+		runtimeGen    = runtime.NewGenerator()
 	)
 
 	for chainName, chainConfig := range cfg.ChainConfigs {
@@ -127,6 +129,16 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		// rather than our own implementation of it.
 		if err := runtimeGen.Generate(deploymentState.DisputeGameFactoryImplAddressOP, configPath); err != nil {
 			return fmt.Errorf("failed to generate runtime file, %w", err)
+		}
+
+		if cfg.OPSuccinct.Enabled {
+			if err := opSuccinctGen.Generate(
+				deploymentState.ComposeL2OutputOracleAddress,
+				deploymentState.DisputeGameFactoryAddress,
+				configPath,
+			); err != nil {
+				return fmt.Errorf("failed to generate op-succinct file: %w", err)
+			}
 		}
 	}
 

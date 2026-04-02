@@ -25,6 +25,7 @@ Orchestrator coordinates Phase 1: L1 deployment
 type (
 	DeploymentState struct {
 		DisputeGameFactoryAddress       common.Address
+		ComposeL2OutputOracleAddress    common.Address
 		DisputeGameFactoryImplAddressOP common.Address //TODO: Determine the necessity of this variable's usage.
 		StartBlocks                     map[configs.L2ChainName]StartBlock
 		SystemConfigProxyAddresses      map[configs.L2ChainName]common.Address
@@ -116,12 +117,15 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 
 	o.logger.Info("deploying dispute contracts")
 	disputeService := dispute.NewService(o.rootDir, o.servicesDir, cfg)
-	gameFactoryAddr, err := disputeService.Deploy(ctx)
+	disputeContracts, err := disputeService.Deploy(ctx)
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy dispute contracts: %w", err)
 	}
 
-	o.logger.With("game_factory_address", gameFactoryAddr).Info("Phase 1: L1 deployment completed successfully")
+	o.logger.With(
+		"game_factory_address", disputeContracts.DisputeGameFactoryAddress,
+		"compose_l2_output_oracle_address", disputeContracts.ComposeL2OutputOracleAddress,
+	).Info("Phase 1: L1 deployment completed successfully")
 
 	startBlocks := make(map[configs.L2ChainName]StartBlock)
 	systemConfigProxyAddresses := make(map[configs.L2ChainName]common.Address)
@@ -144,7 +148,8 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	}
 
 	deploymentState = DeploymentState{
-		DisputeGameFactoryAddress:       gameFactoryAddr,
+		DisputeGameFactoryAddress:       disputeContracts.DisputeGameFactoryAddress,
+		ComposeL2OutputOracleAddress:    disputeContracts.ComposeL2OutputOracleAddress,
 		DisputeGameFactoryImplAddressOP: common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
 		StartBlocks:                     startBlocks,
 		SystemConfigProxyAddresses:      systemConfigProxyAddresses,

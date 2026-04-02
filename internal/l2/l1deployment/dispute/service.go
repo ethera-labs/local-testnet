@@ -40,48 +40,57 @@ func NewService(rootDir, servicesDir string, cfg configs.L2) *Service {
 	}
 }
 
-// Deploy executes the full deployment workflow and returns DisputeGameFactory proxy address
-func (s *Service) Deploy(ctx context.Context) (common.Address, error) {
+type DeploymentContracts struct {
+	DisputeGameFactoryAddress    common.Address
+	ComposeL2OutputOracleAddress common.Address
+}
+
+// Deploy executes the dispute-contract deployment workflow and returns the
+// deployed L1 contract addresses localnet needs in later phases.
+func (s *Service) Deploy(ctx context.Context) (DeploymentContracts, error) {
 	s.logger.Info("starting dispute contracts deployment")
 
 	if _, err := os.Stat(s.contractsDir); os.IsNotExist(err) {
-		return common.Address{}, fmt.Errorf("L1-settlement directory not found at %s. Make sure ethera-contracts repository is cloned first", s.contractsDir)
+		return DeploymentContracts{}, fmt.Errorf("L1-settlement directory not found at %s. Make sure ethera-contracts repository is cloned first", s.contractsDir)
 	}
 
 	s.logger.Info("generating networks.toml")
 	if err := s.generateNetworksToml(); err != nil {
-		return common.Address{}, fmt.Errorf("failed to generate networks.toml: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to generate networks.toml: %w", err)
 	}
 
 	s.logger.Info("generating .env file")
 	if err := s.generateEnvFile(); err != nil {
-		return common.Address{}, fmt.Errorf("failed to generate .env file: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to generate .env file: %w", err)
 	}
 
 	s.logger.Info("running just setup")
 	if err := s.runJustCommand(ctx, "setup"); err != nil {
-		return common.Address{}, fmt.Errorf("failed to run just setup: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to run just setup: %w", err)
 	}
 
 	s.logger.Info("running just build")
 	if err := s.runJustCommand(ctx, "build"); err != nil {
-		return common.Address{}, fmt.Errorf("failed to run just build: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to run just build: %w", err)
 	}
 
 	s.logger.Info("running just deploy")
 	if err := s.runJustCommand(ctx, "deploy-network", s.cfg.Dispute.NetworkName); err != nil {
-		return common.Address{}, fmt.Errorf("failed to deploy network '%s': %w", s.cfg.Dispute.NetworkName, err)
+		return DeploymentContracts{}, fmt.Errorf("failed to deploy network '%s': %w", s.cfg.Dispute.NetworkName, err)
 	}
 
 	s.logger.Info("parsing deployments.json")
-	addr, err := s.parseDisputeGameFactoryAddress()
+	contracts, err := s.parseDeploymentContracts()
 	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to parse DisputeGameFactory address: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to parse deployment contracts: %w", err)
 	}
 
-	s.logger.With("address", addr).Info("dispute contracts deployed successfully")
+	s.logger.With(
+		"dispute_game_factory", contracts.DisputeGameFactoryAddress,
+		"compose_l2_output_oracle", contracts.ComposeL2OutputOracleAddress,
+	).Info("dispute contracts deployed successfully")
 
-	return addr, nil
+	return contracts, nil
 }
 
 // generateNetworksToml creates networks.toml from template and config
@@ -197,12 +206,16 @@ func (s *Service) runJustCommand(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// parseDisputeGameFactoryAddress reads deployments.json and extracts DisputeGameFactory proxy address
-func (s *Service) parseDisputeGameFactoryAddress() (common.Address, error) {
+// parseDeploymentContracts reads the contract deployment outputs produced by
+// ethera-contracts and extracts the proxy addresses localnet needs later.
+func (s *Service) parseDeploymentContracts() (DeploymentContracts, error) {
 	deploymentsPath := filepath.Join(s.contractsDir, "deployments.json")
 
 	if data, err := os.ReadFile(deploymentsPath); err == nil {
 		var deployments map[string]struct {
+			ComposeL2OutputOracle struct {
+				Proxy string `json:"proxy"`
+			} `json:"ComposeL2OutputOracle"`
 			DisputeGameFactory struct {
 				Proxy string `json:"proxy"`
 			} `json:"DisputeGameFactory"`
@@ -210,10 +223,13 @@ func (s *Service) parseDisputeGameFactoryAddress() (common.Address, error) {
 
 		if err := json.Unmarshal(data, &deployments); err == nil {
 			if network, ok := deployments[s.cfg.Dispute.NetworkName]; ok {
-				if network.DisputeGameFactory.Proxy != "" {
-					return common.HexToAddress(network.DisputeGameFactory.Proxy), nil
+				if network.DisputeGameFactory.Proxy == "" {
+					return DeploymentContracts{}, fmt.Errorf("DisputeGameFactory proxy address is empty")
 				}
-				return common.Address{}, fmt.Errorf("DisputeGameFactory proxy address is empty")
+				return DeploymentContracts{
+					DisputeGameFactoryAddress:    common.HexToAddress(network.DisputeGameFactory.Proxy),
+					ComposeL2OutputOracleAddress: common.HexToAddress(network.ComposeL2OutputOracle.Proxy),
+				}, nil
 			}
 		}
 	}
@@ -222,28 +238,34 @@ func (s *Service) parseDisputeGameFactoryAddress() (common.Address, error) {
 	etheraPath := filepath.Join(s.contractsDir, "deployments", "compose", s.cfg.Dispute.NetworkName+".json")
 	data, err := os.ReadFile(etheraPath)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to read deployments.json or ethera deployments: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to read deployments.json or compose deployments: %w", err)
 	}
 
 	var etheraDeployments map[string]struct {
 		Contracts struct {
+			ComposeL2OutputOracle struct {
+				ProxyAddress string `json:"proxyAddress"`
+			} `json:"ComposeL2OutputOracle"`
 			DisputeGameFactory struct {
 				ProxyAddress string `json:"proxyAddress"`
 			} `json:"DisputeGameFactory"`
 		} `json:"contracts"`
 	}
 	if err := json.Unmarshal(data, &etheraDeployments); err != nil {
-		return common.Address{}, fmt.Errorf("failed to parse ethera deployments file: %w", err)
+		return DeploymentContracts{}, fmt.Errorf("failed to parse compose deployments file: %w", err)
 	}
 
 	network, ok := etheraDeployments[s.cfg.Dispute.NetworkName]
 	if !ok {
-		return common.Address{}, fmt.Errorf("%s deployment not found in ethera deployments file", s.cfg.Dispute.NetworkName)
+		return DeploymentContracts{}, fmt.Errorf("%s deployment not found in compose deployments file", s.cfg.Dispute.NetworkName)
 	}
 
 	if network.Contracts.DisputeGameFactory.ProxyAddress == "" {
-		return common.Address{}, fmt.Errorf("DisputeGameFactory proxy address is empty")
+		return DeploymentContracts{}, fmt.Errorf("DisputeGameFactory proxy address is empty")
 	}
 
-	return common.HexToAddress(network.Contracts.DisputeGameFactory.ProxyAddress), nil
+	return DeploymentContracts{
+		DisputeGameFactoryAddress:    common.HexToAddress(network.Contracts.DisputeGameFactory.ProxyAddress),
+		ComposeL2OutputOracleAddress: common.HexToAddress(network.Contracts.ComposeL2OutputOracle.ProxyAddress),
+	}, nil
 }

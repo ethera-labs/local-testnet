@@ -43,6 +43,8 @@ l2:
     da-resolve-window: 100
     da-bond-size: 1
     da-resolver-refund-percentage: 0
+  op-succinct:
+    enabled: false  # Generate the contract metadata and repository wiring needed for local op-succinct integration
   chain-configs:
     rollup-a: 
       id: 77777
@@ -87,6 +89,12 @@ l2:
     ethera-contracts:
       url: https://github.com/contracts.git
       branch: main
+    # Used only when l2.op-succinct.enabled=true.
+    op-succinct:
+      url: https://github.com/ethera-labs/op-succinct.git
+      branch: ssvlabs/altda-data-source-rebase
+      # For local development:
+      # local-path: ../op-succinct
   dispute:
     network-name: network-name # e.g. hoodi
     explorer-url: http://127.0.0.1:8080 # e.g. http://hoodi.etherscan.io

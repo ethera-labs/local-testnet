@@ -171,6 +171,10 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			s.logger.With("name", name).Info("ignoring sidecar repository config; use SIDECAR_PATH to override docker-compose.sidecar.yml")
 			continue
 		}
+		if name == configs.RepositoryNameOPSuccinct && !cfg.OPSuccinct.Enabled {
+			s.logger.With("name", name).Info("ignoring op-succinct repository config because op-succinct mode is disabled")
+			continue
+		}
 
 		if repo.URL != "" {
 			repos = append(repos, git.Repository{

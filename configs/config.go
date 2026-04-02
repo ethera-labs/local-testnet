@@ -40,6 +40,13 @@ type (
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
+		OPSuccinct            OPSuccinctConfig              `mapstructure:"op-succinct"`
+	}
+
+	// OPSuccinctConfig controls whether localnet generates the repository and
+	// contract metadata needed by later op-succinct integration steps.
+	OPSuccinctConfig struct {
+		Enabled bool `mapstructure:"enabled"`
 	}
 
 	FrontendConfig struct {
@@ -131,6 +138,7 @@ const (
 	RepositoryNameOpGeth          RepositoryName = "op-geth"
 	RepositoryNamePublisher       RepositoryName = "publisher"
 	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
+	RepositoryNameOPSuccinct      RepositoryName = "op-succinct"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -207,19 +215,14 @@ func (c *L2) Validate() error {
 
 	requiredRepos := []RepositoryName{RepositoryNameOpGeth, RepositoryNamePublisher}
 	for _, name := range requiredRepos {
-		repo, exists := c.Repositories[name]
-		if !exists {
-			errs = append(errs, fmt.Errorf("l2.repositories.%s is required", name))
-			continue
+		if err := validateRepositoryConfig(c.Repositories, name, true); err != nil {
+			errs = append(errs, err)
 		}
+	}
 
-		hasLocal := repo.LocalPath != ""
-		hasRemote := repo.URL != "" && repo.Branch != ""
-		if !hasLocal && !hasRemote {
-			errs = append(errs, fmt.Errorf("l2.repositories.%s must set either local-path or url+branch", name))
-		}
-		if hasLocal && hasRemote {
-			errs = append(errs, fmt.Errorf("l2.repositories.%s cannot set both local-path and url+branch (choose one)", name))
+	if c.OPSuccinct.Enabled {
+		if err := validateRepositoryConfig(c.Repositories, RepositoryNameOPSuccinct, true); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -321,6 +324,26 @@ func (c *L2) Validate() error {
 		return fmt.Errorf("L2 configuration validation failed: %w", errors.Join(errs...))
 	}
 
+	return nil
+}
+
+func validateRepositoryConfig(repos map[RepositoryName]Repository, name RepositoryName, required bool) error {
+	repo, exists := repos[name]
+	if !exists {
+		if required {
+			return fmt.Errorf("l2.repositories.%s is required", name)
+		}
+		return nil
+	}
+
+	hasLocal := repo.LocalPath != ""
+	hasRemote := repo.URL != "" && repo.Branch != ""
+	if !hasLocal && !hasRemote {
+		return fmt.Errorf("l2.repositories.%s must set either local-path or url+branch", name)
+	}
+	if hasLocal && hasRemote {
+		return fmt.Errorf("l2.repositories.%s cannot set both local-path and url+branch (choose one)", name)
+	}
 	return nil
 }
 
