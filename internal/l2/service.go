@@ -167,7 +167,10 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 	repos := make([]git.Repository, 0, len(cfg.Repositories))
 
 	for name, repo := range cfg.Repositories {
-		if !isRepositoryEnabled(name, cfg) {
+		if name == configs.RepositoryNameOpRbuilder && !cfg.Flashblocks.Enabled {
+			continue
+		}
+		if name == configs.RepositoryNameSidecar && !cfg.Sidecar.Enabled {
 			continue
 		}
 
@@ -200,15 +203,4 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 	s.logger.Info("repositories cloned successfully")
 
 	return nil
-}
-
-func isRepositoryEnabled(name configs.RepositoryName, cfg configs.L2) bool {
-	switch name {
-	case configs.RepositoryNameOpRbuilder:
-		return cfg.Flashblocks.Enabled
-	case configs.RepositoryNameSidecar:
-		return cfg.Sidecar.Enabled
-	default:
-		return true
-	}
 }
