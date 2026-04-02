@@ -19,11 +19,8 @@ l2:
     rollup-boost-image-tag: "latest"
     rollup-a-rpc-port: 17545
     rollup-b-rpc-port: 27545
-    # op-rbuilder defaults to ethera-labs/op-rbuilder#stage over SSH; set OP_RBUILDER_PATH to override with local path.
   sidecar:
     enabled: true  # requires flashblocks
-    # Defaults to ethera-labs/sidecar#chore/specs over SSH.
-    # Override locally with SIDECAR_PATH=/path/to/sidecar.
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
   chain-configs:
@@ -53,9 +50,15 @@ l2:
     op-geth:
       url: git@github.com:ethereum-optimism/op-geth.git
       branch: v1.101603.4
+    op-rbuilder:
+      url: git@github.com:ethera-labs/op-rbuilder.git
+      branch: stage
     publisher:
       url: git@github.com:ethera-labs/publisher.git
       branch: feature/compose-sidecar
+    sidecar:
+      url: git@github.com:ethera-labs/sidecar.git
+      branch: stage
     ethera-contracts:
       url: git@github.com:ethera-labs/contracts.git
       branch: develop

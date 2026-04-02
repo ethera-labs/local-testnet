@@ -45,10 +45,7 @@ Manages the Layer 1 Ethereum test network using Kurtosis. Deploys execution and 
 
 Manages Layer 2 rollup networks. Orchestrates a three-phase deployment process for multiple OP Stack rollups.
 
-Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
-temporary setup for local integration and should move to stable, production-ready defaults later. For day-to-day
-development, prefer local overrides such as `OP_RBUILDER_PATH` and `SIDECAR_PATH`, or ensure your SSH agent is
-available.
+Source-built L2 services are configured through `l2.repositories`.
 
 **📖 [Read L2 Documentation](internal/l2/README.md)**
 

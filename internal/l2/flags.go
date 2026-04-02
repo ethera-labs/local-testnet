@@ -37,8 +37,12 @@ var (
 		// Repositories (no defaults - must be explicitly set in config or via CLI)
 		{"op-geth-url", "l2.repositories.op-geth.url", "", "op-geth repository URL"},
 		{"op-geth-branch", "l2.repositories.op-geth.branch", "", "op-geth repository branch"},
+		{"op-rbuilder-url", "l2.repositories.op-rbuilder.url", "", "op-rbuilder repository URL"},
+		{"op-rbuilder-branch", "l2.repositories.op-rbuilder.branch", "", "op-rbuilder repository branch"},
 		{"publisher-url", "l2.repositories.publisher.url", "", "publisher repository URL"},
 		{"publisher-branch", "l2.repositories.publisher.branch", "", "publisher repository branch"},
+		{"sidecar-url", "l2.repositories.sidecar.url", "", "sidecar repository URL"},
+		{"sidecar-branch", "l2.repositories.sidecar.branch", "", "sidecar repository branch"},
 		{"ethera-contracts-url", "l2.repositories.ethera-contracts.url", "", "ethera-contracts repository URL"},
 		{"ethera-contracts-branch", "l2.repositories.ethera-contracts.branch", "", "ethera-contracts repository branch"},
 

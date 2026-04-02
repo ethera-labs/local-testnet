@@ -32,17 +32,22 @@ make run-l2 L2_ARGS="--flashblocks-enabled --op-rbuilder-tag=v1.0.0 --rollup-boo
 
 ## Builder Source
 
-`local-testnet` currently builds `op-rbuilder` from `git@github.com:ethera-labs/op-rbuilder.git#stage` over SSH by
-default. That branch-specific SSH source is a temporary integration default and should be replaced with a stable,
-production-ready source later.
+`op-rbuilder` build source is configured through `l2.repositories.op-rbuilder`.
+Set either:
+- `local-path` for a checked-out repository
+- `url` and `branch` for a cloned repository source
 
-For local iteration, prefer a local checkout:
+Example with a checked-out repository:
 
-```bash
-OP_RBUILDER_PATH=../op-rbuilder make run-l2 L2_ARGS="--flashblocks-enabled"
+```yaml
+# configs/config.yaml
+l2:
+  repositories:
+    op-rbuilder:
+      local-path: ../op-rbuilder
 ```
 
-If you rely on the remote default, make sure Docker BuildKit can access your SSH agent.
+When using remote `url` and `branch` values, Docker BuildKit must be able to access that repository source.
 
 ## Services
 

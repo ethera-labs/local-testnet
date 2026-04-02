@@ -101,41 +101,45 @@ For flashblocks documentation, see [docs/flashblocks.md](../../docs/flashblocks.
 
 ### Flashblocks and Sidecar Sources
 
-`local-testnet` currently uses SSH-based Git contexts as the default build source for the flashblocks builder
-and sidecar. **Docker BuildKit SSH forwarding can fail depending on your environment** — using local paths is
-the recommended approach:
+Flashblocks and sidecar build sources are configured through `l2.repositories`.
+Each source-built repository must set exactly one of:
+- `local-path` for a checked-out repository
+- `url` and `branch` for a cloned repository source
 
-```bash
-# Clone the repos first, then point to them
-OP_RBUILDER_PATH=../op-rbuilder SIDECAR_PATH=../sidecar \
-  make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
+Use `local-path` when building from repositories already present on the machine running `local-testnet`:
+
+```yaml
+# configs/config.yaml
+l2:
+  repositories:
+    op-rbuilder:
+      local-path: ../op-rbuilder
+    sidecar:
+      local-path: ../sidecar
 ```
 
-If you don't have local clones and want to use the SSH-based defaults, make sure your SSH agent is forwarded
-to Docker BuildKit:
+When using remote `url` and `branch` values, Docker BuildKit must be able to access those repositories:
 
 ```bash
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
 ```
 
-Default remote refs (used when `OP_RBUILDER_PATH` / `SIDECAR_PATH` are not set):
-
-- `op-rbuilder`: `git@github.com:ethera-labs/op-rbuilder.git#stage`
-- `sidecar`: `git@github.com:ethera-labs/sidecar.git#chore/specs`
-
-These will be replaced with stable, production-ready refs once both repositories are ready.
-
 ### Local Development
 
-For rapid iteration on local changes to `op-geth` or `publisher`, use local repository paths:
+Point source-built services at checked-out repositories through `l2.repositories.*.local-path`:
 
 ```yaml
 # configs/config.yaml
-repositories:
-  op-geth:
-    local-path: ../op-geth  # Relative path
-  publisher:
-    local-path: ~/projects/publisher  # Absolute path with ~
+l2:
+  repositories:
+    op-geth:
+      local-path: ../op-geth  # Relative path
+    op-rbuilder:
+      local-path: ../op-rbuilder
+    publisher:
+      local-path: ~/projects/publisher  # Absolute path with ~
+    sidecar:
+      local-path: ~/projects/sidecar
 ```
 
 Rebuild and restart specific services after code changes:
@@ -260,10 +264,4 @@ docker logs sidecar-b -f
 
 ### Configuration
 
-`docker-compose.sidecar.yml` currently defaults to `ethera-labs/sidecar#chore/specs` over SSH.
-This is temporary until the sidecar repo is ready for stable production defaults.
-Override it locally with `SIDECAR_PATH`:
-
-```bash
-SIDECAR_PATH=../sidecar make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
-```
+Configure sidecar build source in `l2.repositories.sidecar`.

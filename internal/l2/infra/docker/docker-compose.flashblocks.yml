@@ -1,5 +1,6 @@
 # Flashblocks compose override - adds op-rbuilder and rollup-boost services.
 # Architecture: op-node → rollup-boost → op-rbuilder (builder) / op-geth (fallback)
+# Build context is resolved from l2.repositories.op-rbuilder.
 
 services:
   # Route op-node through rollup-boost
@@ -20,7 +21,7 @@ services:
   # Block builder for Chain A
   op-rbuilder-a:
     build:
-      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH}
       dockerfile: Dockerfile
       target: rbuilder-runtime
       ssh:
@@ -60,7 +61,7 @@ services:
   # Block builder for Chain B
   op-rbuilder-b:
     build:
-      context: ${OP_RBUILDER_PATH:-git@github.com:ethera-labs/op-rbuilder.git#stage} # default: remote stage over SSH; override with local path via OP_RBUILDER_PATH
+      context: ${OP_RBUILDER_PATH}
       dockerfile: Dockerfile
       target: rbuilder-runtime
       ssh:
