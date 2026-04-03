@@ -75,6 +75,21 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
 
+	if cfg.Flashblocks.Enabled {
+		opRbuilderPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOpRbuilder], configs.RepositoryNameOpRbuilder)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve op-rbuilder path: %w", err)
+		}
+		env["OP_RBUILDER_PATH"] = opRbuilderPath
+	}
+
+	if cfg.Sidecar.Enabled {
+		sidecarPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSidecar], configs.RepositoryNameSidecar)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve sidecar path: %w", err)
+		}
+		env["SIDECAR_PATH"] = sidecarPath
+	}
 	if cfg.AltDA.Enabled {
 		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
 		if err != nil {

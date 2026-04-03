@@ -167,8 +167,10 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 	repos := make([]git.Repository, 0, len(cfg.Repositories))
 
 	for name, repo := range cfg.Repositories {
-		if name == "sidecar" {
-			s.logger.With("name", name).Info("ignoring sidecar repository config; use SIDECAR_PATH to override docker-compose.sidecar.yml")
+		if name == configs.RepositoryNameOpRbuilder && !cfg.Flashblocks.Enabled {
+			continue
+		}
+		if name == configs.RepositoryNameSidecar && !cfg.Sidecar.Enabled {
 			continue
 		}
 		if name == configs.RepositoryNameOPSuccinct && !cfg.OPSuccinct.Enabled {

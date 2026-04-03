@@ -136,7 +136,9 @@ type (
 
 const (
 	RepositoryNameOpGeth          RepositoryName = "op-geth"
+	RepositoryNameOpRbuilder      RepositoryName = "op-rbuilder"
 	RepositoryNamePublisher       RepositoryName = "publisher"
+	RepositoryNameSidecar         RepositoryName = "sidecar"
 	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
 	RepositoryNameOPSuccinct      RepositoryName = "op-succinct"
 
@@ -213,7 +215,18 @@ func (c *L2) Validate() error {
 		errs = append(errs, errors.New("l2.coordinator-private-key must differ from l2.wallet.private-key to avoid nonce collisions"))
 	}
 
-	requiredRepos := []RepositoryName{RepositoryNameOpGeth, RepositoryNamePublisher}
+	requiredRepos := []RepositoryName{
+		RepositoryNameOpGeth,
+		RepositoryNamePublisher,
+		RepositoryNameEtheraContracts,
+	}
+	if c.Flashblocks.Enabled {
+		requiredRepos = append(requiredRepos, RepositoryNameOpRbuilder)
+	}
+	if c.Sidecar.Enabled {
+		requiredRepos = append(requiredRepos, RepositoryNameSidecar)
+	}
+
 	for _, name := range requiredRepos {
 		if err := validateRepositoryConfig(c.Repositories, name, true); err != nil {
 			errs = append(errs, err)
@@ -318,6 +331,12 @@ func (c *L2) Validate() error {
 
 	if c.EtheraNetworkName == "" {
 		errs = append(errs, errors.New("l2.ethera-labs-name is required"))
+	}
+	if c.Sidecar.Enabled && !c.Flashblocks.Enabled {
+		errs = append(errs, errors.New("l2.sidecar.enabled requires l2.flashblocks.enabled"))
+	}
+	if c.Frontend.Enabled && (!c.Flashblocks.Enabled || !c.Sidecar.Enabled) {
+		errs = append(errs, errors.New("l2.frontend.enabled requires l2.flashblocks.enabled and l2.sidecar.enabled"))
 	}
 
 	if len(errs) > 0 {

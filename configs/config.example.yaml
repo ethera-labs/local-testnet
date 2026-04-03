@@ -15,16 +15,12 @@ l2:
     enabled: false
   flashblocks:
     enabled: false
-    # Defaults to ethera-labs/op-rbuilder#stage over SSH.
-    # Override locally with OP_RBUILDER_PATH=/path/to/op-rbuilder.
     op-rbuilder-image-tag: "latest"
     rollup-boost-image-tag: "latest"
     rollup-a-rpc-port: 17545
     rollup-b-rpc-port: 27545
   sidecar:
     enabled: false  # requires flashblocks
-    # Defaults to ethera-labs/sidecar#chore/specs over SSH.
-    # Override locally with SIDECAR_PATH=/path/to/sidecar.
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
   alt-da:
@@ -69,23 +65,32 @@ l2:
     op-batcher: 
       tag: v1.16.2
   repositories:
-    # Note: For local development, use local-path instead of url+branch.
-    # Paths are resolved relative to the project root (where you run commands).
-    # Examples:
-    #   local-path: ~/projects/op-geth              # Home directory (recommended)
-    #   local-path: ../op-geth                      # Relative path (one level up)
-    #   local-path: ../../parent-dir/op-geth        # Relative path (two levels up)
-    #   local-path: /absolute/path/to/op-geth       # Absolute path
+    # Source-built services accept exactly one source definition:
+    #   local-path: use a checked-out repository on the machine running local-testnet
+    #   url + branch: clone the repository into .localnet/services
+    # local-path values are resolved relative to the project root unless absolute.
     op-geth:
       url: https://github.com/op-geth.git
       branch: main
-      # For local development:
+      # Example:
       # local-path: ~/projects/op-geth
+    op-rbuilder:
+      # Required when l2.flashblocks.enabled=true.
+      url: git@github.com:ethera-labs/op-rbuilder.git
+      branch: stage
+      # Example:
+      # local-path: ~/projects/op-rbuilder
     publisher:
       url: https://github.com/publisher.git
       branch: main
-      # For local development:
+      # Example:
       # local-path: ~/projects/publisher
+    sidecar:
+      # Required when l2.sidecar.enabled=true.
+      url: git@github.com:ethera-labs/sidecar.git
+      branch: chore/specs
+      # Example:
+      # local-path: ~/projects/sidecar
     ethera-contracts:
       url: https://github.com/contracts.git
       branch: main

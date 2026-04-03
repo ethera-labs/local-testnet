@@ -49,10 +49,7 @@ L2 can also run in AltDA mode, which routes batch data through per-rollup DA ser
 L1. For long-lived environments, combine this with `l2.alt-da.skip-l1-deploy=true` and preprovisioned challenge
 contract addresses.
 
-Flashblocks and sidecar currently build from SSH-based Git contexts pinned to integration branches. This is a
-temporary setup for local integration and should move to stable, production-ready defaults later. For day-to-day
-development, prefer local overrides such as `OP_RBUILDER_PATH` and `SIDECAR_PATH`, or ensure your SSH agent is
-available.
+Source-built L2 services are configured through `l2.repositories`.
 
 **📖 [Read L2 Documentation](internal/l2/README.md)**
 
