@@ -42,6 +42,71 @@ func TestNormalizePrivateKeyStripsAtMostOnePrefix(t *testing.T) {
 	}
 }
 
+func TestL2ValidateRequiresOpRbuilderRepositoryWhenFlashblocksEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.Flashblocks.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for missing op-rbuilder repository")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.repositories.op-rbuilder is required") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestL2ValidateRequiresSidecarRepositoryWhenSidecarEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.Flashblocks.Enabled = true
+	cfg.Sidecar.Enabled = true
+	cfg.Repositories[RepositoryNameOpRbuilder] = Repository{LocalPath: "../op-rbuilder"}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for missing sidecar repository")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.repositories.sidecar is required") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestL2ValidateAllowsFeatureRepositoriesWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.Flashblocks.Enabled = true
+	cfg.Sidecar.Enabled = true
+	cfg.Repositories[RepositoryNameOpRbuilder] = Repository{LocalPath: "../op-rbuilder"}
+	cfg.Repositories[RepositoryNameSidecar] = Repository{LocalPath: "../sidecar"}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected validation to succeed, got: %v", err)
+	}
+}
+
+func TestL2ValidateRejectsSidecarWithoutFlashblocks(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.Sidecar.Enabled = true
+	cfg.Repositories[RepositoryNameSidecar] = Repository{LocalPath: "../sidecar"}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error when sidecar is enabled without flashblocks")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.sidecar.enabled requires l2.flashblocks.enabled") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
 func validL2Config() L2 {
 	return L2{
 		L1ChainID:         1,
@@ -59,6 +124,9 @@ func validL2Config() L2 {
 			},
 			RepositoryNamePublisher: {
 				LocalPath: "../publisher",
+			},
+			RepositoryNameEtheraContracts: {
+				LocalPath: "../ethera-contracts",
 			},
 		},
 		ChainConfigs: map[L2ChainName]Chain{
