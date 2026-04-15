@@ -43,8 +43,8 @@ type (
 		OPSuccinct            OPSuccinctConfig              `mapstructure:"op-succinct"`
 	}
 
-	// OPSuccinctConfig controls whether localnet generates the repository and
-	// contract metadata needed by later op-succinct integration steps.
+	// OPSuccinctConfig controls whether localnet runs the op-succinct mock-mode
+	// validity services for the configured rollups.
 	OPSuccinctConfig struct {
 		Enabled bool `mapstructure:"enabled"`
 	}

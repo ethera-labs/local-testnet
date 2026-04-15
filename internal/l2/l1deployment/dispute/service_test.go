@@ -42,7 +42,7 @@ func TestParseDeploymentContractsFromDeploymentsJSON(t *testing.T) {
 	}
 
 	if got.ComposeL2OutputOracleAddress != common.HexToAddress("0x1111111111111111111111111111111111111111") {
-		t.Fatalf("unexpected compose oracle address: %s", got.ComposeL2OutputOracleAddress)
+		t.Fatalf("unexpected L2 output oracle address: %s", got.ComposeL2OutputOracleAddress)
 	}
 	if got.DisputeGameFactoryAddress != common.HexToAddress("0x2222222222222222222222222222222222222222") {
 		t.Fatalf("unexpected dispute game factory address: %s", got.DisputeGameFactoryAddress)
@@ -89,7 +89,7 @@ func TestParseDeploymentContractsFromComposeFallback(t *testing.T) {
 	}
 
 	if got.ComposeL2OutputOracleAddress != common.HexToAddress("0x3333333333333333333333333333333333333333") {
-		t.Fatalf("unexpected compose oracle address: %s", got.ComposeL2OutputOracleAddress)
+		t.Fatalf("unexpected L2 output oracle address: %s", got.ComposeL2OutputOracleAddress)
 	}
 	if got.DisputeGameFactoryAddress != common.HexToAddress("0x4444444444444444444444444444444444444444") {
 		t.Fatalf("unexpected dispute game factory address: %s", got.DisputeGameFactoryAddress)

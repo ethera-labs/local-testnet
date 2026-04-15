@@ -6,6 +6,7 @@ package docker
 var sharedImageBuildTargets = map[string]string{
 	"op-geth-b":     "op-geth-a",
 	"op-alt-da-b":   "op-alt-da-a",
+	"op-succinct-b": "op-succinct-a",
 	"op-rbuilder-b": "op-rbuilder-a",
 	"sidecar-b":     "sidecar-a",
 }

@@ -34,13 +34,14 @@ l2:
     challenge-proxy-address: ""
     challenge-impl-address: ""
     # Deployment parameters used only when localnet owns the AltDA contract lifecycle.
-    # Defaults: da-challenge-window=100, da-resolve-window=100, da-bond-size=1.
-    da-challenge-window: 100
-    da-resolve-window: 100
+    # Small values (e.g. 4) reduce finality lag on public L1 testnets.
+    # Larger values (e.g. 100) match production timings but extend local proving cycles.
+    da-challenge-window: 4
+    da-resolve-window: 4
     da-bond-size: 1
     da-resolver-refund-percentage: 0
   op-succinct:
-    enabled: false  # Generate the contract metadata and repository wiring needed for local op-succinct integration
+    enabled: false  # Run op-succinct validity services in local mock mode
   chain-configs:
     rollup-a: 
       id: 77777

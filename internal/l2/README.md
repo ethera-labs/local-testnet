@@ -137,6 +137,8 @@ Operational guidance:
   contracts.
 - Set `l2.alt-da.skip-l1-deploy=true` only in long-lived environments that already have pinned `challenge-proxy-address`
   and `challenge-impl-address` values.
+- When using AltDA on a public L1 testnet, set `l2.alt-da.da-challenge-window` and `l2.alt-da.da-resolve-window` to
+  small values such as `4`. Values of `100` or more can stall the finalized L2 head at genesis for an extended period.
 - Ensure `repositories.ethera-contracts` resolves to a checkout that contains the `op-alt-da` sources used to build the
   DA server image.
 ### Local Development

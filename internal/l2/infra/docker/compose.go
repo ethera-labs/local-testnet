@@ -23,19 +23,26 @@ func ComposeBuildMultiFile(ctx context.Context, composeFilePaths []string, env m
 
 // ComposeUp starts docker compose services in detached mode.
 func ComposeUp(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
-	args := append([]string{"up", "-d", "--no-build"}, services...)
+	args := composeUpArgs(services, false, false)
 	return composeRun(ctx, composeFilePath, env, args...)
 }
 
 // ComposeRestart restarts docker compose services.
 func ComposeRestart(ctx context.Context, composeFilePath string, env map[string]string, services ...string) error {
-	args := append([]string{"up", "-d", "--force-recreate", "--no-build"}, services...)
+	args := composeUpArgs(services, true, false)
 	return composeRun(ctx, composeFilePath, env, args...)
 }
 
 // ComposeRestartMultiFile restarts docker compose services using multiple compose files.
 func ComposeRestartMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
-	args := append([]string{"up", "-d", "--force-recreate", "--no-build"}, services...)
+	args := composeUpArgs(services, true, false)
+	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
+}
+
+// ComposeRestartNoDepsMultiFile restarts docker compose services using multiple compose files
+// without recreating dependencies.
+func ComposeRestartNoDepsMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
+	args := composeUpArgs(services, true, true)
 	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
 }
 
@@ -50,8 +57,19 @@ func ComposeDown(ctx context.Context, composeFilePath string, env map[string]str
 
 // ComposeUpMultiFile starts docker compose services using multiple compose files.
 func ComposeUpMultiFile(ctx context.Context, composeFilePaths []string, env map[string]string, services ...string) error {
-	args := append([]string{"up", "-d", "--no-build"}, services...)
+	args := composeUpArgs(services, false, false)
 	return composeRunMultiFile(ctx, composeFilePaths, env, args...)
+}
+
+func composeUpArgs(services []string, forceRecreate, noDeps bool) []string {
+	args := []string{"up", "-d", "--no-build"}
+	if forceRecreate {
+		args = append(args, "--force-recreate")
+	}
+	if noDeps {
+		args = append(args, "--no-deps")
+	}
+	return append(args, services...)
 }
 
 // composeRunMultiFile executes a docker compose command with multiple compose files.

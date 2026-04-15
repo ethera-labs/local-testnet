@@ -98,7 +98,7 @@ var (
 		{"sidecar-enabled", "l2.sidecar.enabled", false, "Enable sidecar for cross-chain coordination (requires flashblocks)"},
 		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Ethera Labs Console (requires flashblocks and sidecar)"},
 		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},
-		{"op-succinct-enabled", "l2.op-succinct.enabled", false, "Enable op-succinct integration assets in localnet"},
+		{"op-succinct-enabled", "l2.op-succinct.enabled", false, "Enable op-succinct mock-mode validity services in localnet"},
 	}
 )
 

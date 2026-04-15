@@ -104,15 +104,24 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		return deploymentState, fmt.Errorf("failed to deploy L1 contracts: %w", err)
 	}
 
-	if cfg.AltDA.SkipL1Deploy && cfg.AltDA.ChallengeProxyAddress != "" {
-		if err := stateManager.PatchAltDAState(cfg.AltDA); err != nil {
-			return deploymentState, fmt.Errorf("failed to patch AltDA state: %w", err)
-		}
-	}
-
 	opState, err := stateManager.Load()
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to load OP deployment state: %w", err)
+	}
+	if cfg.AltDA.Enabled {
+		altDAConfig, patchState, err := resolveAltDAState(cfg.AltDA, opState)
+		if err != nil {
+			return deploymentState, err
+		}
+		if patchState {
+			if err := stateManager.PatchAltDAState(altDAConfig); err != nil {
+				return deploymentState, fmt.Errorf("failed to patch AltDA state: %w", err)
+			}
+			opState, err = stateManager.Load()
+			if err != nil {
+				return deploymentState, fmt.Errorf("failed to reload patched OP deployment state: %w", err)
+			}
+		}
 	}
 
 	o.logger.Info("deploying dispute contracts")
@@ -156,4 +165,26 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	}
 
 	return deploymentState, nil
+}
+
+func resolveAltDAState(altDA configs.AltDAConfig, opState *deployer.OPDeploymentState) (configs.AltDAConfig, bool, error) {
+	if altDA.SkipL1Deploy && altDA.ChallengeProxyAddress != "" && altDA.ChallengeImplAddress != "" {
+		return altDA, true, nil
+	}
+	if altDA.SkipL1Deploy {
+		return altDA, false, nil
+	}
+
+	for _, chain := range opState.OpChainDeployments {
+		proxy := common.HexToAddress(chain.AltDAChallengeProxy)
+		impl := common.HexToAddress(chain.AltDAChallengeImpl)
+		if proxy == (common.Address{}) || impl == (common.Address{}) {
+			continue
+		}
+		altDA.ChallengeProxyAddress = proxy.Hex()
+		altDA.ChallengeImplAddress = impl.Hex()
+		return altDA, true, nil
+	}
+
+	return altDA, false, fmt.Errorf("AltDA is enabled but no deployed AltDA challenge contracts were found in state.json after op-deployer apply")
 }

@@ -17,10 +17,12 @@ type Manager struct {
 	sidecarDockerFilePath     string
 	frontendDockerFilePath    string
 	altDADockerFilePath       string
+	opSuccinctDockerFilePath  string
 	flashblocksEnabled        bool
 	sidecarEnabled            bool
 	frontendEnabled           bool
 	altDAEnabled              bool
+	opSuccinctEnabled         bool
 	logger                    *slog.Logger
 }
 
@@ -61,6 +63,13 @@ func (m *Manager) WithAltDA(altDADockerFilePath string) *Manager {
 	return m
 }
 
+// WithOPSuccinct enables op-succinct support with the specified docker file.
+func (m *Manager) WithOPSuccinct(opSuccinctDockerFilePath string) *Manager {
+	m.opSuccinctDockerFilePath = opSuccinctDockerFilePath
+	m.opSuccinctEnabled = true
+	return m
+}
+
 // StartAll starts all L2 services
 func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	services := []string{
@@ -76,6 +85,15 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		services = append(services,
 			"op-alt-da-a",
 			"op-alt-da-b",
+		)
+	}
+
+	if m.opSuccinctEnabled && m.opSuccinctDockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.opSuccinctDockerFilePath)
+		services = append(services,
+			"op-succinct-postgres",
+			"op-succinct-a",
+			"op-succinct-b",
 		)
 	}
 
@@ -109,7 +127,7 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	// Frontend (ethera-console) is started separately after contract deployment
 
 	if len(dockerFiles) > 1 {
-		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "altDA", m.altDAEnabled).Info("starting L2 services")
+		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
 
 		if err := docker.ComposeUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)

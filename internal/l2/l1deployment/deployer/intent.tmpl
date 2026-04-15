@@ -30,7 +30,7 @@ l2ContractsLocator = "embedded"
     batcher = "{{$.Wallet}}"
     proposer = "{{$.Wallet}}"
     challenger = "{{$.Wallet}}"
-{{if and $.AltDA.Enabled (not $.AltDA.SkipL1Deploy)}}
+{{if .DeployAltDA}}
   [chains.dangerousAltDAConfig]
     useAltDA = true
     daCommitmentType = "{{$.AltDA.DACommitmentType}}"

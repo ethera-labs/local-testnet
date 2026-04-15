@@ -12,6 +12,7 @@ import (
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/genesis"
+	"github.com/ethera-labs/local-testnet/internal/l2/l2config/opsuccinct"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/secrets"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/registry"
@@ -45,8 +46,18 @@ func NewOrchestrator(rootDir, localnetDir, networksDir, servicesDir string) *Orc
 	}
 }
 
+// overlayPaths holds the filesystem paths of optional docker-compose overlay files.
+// An empty string means the overlay is disabled.
+type overlayPaths struct {
+	altDA       string
+	opSuccinct  string
+	flashblocks string
+	sidecar     string
+	frontend    string
+}
+
 // Execute runs Phase 3: Build images, start services, deploy contracts
-func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
+func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryAddr common.Address, composeL2OOAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
 	o.logger.Info("Phase 3: Starting L2 runtime operations")
 
 	publisherConfig := registry.NewConfigurator()
@@ -60,39 +71,34 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	}
 
 	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
-	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr)
+	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr, composeL2OOAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	overlays, err := o.resolveOverlayPaths(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	o.logger.With("env", envVars).Info("environment variables were constructed. Building docker services")
-	if err := o.buildComposeServices(ctx, dockerPath, envVars, cfg); err != nil {
+	if err := o.buildComposeServices(ctx, dockerPath, envVars, overlays); err != nil {
 		return nil, fmt.Errorf("failed to build docker services: %w", err)
 	}
 
 	o.logger.Info("docker services built successfully")
 	serviceManager := services.NewManager(o.rootDir, dockerPath)
 
-	var flashblocksDockerPath string
-	var sidecarDockerPath string
-	var altDADockerPath string
-
-	if cfg.AltDA.Enabled {
-		o.logger.Info("altDA enabled, configuring DA server services")
-		altDADockerPath, err = docker.EnsureAltDAComposeFile(o.localnetDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to prepare altDA docker file: %w", err)
-		}
-		serviceManager.WithAltDA(altDADockerPath)
+	if overlays.altDA != "" {
+		serviceManager.WithAltDA(overlays.altDA)
 	}
-
-	if cfg.Flashblocks.Enabled {
+	if overlays.opSuccinct != "" {
+		o.logger.Info("op-succinct enabled, configuring mock-mode validity services")
+		serviceManager.WithOPSuccinct(overlays.opSuccinct)
+	}
+	if overlays.flashblocks != "" {
 		o.logger.Info("flashblocks enabled, configuring services to use rollup-boost")
-		flashblocksDockerPath, err = docker.EnsureFlashblocksComposeFile(o.localnetDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to prepare flashblocks docker file: %w", err)
-		}
-		serviceManager.WithFlashblocks(flashblocksDockerPath)
+		serviceManager.WithFlashblocks(overlays.flashblocks)
 
 		if cfg.Flashblocks.OpRbuilderImageTag != "" {
 			envVars["OP_RBUILDER_IMAGE_TAG"] = cfg.Flashblocks.OpRbuilderImageTag
@@ -101,29 +107,13 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 			envVars["ROLLUP_BOOST_IMAGE_TAG"] = cfg.Flashblocks.RollupBoostImageTag
 		}
 	}
-
-	if cfg.Sidecar.Enabled {
-		if !cfg.Flashblocks.Enabled {
-			return nil, fmt.Errorf("sidecar requires flashblocks to be enabled")
-		}
+	if overlays.sidecar != "" {
 		o.logger.Info("sidecar enabled, configuring sidecar services")
-		sidecarDockerPath, err = docker.EnsureSidecarComposeFile(o.localnetDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to prepare sidecar docker file: %w", err)
-		}
-		serviceManager.WithSidecar(sidecarDockerPath)
+		serviceManager.WithSidecar(overlays.sidecar)
 	}
-
-	if cfg.Frontend.Enabled {
-		if !cfg.Flashblocks.Enabled || !cfg.Sidecar.Enabled {
-			return nil, fmt.Errorf("frontend requires flashblocks and sidecar to be enabled")
-		}
+	if overlays.frontend != "" {
 		o.logger.Info("frontend enabled, configuring Ethera Labs Console")
-		frontendDockerPath, err := docker.EnsureFrontendComposeFile(o.localnetDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to prepare frontend docker file: %w", err)
-		}
-		serviceManager.WithFrontend(frontendDockerPath)
+		serviceManager.WithFrontend(overlays.frontend)
 	}
 
 	if err := o.waitForNetworkFiles(); err != nil {
@@ -154,25 +144,32 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, fmt.Errorf("failed to restart op-geth services after contract deployment. Error: '%w'", err)
 	}
 
-	if cfg.Sidecar.Enabled {
+	if overlays.sidecar != "" {
 		o.logger.Info("restarting sidecar services to apply mailbox configuration")
-		if err := o.restartSidecar(ctx, dockerPath, flashblocksDockerPath, sidecarDockerPath, envVars); err != nil {
+		if err := o.restartSidecar(ctx, dockerPath, overlays.flashblocks, overlays.sidecar, envVars); err != nil {
 			return nil, fmt.Errorf("failed to restart sidecar services after contract deployment: %w", err)
 		}
 	}
 
-	if cfg.Frontend.Enabled {
+	if overlays.opSuccinct != "" {
+		o.logger.Info("restarting op-succinct services to apply mailbox configuration")
+		if err := o.restartOpSuccinct(ctx, dockerPath, overlays.opSuccinct, envVars, deployedContracts); err != nil {
+			return nil, fmt.Errorf("failed to restart op-succinct services after contract deployment: %w", err)
+		}
+	}
+
+	if overlays.frontend != "" {
 		o.logger.Info("building and starting Ethera Labs Console")
 		chainContracts := deployedContracts[configs.L2ChainNameRollupA]
 		envVars["CONTRACT_BRIDGE_ADDRESS"] = chainContracts[contracts.ContractNameBridge].Hex()
 		envVars["CONTRACT_TOKEN_ADDRESS"] = chainContracts[contracts.ContractNameBridgeableToken].Hex()
 
 		dockerFiles := []string{dockerPath}
-		if flashblocksDockerPath != "" {
-			dockerFiles = append(dockerFiles, flashblocksDockerPath)
+		if overlays.flashblocks != "" {
+			dockerFiles = append(dockerFiles, overlays.flashblocks)
 		}
-		if sidecarDockerPath != "" {
-			dockerFiles = append(dockerFiles, sidecarDockerPath)
+		if overlays.sidecar != "" {
+			dockerFiles = append(dockerFiles, overlays.sidecar)
 		}
 
 		if err := serviceManager.StartFrontend(ctx, dockerFiles, envVars); err != nil {
@@ -183,6 +180,56 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	o.logger.Info("Phase 3: L2 runtime operations completed successfully")
 
 	return deployedContracts, nil
+}
+
+// resolveOverlayPaths writes all enabled overlay compose files to localnetDir and returns their paths.
+func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error) {
+	var paths overlayPaths
+	var err error
+
+	if cfg.AltDA.Enabled {
+		o.logger.Info("altDA enabled, configuring DA server services")
+		paths.altDA, err = docker.EnsureAltDAComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare altDA docker file: %w", err)
+		}
+	}
+
+	if cfg.OPSuccinct.Enabled {
+		paths.opSuccinct, err = docker.EnsureOPSuccinctComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare op-succinct docker file: %w", err)
+		}
+	}
+
+	if cfg.Flashblocks.Enabled {
+		paths.flashblocks, err = docker.EnsureFlashblocksComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare flashblocks docker file: %w", err)
+		}
+	}
+
+	if cfg.Sidecar.Enabled {
+		if !cfg.Flashblocks.Enabled {
+			return overlayPaths{}, fmt.Errorf("sidecar requires flashblocks to be enabled")
+		}
+		paths.sidecar, err = docker.EnsureSidecarComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare sidecar docker file: %w", err)
+		}
+	}
+
+	if cfg.Frontend.Enabled {
+		if !cfg.Flashblocks.Enabled || !cfg.Sidecar.Enabled {
+			return overlayPaths{}, fmt.Errorf("frontend requires flashblocks and sidecar to be enabled")
+		}
+		paths.frontend, err = docker.EnsureFrontendComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare frontend docker file: %w", err)
+		}
+	}
+
+	return paths, nil
 }
 
 func (o *Orchestrator) waitForNetworkFiles() error {
@@ -235,11 +282,9 @@ func (o *Orchestrator) waitForNetworkFiles() error {
 }
 
 func (o *Orchestrator) restartOpGeth(ctx context.Context, dockerFilePath string, env map[string]string, deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) error {
-	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameMailbox]
-	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameMailbox]
-
-	if mailboxA == (common.Address{}) || mailboxB == (common.Address{}) {
-		return fmt.Errorf("mailbox addresses not found in deployed contracts")
+	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
+	if err != nil {
+		return err
 	}
 
 	env["MAILBOX_A"] = mailboxA.Hex()
@@ -259,6 +304,29 @@ func (o *Orchestrator) restartOpGeth(ctx context.Context, dockerFilePath string,
 	return nil
 }
 
+func (o *Orchestrator) restartOpSuccinct(ctx context.Context, dockerFilePath, opSuccinctDockerPath string, env map[string]string, deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) error {
+	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
+	if err != nil {
+		return err
+	}
+
+	opsuccinctGenerator := opsuccinct.NewGenerator()
+	if err := opsuccinctGenerator.SetMailboxAddress(mailboxA, filepath.Join(o.networksDir, string(configs.L2ChainNameRollupA))); err != nil {
+		return fmt.Errorf("failed to update rollup-a opsuccinct env: %w", err)
+	}
+	if err := opsuccinctGenerator.SetMailboxAddress(mailboxB, filepath.Join(o.networksDir, string(configs.L2ChainNameRollupB))); err != nil {
+		return fmt.Errorf("failed to update rollup-b opsuccinct env: %w", err)
+	}
+
+	services := []string{"op-succinct-a", "op-succinct-b"}
+	// Keep op-node overlays intact.
+	if err := docker.ComposeRestartNoDepsMultiFile(ctx, []string{dockerFilePath, opSuccinctDockerPath}, env, services...); err != nil {
+		return fmt.Errorf("failed to restart op-succinct: %w", err)
+	}
+
+	return nil
+}
+
 func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flashblocksDockerPath, sidecarDockerPath string, env map[string]string) error {
 	if sidecarDockerPath == "" {
 		return fmt.Errorf("sidecar docker file path is empty")
@@ -271,15 +339,24 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 	dockerFiles = append(dockerFiles, sidecarDockerPath)
 
 	services := []string{"sidecar-a", "sidecar-b"}
-	if err := docker.ComposeRestartMultiFile(ctx, dockerFiles, env, services...); err != nil {
+	if err := docker.ComposeRestartNoDepsMultiFile(ctx, dockerFiles, env, services...); err != nil {
 		return fmt.Errorf("failed to restart sidecar: %w", err)
 	}
 
 	return nil
 }
 
-// buildDockerServices builds services using docker-compose
-func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, cfg configs.L2) error {
+func mailboxAddresses(deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) (common.Address, common.Address, error) {
+	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameMailbox]
+	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameMailbox]
+	if mailboxA == (common.Address{}) || mailboxB == (common.Address{}) {
+		return common.Address{}, common.Address{}, fmt.Errorf("mailbox addresses not found in deployed contracts")
+	}
+	return mailboxA, mailboxB, nil
+}
+
+// buildComposeServices builds all enabled service images via docker-compose.
+func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, overlays overlayPaths) error {
 	services := []string{
 		"publisher",
 		"op-geth-a",
@@ -288,28 +365,22 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 
 	dockerFiles := []string{dockerFilePath}
 
-	if cfg.AltDA.Enabled {
-		altDADockerPath, err := docker.EnsureAltDAComposeFile(o.localnetDir)
-		if err != nil {
-			return fmt.Errorf("failed to prepare altDA docker file for build: %w", err)
-		}
-		dockerFiles = append(dockerFiles, altDADockerPath)
-		services = append(services, "op-alt-da-a")
+	if overlays.altDA != "" {
+		dockerFiles = append(dockerFiles, overlays.altDA)
+		services = append(services, "op-alt-da-a", "op-alt-da-b")
 	}
 
-	// Sidecar requires flashblocks, so add flashblocks docker file first
-	if cfg.Sidecar.Enabled {
-		flashblocksDockerPath, err := docker.EnsureFlashblocksComposeFile(o.localnetDir)
-		if err != nil {
-			return fmt.Errorf("failed to prepare flashblocks docker file for build: %w", err)
-		}
-		dockerFiles = append(dockerFiles, flashblocksDockerPath)
+	if overlays.opSuccinct != "" {
+		dockerFiles = append(dockerFiles, overlays.opSuccinct)
+		services = append(services, "op-succinct-a", "op-succinct-b")
+	}
 
-		sidecarDockerPath, err := docker.EnsureSidecarComposeFile(o.localnetDir)
-		if err != nil {
-			return fmt.Errorf("failed to prepare sidecar docker file for build: %w", err)
+	// Sidecar requires flashblocks, so add flashblocks docker file first.
+	if overlays.sidecar != "" {
+		if overlays.flashblocks != "" {
+			dockerFiles = append(dockerFiles, overlays.flashblocks)
 		}
-		dockerFiles = append(dockerFiles, sidecarDockerPath)
+		dockerFiles = append(dockerFiles, overlays.sidecar)
 		services = append(services, "op-rbuilder-a", "op-rbuilder-b", "sidecar-a", "sidecar-b")
 	}
 

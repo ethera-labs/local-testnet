@@ -14,6 +14,8 @@ func TestNormalizeComposeBuildServicesCollapsesSharedImagePairs(t *testing.T) {
 		"op-geth-b",
 		"op-alt-da-a",
 		"op-alt-da-b",
+		"op-succinct-a",
+		"op-succinct-b",
 		"op-rbuilder-a",
 		"op-rbuilder-b",
 		"sidecar-a",
@@ -25,6 +27,7 @@ func TestNormalizeComposeBuildServicesCollapsesSharedImagePairs(t *testing.T) {
 		"publisher",
 		"op-geth-a",
 		"op-alt-da-a",
+		"op-succinct-a",
 		"op-rbuilder-a",
 		"sidecar-a",
 	}
@@ -40,6 +43,7 @@ func TestNormalizeComposeBuildServicesMapsBOnlyRequestsToSharedBuilder(t *testin
 	services := []string{
 		"op-geth-b",
 		"op-alt-da-b",
+		"op-succinct-b",
 		"op-rbuilder-b",
 		"sidecar-b",
 	}
@@ -48,6 +52,7 @@ func TestNormalizeComposeBuildServicesMapsBOnlyRequestsToSharedBuilder(t *testin
 	want := []string{
 		"op-geth-a",
 		"op-alt-da-a",
+		"op-succinct-a",
 		"op-rbuilder-a",
 		"sidecar-a",
 	}
