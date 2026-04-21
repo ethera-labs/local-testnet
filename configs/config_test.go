@@ -30,6 +30,25 @@ func TestL2ValidateAllowsDifferentCoordinatorAndWalletKeys(t *testing.T) {
 	}
 }
 
+func TestL2ValidateAllowsNetworkSuperblockProver(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.Repositories[RepositoryNameSuperblockProver] = Repository{
+		LocalPath: "../superblock-prover",
+	}
+	cfg.SuperblockProver = SuperblockProverConfig{
+		Enabled:           true,
+		SP1Prover:         "network",
+		NetworkPrivateKey: "network-key",
+		ProofType:         "groth16",
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected validation to succeed, got: %v", err)
+	}
+}
+
 func TestNormalizePrivateKeyStripsAtMostOnePrefix(t *testing.T) {
 	t.Parallel()
 

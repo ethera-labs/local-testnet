@@ -92,7 +92,13 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		sequencerPrivateKey = cfg.CoordinatorPrivateKey
 	}
 	env["SEQUENCER_PRIVATE_KEY"] = sequencerPrivateKey
-	env["SP_L1_SUPERBLOCK_CONTRACT"] = ""
+	// Keep the legacy superblock contract alias in sync with the deployed
+	// dispute game factory address for compatibility with older configs.
+	if gameFactoryAddr != (common.Address{}) {
+		env["SP_L1_SUPERBLOCK_CONTRACT"] = gameFactoryAddr.Hex()
+	} else {
+		env["SP_L1_SUPERBLOCK_CONTRACT"] = ""
+	}
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
@@ -189,6 +195,41 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		maxConcurrentRequests = 1
 	}
 	env["ALTDA_MAX_CONCURRENT_DA_REQUESTS"] = fmt.Sprintf("%d", maxConcurrentRequests)
+
+	env["SUPERBLOCK_PROVER_PATH"] = rootHost
+	if cfg.SuperblockProver.Enabled {
+		superblockProverPath, resolveErr := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSuperblockProver], configs.RepositoryNameSuperblockProver)
+		if resolveErr != nil {
+			return nil, fmt.Errorf("failed to resolve superblock-prover path: %w", resolveErr)
+		}
+		env["SUPERBLOCK_PROVER_PATH"] = superblockProverPath
+		sp1Prover := cfg.SuperblockProver.SP1Prover
+		if sp1Prover == "" {
+			sp1Prover = "cpu"
+		}
+		env["SUPERBLOCK_PROVER_SP1_PROVER"] = sp1Prover
+		if sp1Prover == "network" && cfg.SuperblockProver.NetworkPrivateKey != "" {
+			env["NETWORK_PRIVATE_KEY"] = cfg.SuperblockProver.NetworkPrivateKey
+		}
+		if cfg.SuperblockProver.MinAuctionPeriod != "" {
+			env["SUPERBLOCK_PROVER_MIN_AUCTION_PERIOD"] = cfg.SuperblockProver.MinAuctionPeriod
+		}
+		if cfg.SuperblockProver.CycleLimit != "" {
+			env["SUPERBLOCK_PROVER_CYCLE_LIMIT"] = cfg.SuperblockProver.CycleLimit
+		}
+		if cfg.SuperblockProver.GasLimit != "" {
+			env["SUPERBLOCK_PROVER_GAS_LIMIT"] = cfg.SuperblockProver.GasLimit
+		}
+		env["PROOFS_ENABLED"] = "true"
+		env["PROOFS_REQUIRE_PROOF"] = "true"
+		env["PROOFS_PROVER_BASE_URL"] = "http://superblock-prover:5000"
+		env["PROOFS_COLLECTOR_REQUIRE_ALL_CHAINS"] = "false"
+		proofType := cfg.SuperblockProver.ProofType
+		if proofType == "" {
+			proofType = "groth16"
+		}
+		env["PROOFS_PROVER_PROOF_TYPE"] = proofType
+	}
 
 	if ma := b.readMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
 		env["MAILBOX_A"] = ma

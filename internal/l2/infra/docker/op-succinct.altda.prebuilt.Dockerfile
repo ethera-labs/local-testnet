@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install SP1 toolchain; circuits are cached at /root/.sp1/circuits via a Docker volume.
 RUN curl -L https://sp1.succinct.xyz | bash && \
-    ~/.sp1/bin/sp1up -v 6.0.2 && \
+    ~/.sp1/bin/sp1up -v 6.1.0 && \
     ~/.sp1/bin/cargo-prove prove --version
 
 COPY .localnet-prebuilt/validity-proposer /usr/local/bin/validity-proposer

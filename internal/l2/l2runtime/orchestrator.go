@@ -162,6 +162,16 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 		return nil, fmt.Errorf("failed to start base L2 services: %w", err)
 	}
 
+	if cfg.SuperblockProver.Enabled {
+		o.logger.Info("building superblock-prover Docker image")
+		if err := docker.ComposeBuild(ctx, dockerPath, envVars, "superblock-prover"); err != nil {
+			return nil, fmt.Errorf("failed to build superblock-prover: %w", err)
+		}
+		if err := serviceManager.StartSuperblockProver(ctx, envVars); err != nil {
+			return nil, fmt.Errorf("failed to start superblock-prover: %w", err)
+		}
+	}
+
 	// When flashblocks is enabled, use op-rbuilder RPC ports for contract deployment
 	effectiveChainConfigs := cfg.ChainConfigs
 	if cfg.Flashblocks.Enabled {

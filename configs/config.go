@@ -44,6 +44,7 @@ type (
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
+		SuperblockProver      SuperblockProverConfig        `mapstructure:"superblock-prover"`
 		OpSuccinct            OpSuccinctConfig              `mapstructure:"op-succinct"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 	}
@@ -69,6 +70,16 @@ type (
 		Enabled        bool `mapstructure:"enabled"`
 		RollupAAPIPort int  `mapstructure:"rollup-a-api-port"`
 		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
+	}
+
+	SuperblockProverConfig struct {
+		Enabled           bool   `mapstructure:"enabled"`
+		SP1Prover         string `mapstructure:"sp1-prover"`
+		NetworkPrivateKey string `mapstructure:"network-private-key"`
+		MinAuctionPeriod  string `mapstructure:"min-auction-period"`
+		CycleLimit        string `mapstructure:"cycle-limit"`
+		GasLimit          string `mapstructure:"gas-limit"`
+		ProofType         string `mapstructure:"proof-type"`
 	}
 
 	OpSuccinctConfig struct {
@@ -153,10 +164,11 @@ type (
 )
 
 const (
-	RepositoryNameOpGeth          RepositoryName = "op-geth"
-	RepositoryNamePublisher       RepositoryName = "publisher"
-	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
-	RepositoryNameOpSuccinct      RepositoryName = "op-succinct"
+	RepositoryNameOpGeth           RepositoryName = "op-geth"
+	RepositoryNamePublisher        RepositoryName = "publisher"
+	RepositoryNameEtheraContracts  RepositoryName = "ethera-contracts"
+	RepositoryNameOpSuccinct       RepositoryName = "op-succinct"
+	RepositoryNameSuperblockProver RepositoryName = "superblock-prover"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -299,6 +311,31 @@ func (c *L2) Validate() error {
 			if c.OpSuccinct.EffectiveSP1Prover() == "network" && c.OpSuccinct.SP1PrivateKey == "" {
 				errs = append(errs, errors.New("l2.op-succinct.sp1-private-key is required when mock-proofs is false and sp1-prover is 'network'"))
 			}
+		}
+	}
+
+	if c.SuperblockProver.Enabled {
+		repo, exists := c.Repositories[RepositoryNameSuperblockProver]
+		if !exists || !isRepositoryConfigured(repo) {
+			errs = append(errs, fmt.Errorf("l2.repositories.%s must set either local-path or url+branch when superblock-prover is enabled", RepositoryNameSuperblockProver))
+		} else if err := validateRepository(repo, fmt.Sprintf("l2.repositories.%s", RepositoryNameSuperblockProver)); err != nil {
+			errs = append(errs, err)
+		}
+		if c.SuperblockProver.SP1Prover != "" {
+			validProvers := []string{"cpu", "network", "cuda"}
+			found := false
+			for _, v := range validProvers {
+				if c.SuperblockProver.SP1Prover == v {
+					found = true
+					break
+				}
+			}
+			if !found {
+				errs = append(errs, fmt.Errorf("l2.superblock-prover.sp1-prover must be one of: cpu, network, cuda (got %q)", c.SuperblockProver.SP1Prover))
+			}
+		}
+		if c.SuperblockProver.SP1Prover == "network" && strings.TrimSpace(c.SuperblockProver.NetworkPrivateKey) == "" {
+			errs = append(errs, errors.New("l2.superblock-prover.network-private-key is required when sp1-prover is 'network'"))
 		}
 	}
 

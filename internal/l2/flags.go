@@ -59,6 +59,11 @@ var (
 		{"op-succinct-deployer-private-key", "l2.op-succinct.deployer.private-key", "", "Dedicated private key for op-succinct L1 contract deployments (avoids nonce conflicts with batcher/proposer)"},
 		{"op-succinct-deployer-address", "l2.op-succinct.deployer.address", "", "Address corresponding to the op-succinct deployer private key"},
 
+		// Superblock prover
+		{"superblock-prover-min-auction-period", "l2.superblock-prover.min-auction-period", "", "Minimum auction period in seconds for superblock-prover network mode"},
+		{"superblock-prover-cycle-limit", "l2.superblock-prover.cycle-limit", "", "Cycle limit for superblock-prover network mode"},
+		{"superblock-prover-gas-limit", "l2.superblock-prover.gas-limit", "", "Gas limit for superblock-prover network mode"},
+
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},
 		{"op-node-tag", "l2.images.op-node.tag", "v1.16.2", "op-node image tag"},

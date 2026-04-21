@@ -33,6 +33,14 @@ l2:
   frontend:
     enabled: false  # requires flashblocks and sidecar
     port: 3000
+  superblock-prover:
+    enabled: false
+    sp1-prover: "cpu"    # "cpu", "network", or "cuda" (network requires network-private-key)
+    network-private-key: "" # NETWORK_PRIVATE_KEY for Succinct prover network authentication
+    min-auction-period: "" # e.g. "1" (seconds, default: 1)
+    cycle-limit: ""       # e.g. "150000000000" (default: 150000000000)
+    gas-limit: ""         # e.g. "2000000000" (default: 2000000000)
+    proof-type: "groth16" # proof type requested by publisher from superblock-prover
   op-succinct:
     release-build: false  # use debug builds for faster compilation; set true for optimized binaries
     mock-proofs: true     # true = deploy mock verifier + CPU prover (fast, no real proofs)
@@ -134,6 +142,11 @@ l2:
       branch: main
       # For local development:
       # local-path: ~/projects/op-succinct
+    superblock-prover:
+      url: https://github.com/ethera-labs/superblock-prover.git
+      branch: stage
+      # For local development:
+      # local-path: ~/projects/superblock-prover
     ethera-contracts:
       url: https://github.com/contracts.git
       branch: main

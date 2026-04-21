@@ -193,6 +193,13 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			}
 		}
 
+		if name == configs.RepositoryNameSuperblockProver {
+			if !cfg.SuperblockProver.Enabled {
+				s.logger.With("name", name).Info("superblock-prover is disabled in config; skipping clone")
+				continue
+			}
+		}
+
 		if !hasLocal && !hasRemote {
 			return fmt.Errorf("repository %s has neither URL+branch nor local-path set", name)
 		}

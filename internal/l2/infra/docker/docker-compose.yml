@@ -18,8 +18,11 @@ services:
       LOG_LEVEL: "debug"
       LOG_PRETTY: "true"
       AUTH_ENABLED: "false"
-      PROOFS_ENABLED: "false"
-      PROOFS_REQUIRE_PROOF: "false"
+      PROOFS_ENABLED: "${PROOFS_ENABLED:-false}"
+      PROOFS_REQUIRE_PROOF: "${PROOFS_REQUIRE_PROOF:-false}"
+      PROOFS_PROVER_BASE_URL: "${PROOFS_PROVER_BASE_URL:-}"
+      PROOFS_PROVER_PROOF_TYPE: "${PROOFS_PROVER_PROOF_TYPE:-groth16}"
+      PROOFS_COLLECTOR_REQUIRE_ALL_CHAINS: "${PROOFS_COLLECTOR_REQUIRE_ALL_CHAINS:-false}"
       CONSENSUS_TIMEOUT: "20s"
       L1_RPC_ENDPOINT: "${L1_EL_URL}"
       L1_SUPERBLOCK_CONTRACT: "${SP_L1_SUPERBLOCK_CONTRACT}"
@@ -635,6 +638,38 @@ services:
       - op-succinct-sp1-cache:/root/.sp1/circuits
     restart: unless-stopped
 
+  superblock-prover:
+    build:
+      context: ${SUPERBLOCK_PROVER_PATH}
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    image: local/superblock-prover:dev
+    container_name: superblock-prover
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      SP1_PROVER: "${SUPERBLOCK_PROVER_SP1_PROVER:-cpu}"
+      NETWORK_PRIVATE_KEY: "${NETWORK_PRIVATE_KEY:-}"
+      PROVING_TIMEOUT: "${SUPERBLOCK_PROVER_PROVING_TIMEOUT:-600}"
+      MIN_AUCTION_PERIOD: "${SUPERBLOCK_PROVER_MIN_AUCTION_PERIOD:-1}"
+      CYCLE_LIMIT: "${SUPERBLOCK_PROVER_CYCLE_LIMIT:-150000000000}"
+      GAS_LIMIT: "${SUPERBLOCK_PROVER_GAS_LIMIT:-2000000000}"
+      RUST_LOG: "info"
+    ports:
+      - "15000:5000"
+    volumes:
+      - superblock-prover-sp1-cache:/root/.sp1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
 volumes:
   rollup-a-geth:
   rollup-b-geth:
@@ -645,6 +680,7 @@ volumes:
   op-succinct-db-a:
   op-succinct-db-b:
   op-succinct-sp1-cache:
+  superblock-prover-sp1-cache:
 
 networks:
   localnet-l2:

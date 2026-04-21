@@ -222,6 +222,17 @@ func clearChainLocks(ctx context.Context, container string) error {
 	return nil
 }
 
+// StartSuperblockProver starts the superblock-prover service.
+func (m *Manager) StartSuperblockProver(ctx context.Context, env map[string]string) error {
+	services := []string{"superblock-prover"}
+	m.logger.With("services", services).Info("starting superblock-prover service")
+	if err := docker.ComposeUp(ctx, m.dockerFilePath, env, services...); err != nil {
+		return fmt.Errorf("failed to start superblock-prover: %w", err)
+	}
+	m.logger.Info("superblock-prover started successfully")
+	return nil
+}
+
 // StartFlashblocks starts flashblocks services (op-rbuilder and rollup-boost)
 func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) error {
 	if !m.flashblocksEnabled || m.flashblocksDockerFilePath == "" {
