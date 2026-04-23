@@ -47,15 +47,15 @@ func (g *Generator) Generate(_ context.Context, deployedContracts map[configs.L2
 				},
 			},
 			Contracts: map[string]ContractConfig{
-				strings.ToLower(contracts.ContractNameBridge): {
+				strings.ToLower(string(contracts.ContractNameBridge)): {
 					Address: chainContracts[contracts.ContractNameBridge],
 					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameBridge].RawABI)),
 				},
-				strings.ToLower(contracts.ContractNamePingPong): {
-					Address: chainContracts[contracts.ContractNamePingPong],
-					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNamePingPong].RawABI)),
+				strings.ToLower(string(contracts.ContractNameMailbox)): {
+					Address: chainContracts[contracts.ContractNameMailbox],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameMailbox].RawABI)),
 				},
-				strings.ToLower(contracts.ContractNameBridgeableToken): {
+				strings.ToLower(string(contracts.ContractNameBridgeableToken)): {
 					Address: chainContracts[contracts.ContractNameBridgeableToken],
 					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameBridgeableToken].RawABI)),
 				},

@@ -48,6 +48,8 @@ services:
     build:
       context: ${OP_GETH_PATH}
       dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-geth.Dockerfile
+      additional_contexts:
+        - publisher=${PUBLISHER_PATH}
     image: local/op-geth:dev
     container_name: op-geth-a
     labels:
@@ -323,6 +325,8 @@ services:
     build:
       context: ${OP_GETH_PATH}
       dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-geth.Dockerfile
+      additional_contexts:
+        - publisher=${PUBLISHER_PATH}
     image: local/op-geth:dev
     container_name: op-geth-b
     labels:

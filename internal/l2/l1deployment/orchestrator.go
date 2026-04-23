@@ -119,8 +119,15 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		return deploymentState, fmt.Errorf("failed to load OP deployment state: %w", err)
 	}
 
+	o.logger.Info("resolving ethera-contracts path")
+	contractsRoot, err := docker.NewEnvBuilder(o.rootDir, "", o.servicesDir).
+		ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
+	if err != nil {
+		return deploymentState, fmt.Errorf("failed to resolve ethera-contracts path: %w", err)
+	}
+
 	o.logger.Info("deploying dispute contracts")
-	disputeService := dispute.NewService(o.rootDir, o.servicesDir, cfg)
+	disputeService := dispute.NewService(o.rootDir, contractsRoot, cfg)
 	gameFactoryAddr, err := disputeService.Deploy(ctx)
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy dispute contracts: %w", err)

@@ -63,12 +63,16 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	if err != nil {
 		return fmt.Errorf("failed to resolve op-geth path: %w", err)
 	}
+	publisherPath, err := envBuilder.ResolveRepoPath(cfg.Repositories[configs.RepositoryNamePublisher], configs.RepositoryNamePublisher)
+	if err != nil {
+		return fmt.Errorf("failed to resolve publisher path: %w", err)
+	}
 
 	var (
 		writer = json.NewWriter()
 
 		opDeployer   = deployer.NewDeployer(o.rootDir, o.stateDir, cfg.Images[configs.ImageNameOpDeployer].Tag, dockerClient)
-		genesisGen   = genesis.NewGenerator(opDeployer, dockerClient, writer, o.rootDir, o.localnetDir, o.servicesDir, o.networksDir, opGethPath)
+		genesisGen   = genesis.NewGenerator(opDeployer, dockerClient, writer, o.rootDir, o.localnetDir, o.servicesDir, o.networksDir, opGethPath, publisherPath)
 		rollupGen    = rollup.NewGenerator(json.NewReader(), opDeployer, writer, o.localnetDir)
 		secretsGen   = secrets.NewGenerator(writer)
 		contractsGen = contracts.NewGenerator(writer)

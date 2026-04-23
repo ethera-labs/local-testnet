@@ -31,11 +31,13 @@ type Service struct {
 	logger       *slog.Logger
 }
 
-// NewService creates a new dispute deployment service
-func NewService(rootDir, servicesDir string, cfg configs.L2) *Service {
+// NewService creates a new dispute deployment service.
+// contractsRootDir must point at the root of the ethera-contracts checkout;
+// L1-settlement is the subdir actually used by this service.
+func NewService(rootDir, contractsRootDir string, cfg configs.L2) *Service {
 	return &Service{
 		rootDir:      rootDir,
-		contractsDir: filepath.Join(servicesDir, string(configs.RepositoryNameEtheraContracts), "L1-settlement"),
+		contractsDir: filepath.Join(contractsRootDir, "L1-settlement"),
 		deployerPK:   cfg.Wallet.PrivateKey,
 		cfg:          cfg,
 		logger:       logger.Named("dispute_deployer"),

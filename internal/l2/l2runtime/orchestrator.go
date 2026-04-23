@@ -181,7 +181,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 			"rollup_b_port", effectiveChainConfigs[configs.L2ChainNameRollupB].RPCPort)
 	}
 
-	contractDeployer := contracts.NewDeployer(o.networksDir)
+	contractDeployer := contracts.NewDeployer(o.networksDir, common.HexToAddress(cfg.Wallet.Address))
 	deployedContracts, err := contractDeployer.Deploy(ctx, effectiveChainConfigs, cfg.CoordinatorPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contracts: %w", err)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/logger"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,15 +26,18 @@ type (
 	// Deployer deploys L2 contracts
 	Deployer struct {
 		networksDir                   string
+		testWalletAddress             common.Address
 		waitForDeploymentConfirmation bool
 		logger                        *slog.Logger
 	}
 )
 
-// NewDeployer creates a new contract deployer
-func NewDeployer(networksDir string) *Deployer {
+// NewDeployer creates a new contract deployer. testWalletAddress, when
+// non-zero, receives an initial mint of the test ERC-20 used by xbridge.
+func NewDeployer(networksDir string, testWalletAddress common.Address) *Deployer {
 	return &Deployer{
 		networksDir:                   networksDir,
+		testWalletAddress:             testWalletAddress,
 		waitForDeploymentConfirmation: true,
 		logger:                        logger.Named("contracts_deployer"),
 	}
@@ -176,7 +180,7 @@ func waitForBlockProduction(ctx context.Context, url string, logger *slog.Logger
 	return fmt.Errorf("timed out waiting for block production at %s (stuck at block %d)", url, initialBlock)
 }
 
-func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivateKey string, contracts map[ContractName]CompiledContract) (map[ContractName]string, error) {
+func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivateKey string, contractSet map[ContractName]CompiledContract) (map[ContractName]string, error) {
 	d.logger.With("url", rpcURL).Info("dialing the L2 RPC")
 	client, err := ethclient.DialContext(ctx, rpcURL)
 	if err != nil {
@@ -196,51 +200,179 @@ func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivate
 	}
 	d.logger.With("chain_id", chainID).Info("chain ID was fetched")
 
-	addresses := make(map[ContractName]string)
-
-	d.logger.Info("deploying contracts")
-
 	coordinatorPubKey, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast public key to ECDSA")
 	}
+	coordinatorAddr := crypto.PubkeyToAddress(*coordinatorPubKey)
 
-	mailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameMailbox], crypto.PubkeyToAddress(*coordinatorPubKey))
+	addresses := make(map[ContractName]string)
+	d.logger.Info("deploying Compose L2↔L2 bridge stack")
+
+	// 1. CetFactory — no ctor args. Must be first because the bridge ctor
+	//    takes a reference to it.
+	cetFactoryAddr, err := d.deployContract(ctx, client, privateKey, chainID, contractSet[ContractNameCETFactory])
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy Mailbox: %w", err)
+		return nil, fmt.Errorf("failed to deploy CetFactory: %w", err)
+	}
+	addresses[ContractNameCETFactory] = cetFactoryAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameCETFactory, "address", cetFactoryAddr.Hex())
+
+	// 2. UniversalBridgeMailbox(coordinator). Coordinator is the off-chain
+	//    relayer — same key as the deployer for local-testnet.
+	mailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contractSet[ContractNameMailbox], coordinatorAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy UniversalBridgeMailbox: %w", err)
 	}
 	addresses[ContractNameMailbox] = mailboxAddr.Hex()
 	d.logger.Info("deployed", "contract", ContractNameMailbox, "address", mailboxAddr.Hex())
 
-	pingPongAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNamePingPong], mailboxAddr)
+	// 3. ComposeETHLiquidity(owner). Owner is the deployer so we can wire
+	//    authorizations below.
+	ethLiquidityAddr, err := d.deployContract(ctx, client, privateKey, chainID, contractSet[ContractNameETHLiquidity], coordinatorAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy PingPong: %w", err)
+		return nil, fmt.Errorf("failed to deploy ComposeETHLiquidity: %w", err)
 	}
-	addresses[ContractNamePingPong] = pingPongAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNamePingPong, "address", pingPongAddr.Hex())
+	addresses[ContractNameETHLiquidity] = ethLiquidityAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameETHLiquidity, "address", ethLiquidityAddr.Hex())
 
-	bridgeAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameBridge], mailboxAddr)
+	// 4. ComposeL2ToL2Bridge(mailbox, factory, ethLiquidity).
+	bridgeAddr, err := d.deployContract(ctx, client, privateKey, chainID, contractSet[ContractNameBridge], mailboxAddr, cetFactoryAddr, ethLiquidityAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy Bridge: %w", err)
+		return nil, fmt.Errorf("failed to deploy ComposeL2ToL2Bridge: %w", err)
 	}
 	addresses[ContractNameBridge] = bridgeAddr.Hex()
 	d.logger.Info("deployed", "contract", ContractNameBridge, "address", bridgeAddr.Hex())
 
-	tokenAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameBridgeableToken], bridgeAddr)
+	// 5. USDCMintable — the test token bridged by xbridge-client.
+	tokenAddr, err := d.deployContract(ctx, client, privateKey, chainID, contractSet[ContractNameBridgeableToken])
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy BridgeableToken: %w", err)
+		return nil, fmt.Errorf("failed to deploy USDCMintable: %w", err)
 	}
 	addresses[ContractNameBridgeableToken] = tokenAddr.Hex()
 	d.logger.Info("deployed", "contract", ContractNameBridgeableToken, "address", tokenAddr.Hex())
 
-	stagedMailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameStagedMailbox], crypto.PubkeyToAddress(*coordinatorPubKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to deploy StagedMailbox: %w", err)
+	// 6. Authorize the bridge on mailbox / factory / ethLiquidity so it can
+	//    write/read messages and mint CET wrappers.
+	if err := d.wireBridgeAuthorizations(ctx, client, privateKey, chainID, contractSet, mailboxAddr, cetFactoryAddr, ethLiquidityAddr, bridgeAddr); err != nil {
+		return nil, fmt.Errorf("failed to wire bridge authorizations: %w", err)
 	}
-	addresses[ContractNameStagedMailbox] = stagedMailboxAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNameStagedMailbox, "address", stagedMailboxAddr.Hex())
+
+	// 7. Seed the test wallet with USDCMintable tokens + approval for the bridge
+	//    so xbridge-client can call bridgeERC20To immediately.
+	walletAddr, walletAmount, mintEnabled := d.testWalletSeed()
+	if mintEnabled {
+		mintInput, err := contractSet[ContractNameBridgeableToken].ABI.Pack("mint", walletAddr, walletAmount)
+		if err != nil {
+			return nil, fmt.Errorf("pack mint: %w", err)
+		}
+		if err := d.sendTx(ctx, client, privateKey, chainID, tokenAddr, mintInput); err != nil {
+			return nil, fmt.Errorf("mint USDCMintable to test wallet: %w", err)
+		}
+		d.logger.Info("minted test token balance", "token", tokenAddr.Hex(), "to", walletAddr.Hex(), "amount", walletAmount.String())
+	}
 
 	return addresses, nil
+}
+
+// testWalletSeed returns the L2 test wallet address and an initial USDC mint
+// amount. When no wallet address was configured, the seed step is skipped.
+func (d *Deployer) testWalletSeed() (common.Address, *big.Int, bool) {
+	if (d.testWalletAddress == common.Address{}) {
+		return common.Address{}, nil, false
+	}
+	// 1_000_000 * 10^18 — generous supply for stress tests.
+	amount := new(big.Int).Mul(big.NewInt(1_000_000), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+	return d.testWalletAddress, amount, true
+}
+
+// sendTx builds, signs and submits a transaction to `to` with `data`, waits
+// for inclusion, and surfaces revert receipts as errors.
+func (d *Deployer) sendTx(
+	ctx context.Context,
+	client *ethclient.Client,
+	privateKey *ecdsa.PrivateKey,
+	chainID *big.Int,
+	to common.Address,
+	data []byte,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*3)
+	defer cancel()
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	if err != nil {
+		return fmt.Errorf("transactor: %w", err)
+	}
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	if err != nil {
+		return fmt.Errorf("suggest gas: %w", err)
+	}
+	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	if err != nil {
+		return fmt.Errorf("nonce: %w", err)
+	}
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		To:       &to,
+		Value:    big.NewInt(0),
+		Gas:      uint64(1_000_000),
+		GasPrice: gasPrice,
+		Data:     data,
+	})
+	signed, err := types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+	if err != nil {
+		return fmt.Errorf("sign: %w", err)
+	}
+	if err := client.SendTransaction(ctx, signed); err != nil {
+		return fmt.Errorf("send: %w", err)
+	}
+
+	if !d.waitForDeploymentConfirmation {
+		return nil
+	}
+	receipt, err := bind.WaitMined(ctx, client, signed)
+	if err != nil {
+		return fmt.Errorf("wait mined: %w", err)
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("tx reverted (hash=%s)", signed.Hash().Hex())
+	}
+	return nil
+}
+
+// wireBridgeAuthorizations calls authorizeBridge on the three gated contracts
+// so the newly deployed ComposeL2ToL2Bridge can write to the mailbox, deploy
+// CETs, and lock/unlock ETH. Mirrors contracts/L2/script/bridge/DeployComposeBridge.s.sol.
+func (d *Deployer) wireBridgeAuthorizations(
+	ctx context.Context,
+	client *ethclient.Client,
+	privateKey *ecdsa.PrivateKey,
+	chainID *big.Int,
+	contractSet map[ContractName]CompiledContract,
+	mailbox, factory, ethLiquidity, bridge common.Address,
+) error {
+	for _, step := range []struct {
+		name     string
+		target   common.Address
+		abi      abi.ABI
+		method   string
+		argument common.Address
+	}{
+		{"mailbox.authorizeBridge", mailbox, contractSet[ContractNameMailbox].ABI, "authorizeBridge", bridge},
+		{"cetFactory.authorizeBridge", factory, contractSet[ContractNameCETFactory].ABI, "authorizeBridge", bridge},
+		{"ethLiquidity.authorizeBridge", ethLiquidity, contractSet[ContractNameETHLiquidity].ABI, "authorizeBridge", bridge},
+	} {
+		input, err := step.abi.Pack(step.method, step.argument)
+		if err != nil {
+			return fmt.Errorf("pack %s: %w", step.name, err)
+		}
+		if err := d.sendTx(ctx, client, privateKey, chainID, step.target, input); err != nil {
+			return fmt.Errorf("%s: %w", step.name, err)
+		}
+		d.logger.Info("authorized bridge", "on", step.name, "bridge", bridge.Hex())
+	}
+	return nil
 }
 
 func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, chainID *big.Int, contract CompiledContract, constructorArgs ...any) (common.Address, error) {

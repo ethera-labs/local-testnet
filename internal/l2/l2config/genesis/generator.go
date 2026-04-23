@@ -29,30 +29,32 @@ type (
 	}
 
 	Generator struct {
-		deployer    deployer
-		docker      *docker.Client
-		writer      filesystem.Writer
-		rootDir     string
-		localnetDir string
-		servicesDir string
-		networksDir string
-		opGethPath  string
-		logger      *slog.Logger
+		deployer      deployer
+		docker        *docker.Client
+		writer        filesystem.Writer
+		rootDir       string
+		localnetDir   string
+		servicesDir   string
+		networksDir   string
+		opGethPath    string
+		publisherPath string
+		logger        *slog.Logger
 	}
 )
 
 // NewGenerator creates a new genesis generator
-func NewGenerator(deployer deployer, docker *docker.Client, writer filesystem.Writer, rootDir, localnetDir, servicesDir, networksDir, opGethPath string) *Generator {
+func NewGenerator(deployer deployer, docker *docker.Client, writer filesystem.Writer, rootDir, localnetDir, servicesDir, networksDir, opGethPath, publisherPath string) *Generator {
 	return &Generator{
-		deployer:    deployer,
-		docker:      docker,
-		writer:      writer,
-		rootDir:     rootDir,
-		localnetDir: localnetDir,
-		servicesDir: servicesDir,
-		networksDir: networksDir,
-		opGethPath:  opGethPath,
-		logger:      logger.Named("genesis_generator"),
+		deployer:      deployer,
+		docker:        docker,
+		writer:        writer,
+		rootDir:       rootDir,
+		localnetDir:   localnetDir,
+		servicesDir:   servicesDir,
+		networksDir:   networksDir,
+		opGethPath:    opGethPath,
+		publisherPath: publisherPath,
+		logger:        logger.Named("genesis_generator"),
 	}
 }
 
@@ -284,6 +286,7 @@ func (g *Generator) ensureOpGethImage(ctx context.Context, imageName string) err
 	env := map[string]string{
 		"ROOT_DIR":                       rootHostPath,
 		"OP_GETH_PATH":                   g.opGethPath,
+		"PUBLISHER_PATH":                 g.publisherPath,
 		"ROLLUP_A_CONFIG_PATH":           rollupAConfigPath,
 		"ROLLUP_B_CONFIG_PATH":           rollupBConfigPath,
 		"ROLLUP_A_CONFIG_PATH_CONTAINER": rollupAConfigPath,

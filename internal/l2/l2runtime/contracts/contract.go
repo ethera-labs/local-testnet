@@ -13,18 +13,22 @@ type (
 	}
 )
 
+// Contract names match the Solidity contract identifiers so `forge inspect`
+// resolves them directly. Variable names kept generic (Mailbox, Bridge, Token)
+// so orchestrator call sites read naturally — the Solidity types they map to
+// are the Compose L2↔L2 stack (UniversalBridgeMailbox + ComposeL2ToL2Bridge).
 const (
-	ContractNameBridge          = "Bridge"
-	ContractNameMailbox         = "Mailbox"
-	ContractNamePingPong        = "PingPong"
-	ContractNameBridgeableToken = "BridgeableToken"
-	ContractNameStagedMailbox   = "StagedMailbox"
+	ContractNameMailbox         ContractName = "UniversalBridgeMailbox"
+	ContractNameBridge          ContractName = "ComposeL2ToL2Bridge"
+	ContractNameCETFactory      ContractName = "CetFactory"
+	ContractNameETHLiquidity    ContractName = "ComposeETHLiquidity"
+	ContractNameBridgeableToken ContractName = "USDCMintable"
 )
 
 var Contracts = map[ContractName]struct{}{
-	ContractNameBridge:          {},
 	ContractNameMailbox:         {},
-	ContractNamePingPong:        {},
+	ContractNameBridge:          {},
+	ContractNameCETFactory:      {},
+	ContractNameETHLiquidity:    {},
 	ContractNameBridgeableToken: {},
-	ContractNameStagedMailbox:   {},
 }

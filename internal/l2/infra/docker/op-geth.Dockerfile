@@ -17,6 +17,14 @@ RUN if [ -f registry/go.mod ]; then \
       go mod edit -replace github.com/ethera-labs/registry=./registry; \
     fi
 
+# Optionally vendor the compose-network publisher module from a BuildKit
+# additional context so we can build against a local checkout. If the
+# `publisher` context is not provided, the pinned go.mod version is used.
+COPY --from=publisher . /publisher
+RUN if [ -f /publisher/go.mod ]; then \
+      go mod edit -replace github.com/compose-network/publisher=/publisher; \
+    fi
+
 RUN --mount=type=cache,target=/go/pkg/mod \
     cd /go-ethereum && go mod download
 
