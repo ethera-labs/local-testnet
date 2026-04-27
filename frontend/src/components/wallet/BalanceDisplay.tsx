@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react'
-import { getTokenBalance, getSigner, getTokenAddress, formatBalance } from '../../api/rollup'
+import {
+  formatBalance,
+  getChainId,
+  getSigner,
+  getTokenAddress,
+  getTokenBalance,
+  getWrappedTokenAddress,
+} from '../../api/rollup'
 
 interface BalanceDisplayProps {
   chain: 'A' | 'B'
+  remoteChain?: 'A' | 'B'
 }
 
-export default function BalanceDisplay({ chain }: BalanceDisplayProps) {
-  const [balance, setBalance] = useState<string>('0.0')
+interface Balances {
+  native: string
+  wrapped?: string
+  wrappedUnavailable?: boolean
+}
+
+export default function BalanceDisplay({ chain, remoteChain }: BalanceDisplayProps) {
+  const [balances, setBalances] = useState<Balances>({ native: '0.0' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,11 +31,33 @@ export default function BalanceDisplay({ chain }: BalanceDisplayProps) {
       const signer = getSigner(chain)
       const walletAddress = await signer.getAddress()
       const tokenAddress = getTokenAddress(chain)
-      const balanceWei = await getTokenBalance(tokenAddress, walletAddress, chain)
-      setBalance(formatBalance(balanceWei))
+      const nativeBalanceWei = await getTokenBalance(tokenAddress, walletAddress, chain)
+
+      let wrappedBalance: string | undefined
+      let wrappedUnavailable = false
+      if (remoteChain) {
+        try {
+          const wrappedTokenAddress = await getWrappedTokenAddress(
+            getTokenAddress(remoteChain),
+            getChainId(remoteChain),
+            chain
+          )
+          const wrappedBalanceWei = await getTokenBalance(wrappedTokenAddress, walletAddress, chain)
+          wrappedBalance = formatBalance(wrappedBalanceWei)
+        } catch (err) {
+          console.warn('Unable to load bridged token balance:', err)
+          wrappedUnavailable = true
+        }
+      }
+
+      setBalances({
+        native: formatBalance(nativeBalanceWei),
+        wrapped: wrappedBalance,
+        wrappedUnavailable,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'err')
-      setBalance('0.0')
+      setBalances({ native: '0.0' })
     } finally {
       setLoading(false)
     }
@@ -31,9 +67,9 @@ export default function BalanceDisplay({ chain }: BalanceDisplayProps) {
     loadBalance()
     const interval = setInterval(loadBalance, 5000)
     return () => clearInterval(interval)
-  }, [chain])
+  }, [chain, remoteChain])
 
-  if (loading && balance === '0.0') {
+  if (loading && balances.native === '0.0') {
     return (
       <div className="flex items-center gap-1.5">
         <span className="w-1 h-1 rounded-full bg-border-bright indicator-active" />
@@ -49,11 +85,27 @@ export default function BalanceDisplay({ chain }: BalanceDisplayProps) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[11px] font-mono text-text-secondary">
-        {parseFloat(balance).toFixed(4)}
-      </span>
-      <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">TKN</span>
+    <div className="flex flex-col items-end gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] font-mono text-text-secondary">
+          {parseFloat(balances.native).toFixed(4)}
+        </span>
+        <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">native</span>
+      </div>
+      {balances.wrapped !== undefined && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-mono text-amber">
+            {parseFloat(balances.wrapped).toFixed(4)}
+          </span>
+          <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">bridged</span>
+        </div>
+      )}
+      {balances.wrappedUnavailable && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-text-dim">—</span>
+          <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">bridged</span>
+        </div>
+      )}
     </div>
   )
 }

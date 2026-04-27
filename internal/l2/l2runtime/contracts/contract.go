@@ -14,17 +14,19 @@ type (
 )
 
 const (
-	ContractNameBridge          = "Bridge"
-	ContractNameMailbox         = "Mailbox"
-	ContractNamePingPong        = "PingPong"
-	ContractNameBridgeableToken = "BridgeableToken"
-	ContractNameStagedMailbox   = "StagedMailbox"
+	ContractNameUniversalBridgeMailbox = "UniversalBridgeMailbox"
+	ContractNameStagedMailbox          = "StagedMailbox"
+	ContractNameCetFactory             = "CetFactory"
+	ContractNameComposeETHLiquidity    = "ComposeETHLiquidity"
+	ContractNameComposeL2ToL2Bridge    = "ComposeL2ToL2Bridge"
+	ContractNameTestToken              = "MockL2ERC20"
 )
 
 var Contracts = map[ContractName]struct{}{
-	ContractNameBridge:          {},
-	ContractNameMailbox:         {},
-	ContractNamePingPong:        {},
-	ContractNameBridgeableToken: {},
-	ContractNameStagedMailbox:   {},
+	ContractNameUniversalBridgeMailbox: {},
+	ContractNameStagedMailbox:          {},
+	ContractNameCetFactory:             {},
+	ContractNameComposeETHLiquidity:    {},
+	ContractNameComposeL2ToL2Bridge:    {},
+	ContractNameTestToken:              {},
 }

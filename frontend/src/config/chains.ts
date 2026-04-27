@@ -58,6 +58,8 @@ export const CHAIN_A_TOKEN_ADDRESS =
 export const CHAIN_B_TOKEN_ADDRESS =
   env.VITE_CHAIN_B_TOKEN_ADDRESS || env.VITE_TOKEN_ADDRESS || ''
 
+export const CET_FACTORY_ADDRESS = env.VITE_CET_FACTORY_ADDRESS || ''
+
 export const CHAIN_A_PRIVATE_KEY = normalizePrivateKey(
   env.VITE_CHAIN_A_PRIVATE_KEY || env.VITE_WALLET_PRIVATE_KEY
 )

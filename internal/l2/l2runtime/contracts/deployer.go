@@ -205,35 +205,59 @@ func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivate
 		return nil, fmt.Errorf("failed to cast public key to ECDSA")
 	}
 
-	mailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameMailbox], crypto.PubkeyToAddress(*coordinatorPubKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to deploy Mailbox: %w", err)
-	}
-	addresses[ContractNameMailbox] = mailboxAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNameMailbox, "address", mailboxAddr.Hex())
+	coordinatorAddr := crypto.PubkeyToAddress(*coordinatorPubKey)
 
-	pingPongAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNamePingPong], mailboxAddr)
+	ubMailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameUniversalBridgeMailbox], coordinatorAddr, coordinatorAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy PingPong: %w", err)
+		return nil, fmt.Errorf("failed to deploy UniversalBridgeMailbox: %w", err)
 	}
-	addresses[ContractNamePingPong] = pingPongAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNamePingPong, "address", pingPongAddr.Hex())
+	addresses[ContractNameUniversalBridgeMailbox] = ubMailboxAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameUniversalBridgeMailbox, "address", ubMailboxAddr.Hex())
 
-	bridgeAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameBridge], mailboxAddr)
+	cetFactoryAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameCetFactory], coordinatorAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy Bridge: %w", err)
+		return nil, fmt.Errorf("failed to deploy CetFactory: %w", err)
 	}
-	addresses[ContractNameBridge] = bridgeAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNameBridge, "address", bridgeAddr.Hex())
+	addresses[ContractNameCetFactory] = cetFactoryAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameCetFactory, "address", cetFactoryAddr.Hex())
 
-	tokenAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameBridgeableToken], bridgeAddr)
+	ethLiquidityAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameComposeETHLiquidity], coordinatorAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy BridgeableToken: %w", err)
+		return nil, fmt.Errorf("failed to deploy ComposeETHLiquidity: %w", err)
 	}
-	addresses[ContractNameBridgeableToken] = tokenAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNameBridgeableToken, "address", tokenAddr.Hex())
+	addresses[ContractNameComposeETHLiquidity] = ethLiquidityAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameComposeETHLiquidity, "address", ethLiquidityAddr.Hex())
 
-	stagedMailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameStagedMailbox], crypto.PubkeyToAddress(*coordinatorPubKey))
+	bridgeAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameComposeL2ToL2Bridge], ubMailboxAddr, cetFactoryAddr, ethLiquidityAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy ComposeL2ToL2Bridge: %w", err)
+	}
+	addresses[ContractNameComposeL2ToL2Bridge] = bridgeAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameComposeL2ToL2Bridge, "address", bridgeAddr.Hex())
+
+	for _, auth := range []struct {
+		name    ContractName
+		addr    common.Address
+		contract CompiledContract
+	}{
+		{ContractNameUniversalBridgeMailbox, ubMailboxAddr, contracts[ContractNameUniversalBridgeMailbox]},
+		{ContractNameCetFactory, cetFactoryAddr, contracts[ContractNameCetFactory]},
+		{ContractNameComposeETHLiquidity, ethLiquidityAddr, contracts[ContractNameComposeETHLiquidity]},
+	} {
+		if err := d.callAuthorize(ctx, client, privateKey, chainID, auth.contract, auth.addr, bridgeAddr); err != nil {
+			return nil, fmt.Errorf("failed to authorizeBridge on %s: %w", auth.name, err)
+		}
+		d.logger.Info("authorizeBridge called", "contract", auth.name, "bridge", bridgeAddr.Hex())
+	}
+
+	testTokenAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameTestToken], "Test Token", "TEST")
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy TestToken: %w", err)
+	}
+	addresses[ContractNameTestToken] = testTokenAddr.Hex()
+	d.logger.Info("deployed", "contract", ContractNameTestToken, "address", testTokenAddr.Hex())
+
+	stagedMailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameStagedMailbox], coordinatorAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy StagedMailbox: %w", err)
 	}
@@ -241,6 +265,40 @@ func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivate
 	d.logger.Info("deployed", "contract", ContractNameStagedMailbox, "address", stagedMailboxAddr.Hex())
 
 	return addresses, nil
+}
+
+func (d *Deployer) callAuthorize(ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, chainID *big.Int, contract CompiledContract, contractAddr, bridgeAddr common.Address) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*3)
+	defer cancel()
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create transactor: %w", err)
+	}
+
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get gas price: %w", err)
+	}
+	auth.Context = ctx
+	auth.GasLimit = uint64(500_000)
+	auth.GasPrice = gasPrice
+
+	boundContract := bind.NewBoundContract(contractAddr, contract.ABI, client, client, client)
+	tx, err := boundContract.Transact(auth, "authorizeBridge", bridgeAddr)
+	if err != nil {
+		return fmt.Errorf("failed to call authorizeBridge: %w", err)
+	}
+
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for authorizeBridge tx: %w", err)
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("authorizeBridge tx failed with status %d", receipt.Status)
+	}
+
+	return nil
 }
 
 func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, chainID *big.Int, contract CompiledContract, constructorArgs ...any) (common.Address, error) {
@@ -284,6 +342,7 @@ func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client,
 
 	return address, nil
 }
+
 
 func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64) error {
 	payload := map[string]any{

@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { ethers } from 'ethers'
 import type { FlowMode } from '../visualization/TransactionFlowPanel'
 import { useTransactionStore } from '../../stores/transactionStore'
 import { submitXT, waitForDecision } from '../../api/sidecar'
 import {
   CHAIN_A_ID,
   CHAIN_B_ID,
-  buildBridgeReceiveTx,
-  buildBridgeSendTx,
+  buildApproveTx,
+  buildBridgeERC20ToTx,
+  buildBridgeReceiveTokensTx,
   generateSessionId,
   getBridgeAddress,
   getSigner,
@@ -15,7 +17,6 @@ import {
   getProvider,
   waitForTransactionReceipt,
 } from '../../api/rollup'
-import { ethers } from 'ethers'
 import BalanceDisplay from '../wallet/BalanceDisplay'
 
 interface BridgeFormProps {
@@ -46,11 +47,10 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
       if (!amount) throw new Error('Enter an amount')
 
       const repeat = Math.max(1, Number.parseInt(repeatCount, 10) || 1)
+      const parsedAmount = parseAmount(amount)
 
       onSelectFlow?.('xt')
       setFlowStep('submitting')
-
-      const parsedAmount = parseAmount(amount)
 
       const signerA = getSigner('A')
       const signerB = getSigner('B')
@@ -141,34 +141,32 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
 
       for (let i = 0; i < repeat; i += 1) {
         const sessionId = generateSessionId()
-        const nonceA = baseNonceA + i
-        const nonceB = baseNonceB + i
+        const nonceA = direction === 'a_to_b' ? baseNonceA + i * 2 : baseNonceA + i
+        const nonceB = direction === 'a_to_b' ? baseNonceB + i : baseNonceB + i * 2
         const transactions: Record<number, string[]> = {}
+        let txABytes: string
+        let txBBytes: string
 
         if (direction === 'a_to_b') {
-          transactions[CHAIN_A_ID] = [
-            await buildBridgeSendTx(bridgeA, CHAIN_B_ID, tokenA, senderA, senderB, parsedAmount, sessionId, bridgeB, signerA, CHAIN_A_ID, nonceA),
-          ]
-          transactions[CHAIN_B_ID] = [
-            await buildBridgeReceiveTx(bridgeB, CHAIN_A_ID, senderA, senderB, sessionId, bridgeA, signerB, CHAIN_B_ID, nonceB),
-          ]
+          const txAApprove = await buildApproveTx(tokenA, bridgeA, parsedAmount, signerA, CHAIN_A_ID, nonceA)
+          const txABridge = await buildBridgeERC20ToTx(bridgeA, CHAIN_B_ID, tokenA, parsedAmount, senderB, sessionId, signerA, CHAIN_A_ID, nonceA + 1)
+          const txBReceive = await buildBridgeReceiveTokensTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB)
+          transactions[CHAIN_A_ID] = [txAApprove, txABridge]
+          transactions[CHAIN_B_ID] = [txBReceive]
+          txABytes = txABridge
+          txBBytes = txBReceive
         } else {
-          transactions[CHAIN_B_ID] = [
-            await buildBridgeSendTx(bridgeB, CHAIN_A_ID, tokenB, senderB, senderA, parsedAmount, sessionId, bridgeA, signerB, CHAIN_B_ID, nonceB),
-          ]
-          transactions[CHAIN_A_ID] = [
-            await buildBridgeReceiveTx(bridgeA, CHAIN_B_ID, senderB, senderA, sessionId, bridgeB, signerA, CHAIN_A_ID, nonceA),
-          ]
+          const txBApprove = await buildApproveTx(tokenB, bridgeB, parsedAmount, signerB, CHAIN_B_ID, nonceB)
+          const txBBridge = await buildBridgeERC20ToTx(bridgeB, CHAIN_A_ID, tokenB, parsedAmount, senderA, sessionId, signerB, CHAIN_B_ID, nonceB + 1)
+          const txAReceive = await buildBridgeReceiveTokensTx(bridgeA, sessionId, CHAIN_B_ID, CHAIN_A_ID, bridgeB, senderA, signerA, CHAIN_A_ID, nonceA)
+          transactions[CHAIN_B_ID] = [txBApprove, txBBridge]
+          transactions[CHAIN_A_ID] = [txAReceive]
+          txABytes = txAReceive
+          txBBytes = txBBridge
         }
 
-        const txABytes = transactions[CHAIN_A_ID]?.[0]
-        const txBBytes = transactions[CHAIN_B_ID]?.[0]
-        if (!txABytes || !txBBytes) throw new Error('Missing bridge transactions for submit')
-
-        const parsedTxA = ethers.Transaction.from(txABytes)
-        const parsedTxB = ethers.Transaction.from(txBBytes)
-        const txHashA = parsedTxA.hash!
-        const txHashB = parsedTxB.hash!
+        const txHashA = ethers.Transaction.from(txABytes).hash!
+        const txHashB = ethers.Transaction.from(txBBytes).hash!
 
         const response = await submitXT(transactions)
         const instanceId = response.instance_id
@@ -191,24 +189,22 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Balances */}
       <div className="bg-bg border border-border px-3 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="font-display text-[10px] tracking-[0.25em] uppercase text-text-secondary">
             Chain A Balance
           </span>
-          <BalanceDisplay chain="A" />
+          <BalanceDisplay chain="A" remoteChain="B" />
         </div>
         <div className="h-px bg-border" />
         <div className="flex items-center justify-between">
           <span className="font-display text-[10px] tracking-[0.25em] uppercase text-text-secondary">
             Chain B Balance
           </span>
-          <BalanceDisplay chain="B" />
+          <BalanceDisplay chain="B" remoteChain="A" />
         </div>
       </div>
 
-      {/* Direction */}
       <div>
         <label className="font-display text-[10px] tracking-[0.25em] uppercase text-text-secondary block mb-2">
           Direction
@@ -239,7 +235,6 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
         </div>
       </div>
 
-      {/* Amount */}
       <div>
         <label className="font-display text-[10px] tracking-[0.25em] uppercase text-text-secondary block mb-2">
           Amount to Bridge
@@ -259,7 +254,6 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
         </div>
       </div>
 
-      {/* Repeat */}
       <div>
         <label className="font-display text-[10px] tracking-[0.25em] uppercase text-text-secondary block mb-2">
           Repeat Count
@@ -277,7 +271,6 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
         </p>
       </div>
 
-      {/* Route summary */}
       <div className="bg-bg border border-border px-3 py-3">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-text-dim font-display tracking-widest uppercase">From</span>

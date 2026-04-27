@@ -130,7 +130,7 @@ func (m *Manager) StartFlashblocks(ctx context.Context, env map[string]string) e
 }
 
 // StartFrontend builds and starts the Ethera Labs Console. Must be called after contract deployment
-// so that env contains CONTRACT_BRIDGE_ADDRESS and CONTRACT_TOKEN_ADDRESS.
+// so that env contains deployed bridge, token, and CET factory addresses.
 func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env map[string]string) error {
 	if !m.frontendEnabled || m.frontendDockerFilePath == "" {
 		return fmt.Errorf("frontend not enabled or docker file not set")
