@@ -51,10 +51,6 @@ func (g *Generator) Generate(_ context.Context, deployedContracts map[configs.L2
 					Address: chainContracts[contracts.ContractNameUniversalBridgeMailbox],
 					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameUniversalBridgeMailbox].RawABI)),
 				},
-				strings.ToLower(contracts.ContractNameStagedMailbox): {
-					Address: chainContracts[contracts.ContractNameStagedMailbox],
-					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameStagedMailbox].RawABI)),
-				},
 				strings.ToLower(contracts.ContractNameComposeL2ToL2Bridge): {
 					Address: chainContracts[contracts.ContractNameComposeL2ToL2Bridge],
 					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameComposeL2ToL2Bridge].RawABI)),

@@ -15,7 +15,6 @@ type (
 
 const (
 	ContractNameUniversalBridgeMailbox = "UniversalBridgeMailbox"
-	ContractNameStagedMailbox          = "StagedMailbox"
 	ContractNameCetFactory             = "CetFactory"
 	ContractNameComposeETHLiquidity    = "ComposeETHLiquidity"
 	ContractNameComposeL2ToL2Bridge    = "ComposeL2ToL2Bridge"
@@ -24,7 +23,6 @@ const (
 
 var Contracts = map[ContractName]struct{}{
 	ContractNameUniversalBridgeMailbox: {},
-	ContractNameStagedMailbox:          {},
 	ContractNameCetFactory:             {},
 	ContractNameComposeETHLiquidity:    {},
 	ContractNameComposeL2ToL2Bridge:    {},

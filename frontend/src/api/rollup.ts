@@ -62,7 +62,7 @@ export function getTokenAddress(chain: 'A' | 'B'): string {
   const address = chain === 'A' ? CHAIN_A_TOKEN_ADDRESS : CHAIN_B_TOKEN_ADDRESS
   if (!address) {
     throw new Error(
-      `Missing token address for chain ${chain}. Set VITE_CHAIN_${chain}_TOKEN_ADDRESS or VITE_TOKEN_ADDRESS.`
+      `Missing token address for chain ${chain}. Set VITE_CHAIN_${chain}_TOKEN_ADDRESS.`
     )
   }
   return address
@@ -72,7 +72,7 @@ export function getBridgeAddress(chain: 'A' | 'B'): string {
   const address = chain === 'A' ? CHAIN_A_BRIDGE_ADDRESS : CHAIN_B_BRIDGE_ADDRESS
   if (!address) {
     throw new Error(
-      `Missing bridge address for chain ${chain}. Set VITE_CHAIN_${chain}_BRIDGE_ADDRESS or VITE_BRIDGE_ADDRESS.`
+      `Missing bridge address for chain ${chain}. Set VITE_CHAIN_${chain}_BRIDGE_ADDRESS.`
     )
   }
   return address

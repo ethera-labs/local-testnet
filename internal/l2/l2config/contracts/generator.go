@@ -30,7 +30,6 @@ func (g *Generator) GeneratePlaceholders(path string, chainID int) error {
 		},
 		Addresses: map[string]string{
 			"UniversalBridgeMailbox": "0x0000000000000000000000000000000000000000",
-			"StagedMailbox":          "0x0000000000000000000000000000000000000000",
 			"CetFactory":             "0x0000000000000000000000000000000000000000",
 			"ComposeETHLiquidity":    "0x0000000000000000000000000000000000000000",
 			"ComposeL2ToL2Bridge":    "0x0000000000000000000000000000000000000000",

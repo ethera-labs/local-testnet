@@ -236,8 +236,8 @@ func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivate
 	d.logger.Info("deployed", "contract", ContractNameComposeL2ToL2Bridge, "address", bridgeAddr.Hex())
 
 	for _, auth := range []struct {
-		name    ContractName
-		addr    common.Address
+		name     ContractName
+		addr     common.Address
 		contract CompiledContract
 	}{
 		{ContractNameUniversalBridgeMailbox, ubMailboxAddr, contracts[ContractNameUniversalBridgeMailbox]},
@@ -256,13 +256,6 @@ func (d *Deployer) deployToChain(ctx context.Context, rpcURL, coordinatorPrivate
 	}
 	addresses[ContractNameTestToken] = testTokenAddr.Hex()
 	d.logger.Info("deployed", "contract", ContractNameTestToken, "address", testTokenAddr.Hex())
-
-	stagedMailboxAddr, err := d.deployContract(ctx, client, privateKey, chainID, contracts[ContractNameStagedMailbox], coordinatorAddr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deploy StagedMailbox: %w", err)
-	}
-	addresses[ContractNameStagedMailbox] = stagedMailboxAddr.Hex()
-	d.logger.Info("deployed", "contract", ContractNameStagedMailbox, "address", stagedMailboxAddr.Hex())
 
 	return addresses, nil
 }
@@ -342,7 +335,6 @@ func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client,
 
 	return address, nil
 }
-
 
 func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64) error {
 	payload := map[string]any{
