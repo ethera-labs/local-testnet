@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/ethera-labs/local-testnet/internal/logger"
 )
@@ -72,4 +73,65 @@ func (c *Cloner) Clone(ctx context.Context, destDir string, repo Repository) err
 	c.logger.Info("repository cloned successfully")
 
 	return nil
+}
+
+// CheckoutBranch checks out the requested branch in the local repository at
+// repoPath. It is a no-op if HEAD is already on branch. It refuses to switch
+// when there are uncommitted tracked changes (untracked files are tolerated,
+// since the orchestrator routinely leaves generated artifacts in the working
+// tree). If the branch only exists on origin, CheckoutBranch fetches and
+// creates a local tracking branch.
+func (c *Cloner) CheckoutBranch(ctx context.Context, repoPath, branch string) error {
+	logger := c.logger.With("path", repoPath).With("branch", branch)
+
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); err != nil {
+		return fmt.Errorf("not a git repository at %s: %w", repoPath, err)
+	}
+
+	current, err := runGit(ctx, repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return fmt.Errorf("get current branch: %w", err)
+	}
+	current = strings.TrimSpace(current)
+
+	if current == branch {
+		logger.Info("local repository already on requested branch")
+		return nil
+	}
+
+	dirty, err := runGit(ctx, repoPath, "status", "--porcelain", "--untracked-files=no")
+	if err != nil {
+		return fmt.Errorf("check working tree: %w", err)
+	}
+	if strings.TrimSpace(dirty) != "" {
+		return fmt.Errorf(
+			"local repository at %s has uncommitted changes; refusing to switch from %q to %q. Commit, stash, or switch manually",
+			repoPath, current, branch,
+		)
+	}
+
+	logger.With("from", current).Info("switching local repository branch")
+
+	if _, err := runGit(ctx, repoPath, "checkout", branch); err == nil {
+		return nil
+	}
+
+	if _, ferr := runGit(ctx, repoPath, "fetch", "origin", branch); ferr != nil {
+		return fmt.Errorf("checkout %q failed and fetch origin %q failed: %w", branch, branch, ferr)
+	}
+	if _, err := runGit(ctx, repoPath, "checkout", "-B", branch, "--track", "origin/"+branch); err != nil {
+		return fmt.Errorf("checkout %q failed even after fetch: %w", branch, err)
+	}
+
+	return nil
+}
+
+// runGit runs `git -C dir <args...>` and returns combined stdout+stderr.
+func runGit(ctx context.Context, dir string, args ...string) (string, error) {
+	full := append([]string{"-C", dir}, args...)
+	out, err := exec.CommandContext(ctx, "git", full...).CombinedOutput()
+	if err != nil {
+		return string(out), fmt.Errorf("git %s: %w (%s)", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return string(out), nil
 }
