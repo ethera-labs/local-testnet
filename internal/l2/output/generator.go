@@ -47,17 +47,17 @@ func (g *Generator) Generate(_ context.Context, deployedContracts map[configs.L2
 				},
 			},
 			Contracts: map[string]ContractConfig{
-				strings.ToLower(contracts.ContractNameBridge): {
-					Address: chainContracts[contracts.ContractNameBridge],
-					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameBridge].RawABI)),
+				strings.ToLower(contracts.ContractNameUniversalBridgeMailbox): {
+					Address: chainContracts[contracts.ContractNameUniversalBridgeMailbox],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameUniversalBridgeMailbox].RawABI)),
 				},
-				strings.ToLower(contracts.ContractNamePingPong): {
-					Address: chainContracts[contracts.ContractNamePingPong],
-					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNamePingPong].RawABI)),
+				strings.ToLower(contracts.ContractNameComposeL2ToL2Bridge): {
+					Address: chainContracts[contracts.ContractNameComposeL2ToL2Bridge],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameComposeL2ToL2Bridge].RawABI)),
 				},
-				strings.ToLower(contracts.ContractNameBridgeableToken): {
-					Address: chainContracts[contracts.ContractNameBridgeableToken],
-					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameBridgeableToken].RawABI)),
+				strings.ToLower(contracts.ContractNameTestToken): {
+					Address: chainContracts[contracts.ContractNameTestToken],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameTestToken].RawABI)),
 				},
 			},
 		},

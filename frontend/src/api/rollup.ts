@@ -12,11 +12,11 @@ import {
   CHAIN_B_TOKEN_ADDRESS,
   CHAIN_A_BLOCKSCOUT,
   CHAIN_B_BLOCKSCOUT,
+  CET_FACTORY_ADDRESS,
 } from '../config/chains'
 
 export { CHAIN_A_ID, CHAIN_B_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT }
 
-// Simple ERC20 ABI for token operations
 const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function mint(address to, uint256 amount)',
@@ -24,10 +24,13 @@ const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
 ]
 
-// Bridge ABI for cross-chain transfers (local-testnet)
 const BRIDGE_ABI = [
-  'function send(uint256 otherChainId, address token, address sender, address receiver, uint256 amount, uint256 sessionId, address destBridge)',
-  'function receiveTokens(uint256 otherChainId, address sender, address receiver, uint256 sessionId, address srcBridge) returns (address token, uint256 amount)',
+  'function bridgeERC20To(uint256 chainDest, address tokenSrc, uint256 amount, address receiver, uint256 sessionId)',
+  'function receiveTokens(tuple(uint256 chainSrc, uint256 chainDest, address sender, address receiver, uint256 sessionId, string label) msgHeader) returns (address token, uint256 amount)',
+]
+
+const CET_FACTORY_ABI = [
+  'function predictAddress(address remoteAsset, uint256 remoteChainID) view returns (address)',
 ]
 
 const providerCache = new Map<string, ethers.JsonRpcProvider>()
@@ -59,7 +62,7 @@ export function getTokenAddress(chain: 'A' | 'B'): string {
   const address = chain === 'A' ? CHAIN_A_TOKEN_ADDRESS : CHAIN_B_TOKEN_ADDRESS
   if (!address) {
     throw new Error(
-      `Missing token address for chain ${chain}. Set VITE_CHAIN_${chain}_TOKEN_ADDRESS or VITE_TOKEN_ADDRESS.`
+      `Missing token address for chain ${chain}. Set VITE_CHAIN_${chain}_TOKEN_ADDRESS.`
     )
   }
   return address
@@ -69,10 +72,17 @@ export function getBridgeAddress(chain: 'A' | 'B'): string {
   const address = chain === 'A' ? CHAIN_A_BRIDGE_ADDRESS : CHAIN_B_BRIDGE_ADDRESS
   if (!address) {
     throw new Error(
-      `Missing bridge address for chain ${chain}. Set VITE_CHAIN_${chain}_BRIDGE_ADDRESS or VITE_BRIDGE_ADDRESS.`
+      `Missing bridge address for chain ${chain}. Set VITE_CHAIN_${chain}_BRIDGE_ADDRESS.`
     )
   }
   return address
+}
+
+export function getCetFactoryAddress(): string {
+  if (!CET_FACTORY_ADDRESS) {
+    throw new Error('Missing CET factory address. Set VITE_CET_FACTORY_ADDRESS.')
+  }
+  return CET_FACTORY_ADDRESS
 }
 
 export function getSigner(chain: 'A' | 'B'): ethers.Wallet {
@@ -87,39 +97,7 @@ export function getSigner(chain: 'A' | 'B'): ethers.Wallet {
 
 const DEFAULT_MAX_FEE_PER_GAS = ethers.parseUnits('20', 'gwei')
 const DEFAULT_MAX_PRIORITY_FEE_PER_GAS = ethers.parseUnits('1', 'gwei')
-
-async function signContractTx(
-  signer: ethers.Wallet,
-  txRequest: ethers.TransactionRequest,
-  chainIdOverride?: bigint,
-  nonceOverride?: number
-): Promise<string> {
-  const provider = signer.provider
-  if (!provider) {
-    throw new Error('Signer is missing a provider')
-  }
-
-  const feeData = await provider.getFeeData()
-  const maxPriorityFeePerGas =
-    feeData.maxPriorityFeePerGas ?? DEFAULT_MAX_PRIORITY_FEE_PER_GAS
-  const maxFeePerGas = feeData.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS
-
-  const from = await signer.getAddress()
-  const nonce =
-    nonceOverride ?? (await provider.getTransactionCount(from, 'pending'))
-  const network = await provider.getNetwork()
-  const chainId = chainIdOverride ?? network.chainId
-  const populated = await signer.populateTransaction({
-    ...txRequest,
-    chainId,
-    nonce,
-    type: 2,
-    maxFeePerGas,
-    maxPriorityFeePerGas,
-    from,
-  })
-  return signer.signTransaction(populated)
-}
+const DEFAULT_BRIDGE_RECEIVE_GAS_LIMIT = 3_000_000n
 
 export async function getTokenBalance(
   tokenAddress: string,
@@ -129,6 +107,19 @@ export async function getTokenBalance(
   const provider = getProvider(chain)
   const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider)
   return token.balanceOf(walletAddress)
+}
+
+export async function getWrappedTokenAddress(
+  remoteTokenAddress: string,
+  remoteChainId: number,
+  localChain: 'A' | 'B'
+): Promise<string> {
+  const factory = new ethers.Contract(
+    getCetFactoryAddress(),
+    CET_FACTORY_ABI,
+    getProvider(localChain)
+  )
+  return factory.predictAddress(remoteTokenAddress, remoteChainId)
 }
 
 export async function buildMintTx(
@@ -147,28 +138,46 @@ export async function buildMintTx(
   }, BigInt(chainId))
 }
 
-export async function buildBridgeSendTx(
-  bridgeAddress: string,
-  destChainId: number,
+export async function buildApproveTx(
   tokenAddress: string,
-  sender: string,
-  receiver: string,
+  spenderAddress: string,
   amount: bigint,
+  signer: ethers.Wallet,
+  chainId: number,
+  nonceOverride?: number
+): Promise<string> {
+  const token = new ethers.Contract(tokenAddress, ERC20_ABI, signer)
+  const tx = await token.approve.populateTransaction(spenderAddress, amount)
+
+  return signContractTx(
+    signer,
+    {
+      ...tx,
+      gasLimit: 900000n,
+    },
+    BigInt(chainId),
+    nonceOverride
+  )
+}
+
+export async function buildBridgeERC20ToTx(
+  bridgeAddress: string,
+  chainDest: number,
+  tokenAddress: string,
+  amount: bigint,
+  receiver: string,
   sessionId: string,
-  destBridge: string,
   signer: ethers.Wallet,
   chainId: number,
   nonceOverride?: number
 ): Promise<string> {
   const bridge = new ethers.Contract(bridgeAddress, BRIDGE_ABI, signer)
-  const tx = await bridge.send.populateTransaction(
-    destChainId,
+  const tx = await bridge.bridgeERC20To.populateTransaction(
+    chainDest,
     tokenAddress,
-    sender,
-    receiver,
     amount,
-    sessionId,
-    destBridge
+    receiver,
+    sessionId
   )
 
   return signContractTx(
@@ -182,32 +191,34 @@ export async function buildBridgeSendTx(
   )
 }
 
-export async function buildBridgeReceiveTx(
+export async function buildBridgeReceiveTokensTx(
   bridgeAddress: string,
-  sourceChainId: number,
-  sender: string,
-  receiver: string,
   sessionId: string,
-  srcBridge: string,
+  chainSrc: number,
+  chainDest: number,
+  bridgeSrc: string,
+  receiver: string,
   signer: ethers.Wallet,
   chainId: number,
   nonceOverride?: number,
   gasOverride?: bigint
 ): Promise<string> {
   const bridge = new ethers.Contract(bridgeAddress, BRIDGE_ABI, signer)
-  const tx = await bridge.receiveTokens.populateTransaction(
-    sourceChainId,
-    sender,
-    receiver,
+  const msgHeader = {
     sessionId,
-    srcBridge
-  )
+    chainSrc,
+    chainDest,
+    sender: bridgeSrc,
+    receiver,
+    label: 'SEND_TOKENS',
+  }
+  const tx = await bridge.receiveTokens.populateTransaction(msgHeader)
 
   return signContractTx(
     signer,
     {
       ...tx,
-      gasLimit: gasOverride ?? 900000n,
+      gasLimit: gasOverride ?? DEFAULT_BRIDGE_RECEIVE_GAS_LIMIT,
     },
     BigInt(chainId),
     nonceOverride
@@ -291,4 +302,37 @@ export async function waitForTransactionReceipt(
   }
 
   throw new Error(`Timeout waiting for transaction receipt: ${txHash}`)
+}
+
+async function signContractTx(
+  signer: ethers.Wallet,
+  txRequest: ethers.TransactionRequest,
+  chainIdOverride?: bigint,
+  nonceOverride?: number
+): Promise<string> {
+  const provider = signer.provider
+  if (!provider) {
+    throw new Error('Signer is missing a provider')
+  }
+
+  const feeData = await provider.getFeeData()
+  const maxPriorityFeePerGas =
+    feeData.maxPriorityFeePerGas ?? DEFAULT_MAX_PRIORITY_FEE_PER_GAS
+  const maxFeePerGas = feeData.maxFeePerGas ?? DEFAULT_MAX_FEE_PER_GAS
+
+  const from = await signer.getAddress()
+  const nonce =
+    nonceOverride ?? (await provider.getTransactionCount(from, 'pending'))
+  const network = await provider.getNetwork()
+  const chainId = chainIdOverride ?? network.chainId
+  const populated = await signer.populateTransaction({
+    ...txRequest,
+    chainId,
+    nonce,
+    type: 2,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+    from,
+  })
+  return signer.signTransaction(populated)
 }

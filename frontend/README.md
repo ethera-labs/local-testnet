@@ -32,6 +32,11 @@ Open http://localhost:5173
 `.env` should match your local-testnet deployment. Contract addresses come from `output.yaml` after L2 deployment.
 See [docs/ports.md](../docs/ports.md) for the full port reference.
 
+The bridge UI reads native token balances from `VITE_CHAIN_A_TOKEN_ADDRESS` and
+`VITE_CHAIN_B_TOKEN_ADDRESS`. Bridged balances are CET balances derived through
+`VITE_CET_FACTORY_ADDRESS`, so that value must be set when running the frontend
+outside the local-testnet orchestrator.
+
 | Service     | Chain A | Chain B |
 |-------------|---------|---------|
 | Builder RPC | 17545   | 27545   |

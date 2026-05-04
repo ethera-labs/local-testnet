@@ -3,8 +3,9 @@ import { ethers } from 'ethers'
 import {
   CHAIN_A_ID,
   CHAIN_B_ID,
-  buildBridgeSendTx,
-  buildBridgeReceiveTx,
+  buildApproveTx,
+  buildBridgeERC20ToTx,
+  buildBridgeReceiveTokensTx,
   buildNativeTransferTx,
   generateSessionId,
   getBridgeAddress,
@@ -44,19 +45,19 @@ const STRESS_TESTS: StressTest[] = [
     id: 'burst-bridge',
     label: 'Burst Bridge A→B',
     description: 'N sequential bridge XTs from the same account with incremented nonces',
-    detail: 'Each XT: bridge.send(A) + bridge.receive(B). Nonces offset per iteration.',
+    detail: 'Each XT: approve + bridgeERC20To on A, receiveTokens on B.',
   },
   {
     id: 'bidirectional',
     label: 'Bidirectional Burst',
     description: 'N rounds of A→B immediately followed by B→A, interleaving nonces on both chains',
-    detail: 'Pair i: A→B uses nonce 2i, B→A uses nonce 2i+1 on both chains. Net token balance unchanged.',
+    detail: 'Each round uses three nonces per chain: source approve + bridge, destination receive.',
   },
   {
     id: 'mixed-normal-xt',
     label: 'Mixed Normal + XT',
     description: 'N rounds: native ETH self-transfer on A (awaits receipt), then bridge XT A→B',
-    detail: 'Native is mined before bridge so builder pool has it. Nonces: native then bridge per round.',
+    detail: 'Native is mined first, then bridge uses the next two A nonces and one B nonce.',
   },
   {
     id: 'half-wrong-nonce',
@@ -130,7 +131,6 @@ export default function StressForm() {
     testId: StressTestId,
     signerA: ethers.Wallet,
     signerB: ethers.Wallet,
-    senderA: string,
     senderB: string,
     bridgeA: string,
     bridgeB: string,
@@ -140,17 +140,12 @@ export default function StressForm() {
     nonceA: number,
     nonceB: number
   ) => {
-    const txABytes = await buildBridgeSendTx(
-      bridgeA, CHAIN_B_ID, tokenA, senderA, senderB,
-      bridgeAmount, sessionId, bridgeB, signerA, CHAIN_A_ID, nonceA
-    )
-    const txBBytes = await buildBridgeReceiveTx(
-      bridgeB, CHAIN_A_ID, senderA, senderB, sessionId, bridgeA,
-      signerB, CHAIN_B_ID, nonceB
-    )
-    const response = await submitXT({ [CHAIN_A_ID]: [txABytes], [CHAIN_B_ID]: [txBBytes] })
-    const txHashA = ethers.Transaction.from(txABytes).hash!
-    const txHashB = ethers.Transaction.from(txBBytes).hash!
+    const txAApprove = await buildApproveTx(tokenA, bridgeA, bridgeAmount, signerA, CHAIN_A_ID, nonceA)
+    const txABridge = await buildBridgeERC20ToTx(bridgeA, CHAIN_B_ID, tokenA, bridgeAmount, senderB, sessionId, signerA, CHAIN_A_ID, nonceA + 1)
+    const txBReceive = await buildBridgeReceiveTokensTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB)
+    const response = await submitXT({ [CHAIN_A_ID]: [txAApprove, txABridge], [CHAIN_B_ID]: [txBReceive] })
+    const txHashA = ethers.Transaction.from(txABridge).hash!
+    const txHashB = ethers.Transaction.from(txBReceive).hash!
     addTransaction({ instanceId: txHashA, type: 'scenario', status: 'pending', chainId: CHAIN_A_ID, createdAt: new Date() })
     addTransaction({ instanceId: txHashB, type: 'scenario', status: 'pending', chainId: CHAIN_B_ID, createdAt: new Date() })
     setProgress(prev => ({ ...prev, [testId]: { ...prev[testId], submitted: prev[testId].submitted + 1 } }))
@@ -162,7 +157,6 @@ export default function StressForm() {
     signerA: ethers.Wallet,
     signerB: ethers.Wallet,
     senderA: string,
-    senderB: string,
     bridgeA: string,
     bridgeB: string,
     tokenB: string,
@@ -171,17 +165,12 @@ export default function StressForm() {
     nonceA: number,
     nonceB: number
   ) => {
-    const txBBytes = await buildBridgeSendTx(
-      bridgeB, CHAIN_A_ID, tokenB, senderB, senderA,
-      bridgeAmount, sessionId, bridgeA, signerB, CHAIN_B_ID, nonceB
-    )
-    const txABytes = await buildBridgeReceiveTx(
-      bridgeA, CHAIN_B_ID, senderB, senderA, sessionId, bridgeB,
-      signerA, CHAIN_A_ID, nonceA
-    )
-    const response = await submitXT({ [CHAIN_A_ID]: [txABytes], [CHAIN_B_ID]: [txBBytes] })
-    const txHashA = ethers.Transaction.from(txABytes).hash!
-    const txHashB = ethers.Transaction.from(txBBytes).hash!
+    const txBApprove = await buildApproveTx(tokenB, bridgeB, bridgeAmount, signerB, CHAIN_B_ID, nonceB)
+    const txBBridge = await buildBridgeERC20ToTx(bridgeB, CHAIN_A_ID, tokenB, bridgeAmount, senderA, sessionId, signerB, CHAIN_B_ID, nonceB + 1)
+    const txAReceive = await buildBridgeReceiveTokensTx(bridgeA, sessionId, CHAIN_B_ID, CHAIN_A_ID, bridgeB, senderA, signerA, CHAIN_A_ID, nonceA)
+    const response = await submitXT({ [CHAIN_A_ID]: [txAReceive], [CHAIN_B_ID]: [txBApprove, txBBridge] })
+    const txHashA = ethers.Transaction.from(txAReceive).hash!
+    const txHashB = ethers.Transaction.from(txBBridge).hash!
     addTransaction({ instanceId: txHashA, type: 'scenario', status: 'pending', chainId: CHAIN_A_ID, createdAt: new Date() })
     addTransaction({ instanceId: txHashB, type: 'scenario', status: 'pending', chainId: CHAIN_B_ID, createdAt: new Date() })
     setProgress(prev => ({ ...prev, [testId]: { ...prev[testId], submitted: prev[testId].submitted + 1 } }))
@@ -204,8 +193,8 @@ export default function StressForm() {
 
     for (let i = 0; i < N; i++) {
       await submitBridgeXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenA,
-        bridgeAmount, generateSessionId(), baseNonceA + i, baseNonceB + i
+        id, signerA, signerB, senderB, bridgeA, bridgeB, tokenA,
+        bridgeAmount, generateSessionId(), baseNonceA + 2 * i, baseNonceB + i
       )
       if (i < N - 1) await new Promise(r => setTimeout(r, delay))
     }
@@ -227,16 +216,14 @@ export default function StressForm() {
     const baseNonceB = await providerB.getTransactionCount(senderB, 'pending')
 
     for (let i = 0; i < N; i++) {
-      // A→B
       await submitBridgeXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenA,
-        bridgeAmount, generateSessionId(), baseNonceA + 2 * i, baseNonceB + 2 * i
+        id, signerA, signerB, senderB, bridgeA, bridgeB, tokenA,
+        bridgeAmount, generateSessionId(), baseNonceA + 3 * i, baseNonceB + 3 * i
       )
       if (delay > 0) await new Promise(r => setTimeout(r, delay))
-      // B→A
       await submitBToAXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenB,
-        bridgeAmount, generateSessionId(), baseNonceA + 2 * i + 1, baseNonceB + 2 * i + 1
+        id, signerA, signerB, senderA, bridgeA, bridgeB, tokenB,
+        bridgeAmount, generateSessionId(), baseNonceA + 3 * i + 2, baseNonceB + 3 * i + 1
       )
       if (i < N - 1 && delay > 0) await new Promise(r => setTimeout(r, delay))
     }
@@ -257,7 +244,6 @@ export default function StressForm() {
     let nonceB = await providerB.getTransactionCount(senderB, 'pending')
 
     for (let i = 0; i < N; i++) {
-      // Native self-transfer on A — must be mined before bridge so builder pool has it
       const nativeTxBytes = await buildNativeTransferTx(
         senderA, ethers.parseEther('0.1'), signerA, CHAIN_A_ID, nonceA
       )
@@ -280,12 +266,11 @@ export default function StressForm() {
 
       if (delay > 0) await new Promise(r => setTimeout(r, delay))
 
-      // Bridge XT — uses next nonce on A (native just mined), sequential on B
       await submitBridgeXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenA,
+        id, signerA, signerB, senderB, bridgeA, bridgeB, tokenA,
         bridgeAmount, generateSessionId(), nonceA, nonceB
       )
-      nonceA += 1
+      nonceA += 2
       nonceB += 1
 
       if (i < N - 1 && delay > 0) await new Promise(r => setTimeout(r, delay))
@@ -308,18 +293,16 @@ export default function StressForm() {
     const baseNonceB = await providerB.getTransactionCount(senderB, 'pending')
 
     for (let i = 0; i < half; i++) {
-      // Valid XT
       await submitBridgeXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenA,
-        bridgeAmount, generateSessionId(), baseNonceA + i, baseNonceB + i
+        id, signerA, signerB, senderB, bridgeA, bridgeB, tokenA,
+        bridgeAmount, generateSessionId(), baseNonceA + 2 * i, baseNonceB + i
       )
       if (delay > 0) await new Promise(r => setTimeout(r, delay))
 
-      // Wrong-nonce XT (nonce below base — definitely stale)
       const wrongNonceA = Math.max(0, baseNonceA - 1 - i)
       const wrongNonceB = Math.max(0, baseNonceB - 1 - i)
       await submitBridgeXT(
-        id, signerA, signerB, senderA, senderB, bridgeA, bridgeB, tokenA,
+        id, signerA, signerB, senderB, bridgeA, bridgeB, tokenA,
         bridgeAmount, generateSessionId(), wrongNonceA, wrongNonceB
       )
       if (i < half - 1 && delay > 0) await new Promise(r => setTimeout(r, delay))
