@@ -23,17 +23,19 @@ var templatesFS embed.FS
 // Service handles dispute game factory deployment
 type Service struct {
 	rootDir      string
-	contractsDir string // Path to cloned ethera-contracts repo
+	contractsDir string // Path to L1-settlement subdir of the ethera-contracts repo (cloned or local)
 	deployerPK   string
 	cfg          configs.L2
 	logger       *slog.Logger
 }
 
-// NewService creates a new dispute deployment service
-func NewService(rootDir, servicesDir string, cfg configs.L2) *Service {
+// NewService creates a new dispute deployment service.
+// etheraContractsDir is the resolved path to the ethera-contracts repository root,
+// honoring both clone (.localnet/services/...) and local-path configurations.
+func NewService(rootDir, etheraContractsDir string, cfg configs.L2) *Service {
 	return &Service{
 		rootDir:      rootDir,
-		contractsDir: filepath.Join(servicesDir, string(configs.RepositoryNameEtheraContracts), "L1-settlement"),
+		contractsDir: filepath.Join(etheraContractsDir, "L1-settlement"),
 		deployerPK:   cfg.Wallet.PrivateKey,
 		cfg:          cfg,
 		logger:       logger.Named("dispute_deployer"),

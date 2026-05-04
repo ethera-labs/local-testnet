@@ -19,6 +19,7 @@ import (
 type (
 	cloner interface {
 		CloneAll(ctx context.Context, baseDir string, repos []git.Repository) error
+		CheckoutBranch(ctx context.Context, repoPath, branch string) error
 	}
 	l1Orchestrator interface {
 		Execute(ctx context.Context, cfg configs.L2) (l1deployment.DeploymentState, error)
@@ -193,6 +194,11 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 				return fmt.Errorf("failed to resolve absolute path for local repository %s: %w", name, err)
 			}
 			s.logger.With("name", name, "local_path", repo.LocalPath, "resolved_path", absPath).Info("using local repository path; skipping clone")
+			if repo.Branch != "" {
+				if err := s.cloner.CheckoutBranch(ctx, absPath, repo.Branch); err != nil {
+					return fmt.Errorf("local repository %s: %w", name, err)
+				}
+			}
 			continue
 		}
 

@@ -125,7 +125,15 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	}
 
 	o.logger.Info("deploying dispute contracts")
-	disputeService := dispute.NewService(o.rootDir, o.servicesDir, cfg)
+	envBuilder := docker.NewEnvBuilder(o.rootDir, "", o.servicesDir)
+	etheraContractsDir, err := envBuilder.ResolveRepoPath(
+		cfg.Repositories[configs.RepositoryNameEtheraContracts],
+		configs.RepositoryNameEtheraContracts,
+	)
+	if err != nil {
+		return deploymentState, fmt.Errorf("failed to resolve ethera-contracts path: %w", err)
+	}
+	disputeService := dispute.NewService(o.rootDir, etheraContractsDir, cfg)
 	disputeContracts, err := disputeService.Deploy(ctx)
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy dispute contracts: %w", err)
