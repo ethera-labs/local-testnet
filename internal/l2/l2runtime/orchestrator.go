@@ -161,8 +161,9 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	if overlays.frontend != "" {
 		o.logger.Info("building and starting Ethera Labs Console")
 		chainContracts := deployedContracts[configs.L2ChainNameRollupA]
-		envVars["CONTRACT_BRIDGE_ADDRESS"] = chainContracts[contracts.ContractNameBridge].Hex()
-		envVars["CONTRACT_TOKEN_ADDRESS"] = chainContracts[contracts.ContractNameBridgeableToken].Hex()
+		envVars["CONTRACT_BRIDGE_ADDRESS"] = chainContracts[contracts.ContractNameComposeL2ToL2Bridge].Hex()
+		envVars["CONTRACT_TOKEN_ADDRESS"] = chainContracts[contracts.ContractNameTestToken].Hex()
+		envVars["CONTRACT_CET_FACTORY_ADDRESS"] = chainContracts[contracts.ContractNameCetFactory].Hex()
 
 		dockerFiles := []string{dockerPath}
 		if overlays.flashblocks != "" {
@@ -347,8 +348,8 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 }
 
 func mailboxAddresses(deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) (common.Address, common.Address, error) {
-	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameMailbox]
-	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameMailbox]
+	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameUniversalBridgeMailbox]
+	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameUniversalBridgeMailbox]
 	if mailboxA == (common.Address{}) || mailboxB == (common.Address{}) {
 		return common.Address{}, common.Address{}, fmt.Errorf("mailbox addresses not found in deployed contracts")
 	}

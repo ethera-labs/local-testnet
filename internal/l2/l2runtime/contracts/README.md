@@ -10,10 +10,11 @@ This directory contains precompiled Solidity smart contracts for the Ethera Labs
 
 The following contracts are included:
 
-1. **Mailbox** - Cross-chain message passing contract
-2. **PingPong** - Example cross-chain ping-pong application
-3. **Bridge** - Token bridging contract
-4. **MyToken** - ERC20 token (MTK) for testing
+1. **UniversalBridgeMailbox** - Universal bridge message passing contract
+2. **CetFactory** - Composable ERC20 factory
+3. **ComposeETHLiquidity** - ETH liquidity helper for L2-to-L2 bridging
+4. **ComposeL2ToL2Bridge** - Universal L2-to-L2 bridge
+5. **MockL2ERC20** - ERC20 token for local testing
 
 ## Deployment
 

@@ -16,10 +16,9 @@ interface ImportMetaEnv {
   readonly VITE_CHAIN_B_BLOCKSCOUT_URL?: string
   readonly VITE_CHAIN_A_BRIDGE_ADDRESS?: string
   readonly VITE_CHAIN_B_BRIDGE_ADDRESS?: string
-  readonly VITE_BRIDGE_ADDRESS?: string
   readonly VITE_CHAIN_A_TOKEN_ADDRESS?: string
   readonly VITE_CHAIN_B_TOKEN_ADDRESS?: string
-  readonly VITE_TOKEN_ADDRESS?: string
+  readonly VITE_CET_FACTORY_ADDRESS?: string
   readonly VITE_CHAIN_A_PRIVATE_KEY?: string
   readonly VITE_CHAIN_B_PRIVATE_KEY?: string
   readonly VITE_WALLET_PRIVATE_KEY?: string

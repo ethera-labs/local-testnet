@@ -4,8 +4,9 @@ import {
   CHAIN_A_ID,
   CHAIN_B_ID,
   buildMintTx,
-  buildBridgeSendTx,
-  buildBridgeReceiveTx,
+  buildApproveTx,
+  buildBridgeERC20ToTx,
+  buildBridgeReceiveTokensTx,
   buildNativeTransferTx,
   generateSessionId,
   getBridgeAddress,
@@ -47,7 +48,7 @@ const SCENARIOS: ScenarioDef[] = [
     id: 'bridge-native-fail',
     label: 'Bridge + Native Overdraft',
     description: 'Bridge send on A paired with an impossible ETH transfer on B',
-    chainADesc: 'bridge.send(0.1 TKN → B)',
+    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B)',
     chainBDesc: 'transfer(balance + 1 ETH → self) → FAIL',
     expected: 'abort',
   },
@@ -55,8 +56,8 @@ const SCENARIOS: ScenarioDef[] = [
     id: 'bridge-oog',
     label: 'Bridge Out-of-Gas',
     description: 'Bridge send on A paired with an under-gassed receive on B',
-    chainADesc: 'bridge.send(0.1 TKN → B)',
-    chainBDesc: 'bridge.receive(gas: 300k) → OOG',
+    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B)',
+    chainBDesc: 'receiveTokens(gas: 300k) → OOG',
     expected: 'abort',
   },
   {
@@ -64,7 +65,7 @@ const SCENARIOS: ScenarioDef[] = [
     label: 'Native + Receive Without Send',
     description: 'ETH self-transfer on A paired with a bridge receive on B that has no matching send',
     chainADesc: 'transfer(0.1 ETH → self)',
-    chainBDesc: 'bridge.receive() → no matching send → FAIL',
+    chainBDesc: 'receiveTokens() → no matching send → FAIL',
     expected: 'abort',
   },
   {
@@ -109,6 +110,7 @@ export default function ScenariosForm() {
       const nonceA = await providerA.getTransactionCount(senderA, 'pending')
       const nonceB = await providerB.getTransactionCount(senderB, 'pending')
 
+      const transactions: Record<number, string[]> = {}
       let txABytes: string
       let txBBytes: string
 
@@ -117,64 +119,51 @@ export default function ScenariosForm() {
           const amount = parseAmount('1')
           txABytes = await buildMintTx(tokenA, senderA, amount, signerA, CHAIN_A_ID)
           txBBytes = await buildMintTx(tokenB, senderB, amount, signerB, CHAIN_B_ID)
+          transactions[CHAIN_A_ID] = [txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
         case 'bridge-native-fail': {
           const balanceB = await providerB.getBalance(senderB)
-          txABytes = await buildBridgeSendTx(
-            bridgeA, CHAIN_B_ID, tokenA, senderA, senderB,
-            parseAmount('0.1'), sessionId, bridgeB, signerA, CHAIN_A_ID, nonceA
-          )
-          txBBytes = await buildNativeTransferTx(
-            senderB, balanceB + ethers.parseEther('1'), signerB, CHAIN_B_ID, nonceB
-          )
+          const amount = parseAmount('0.1')
+          const txAApprove = await buildApproveTx(tokenA, bridgeA, amount, signerA, CHAIN_A_ID, nonceA)
+          txABytes = await buildBridgeERC20ToTx(bridgeA, CHAIN_B_ID, tokenA, amount, senderB, sessionId, signerA, CHAIN_A_ID, nonceA + 1)
+          txBBytes = await buildNativeTransferTx(senderB, balanceB + ethers.parseEther('1'), signerB, CHAIN_B_ID, nonceB)
+          transactions[CHAIN_A_ID] = [txAApprove, txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
         case 'bridge-oog': {
-          txABytes = await buildBridgeSendTx(
-            bridgeA, CHAIN_B_ID, tokenA, senderA, senderB,
-            parseAmount('0.1'), sessionId, bridgeB, signerA, CHAIN_A_ID, nonceA
-          )
-          txBBytes = await buildBridgeReceiveTx(
-            bridgeB, CHAIN_A_ID, senderA, senderB, sessionId, bridgeA,
-            signerB, CHAIN_B_ID, nonceB, 300000n
-          )
+          const amount = parseAmount('0.1')
+          const txAApprove = await buildApproveTx(tokenA, bridgeA, amount, signerA, CHAIN_A_ID, nonceA)
+          txABytes = await buildBridgeERC20ToTx(bridgeA, CHAIN_B_ID, tokenA, amount, senderB, sessionId, signerA, CHAIN_A_ID, nonceA + 1)
+          txBBytes = await buildBridgeReceiveTokensTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB, 300000n)
+          transactions[CHAIN_A_ID] = [txAApprove, txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
         case 'native-receive-no-send': {
-          txABytes = await buildNativeTransferTx(
-            senderA, ethers.parseEther('0.1'), signerA, CHAIN_A_ID, nonceA
-          )
-          txBBytes = await buildBridgeReceiveTx(
-            bridgeB, CHAIN_A_ID, senderA, senderB, sessionId, bridgeA,
-            signerB, CHAIN_B_ID, nonceB
-          )
+          txABytes = await buildNativeTransferTx(senderA, ethers.parseEther('0.1'), signerA, CHAIN_A_ID, nonceA)
+          txBBytes = await buildBridgeReceiveTokensTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB)
+          transactions[CHAIN_A_ID] = [txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
         case 'native-overdraft': {
           const balanceA = await providerA.getBalance(senderA)
           const balanceB = await providerB.getBalance(senderB)
-          txABytes = await buildNativeTransferTx(
-            senderA, balanceA / 2n, signerA, CHAIN_A_ID, nonceA
-          )
-          txBBytes = await buildNativeTransferTx(
-            senderB, balanceB + ethers.parseEther('1'), signerB, CHAIN_B_ID, nonceB
-          )
+          txABytes = await buildNativeTransferTx(senderA, balanceA / 2n, signerA, CHAIN_A_ID, nonceA)
+          txBBytes = await buildNativeTransferTx(senderB, balanceB + ethers.parseEther('1'), signerB, CHAIN_B_ID, nonceB)
+          transactions[CHAIN_A_ID] = [txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
         default:
           throw new Error(`Unknown scenario: ${id}`)
       }
 
-      const transactions: Record<number, string[]> = {
-        [CHAIN_A_ID]: [txABytes],
-        [CHAIN_B_ID]: [txBBytes],
-      }
-
-      const parsedTxA = ethers.Transaction.from(txABytes)
-      const parsedTxB = ethers.Transaction.from(txBBytes)
-      const txHashA = parsedTxA.hash!
-      const txHashB = parsedTxB.hash!
+      const txHashA = ethers.Transaction.from(txABytes).hash!
+      const txHashB = ethers.Transaction.from(txBBytes).hash!
 
       const response = await submitXT(transactions)
       const instanceId = response.instance_id
