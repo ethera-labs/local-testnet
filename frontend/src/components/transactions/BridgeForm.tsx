@@ -76,9 +76,9 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
           const runFlow = async () => {
             setFlowStep('forward_to_peer')
             await new Promise(r => setTimeout(r, 500))
-            setFlowStep('builder_poll_a')
+            setFlowStep('lock_builder_a')
             await new Promise(r => setTimeout(r, 300))
-            setFlowStep('builder_poll_b')
+            setFlowStep('lock_builder_b')
             await new Promise(r => setTimeout(r, 300))
             setFlowStep('simulating_a')
             await new Promise(r => setTimeout(r, 400))
@@ -99,7 +99,11 @@ export default function BridgeForm({ onSubmit, onSelectFlow }: BridgeFormProps) 
           }
 
           if (decision) {
-            if (animateFlow) setFlowStep('delivering')
+            if (animateFlow) {
+              setFlowStep('delivering')
+              await new Promise(r => setTimeout(r, 400))
+              setFlowStep('confirming')
+            }
 
             try {
               const [receiptA, receiptB] = await Promise.all([

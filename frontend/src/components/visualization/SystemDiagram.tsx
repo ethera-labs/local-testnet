@@ -55,14 +55,15 @@ function getEdgeStatus(step: FlowStep, edgeId: string): 'idle' | 'active' | 'com
       'boost-b-builder-b',
     ],
     forward_to_peer: ['sidecar-a-sidecar-b'],
-    builder_poll_a: ['builder-a-sidecar-a'],
-    builder_poll_b: ['builder-b-sidecar-b'],
+    lock_builder_a: ['sidecar-a-builder-a'],
+    lock_builder_b: ['sidecar-b-builder-b'],
     simulating_a: ['sidecar-a-simulate-builder-a'],
     simulating_b: ['sidecar-b-simulate-builder-b'],
     circ_exchange: ['sidecar-a-sidecar-b'],
     voting: ['sidecar-a-sidecar-b', 'sidecar-a-publisher', 'sidecar-b-publisher'],
     decided: ['publisher-sidecar-a', 'publisher-sidecar-b'],
     delivering: ['sidecar-a-builder-a', 'sidecar-b-builder-b'],
+    confirming: ['builder-a-sidecar-a', 'builder-b-sidecar-b'],
     complete: [],
   }
 
@@ -165,7 +166,7 @@ export default function SystemDiagram({
         data: {
           label: 'op-rbuilder A',
           port: 17545,
-          polling: step === 'builder_poll_a',
+          locked: step === 'lock_builder_a' || step === 'delivering',
         },
       },
       {
@@ -175,7 +176,7 @@ export default function SystemDiagram({
         data: {
           label: 'op-rbuilder B',
           port: 27545,
-          polling: step === 'builder_poll_b',
+          locked: step === 'lock_builder_b' || step === 'delivering',
         },
       },
       // Layer 4: Sidecars
@@ -593,13 +594,13 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'publisher-sidecar-b') === 'active' || highlightXt ? '#A78BFA' : EDGE_IDLE,
         },
       },
-      // Builder A -> Sidecar A (polling)
+      // Builder A -> Sidecar A (POST /ethera/confirm)
       {
         id: 'builder-a-sidecar-a',
         source: 'builder-a',
         target: 'sidecar-a',
         animated: getEdgeStatus(step, 'builder-a-sidecar-a') === 'active',
-        label: 'polls /tx',
+        label: 'POST /ethera/confirm',
         labelStyle: getEdgeStatus(step, 'builder-a-sidecar-a') === 'active'
           ? LSTYLE_ACTIVE('#FBBF24')
           : LSTYLE('#FBBF24'),
@@ -613,13 +614,13 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'builder-a-sidecar-a') === 'active' ? '#FBBF24' : EDGE_IDLE,
         },
       },
-      // Builder B -> Sidecar B (polling)
+      // Builder B -> Sidecar B (POST /ethera/confirm)
       {
         id: 'builder-b-sidecar-b',
         source: 'builder-b',
         target: 'sidecar-b',
         animated: getEdgeStatus(step, 'builder-b-sidecar-b') === 'active',
-        label: 'polls /tx',
+        label: 'POST /ethera/confirm',
         labelStyle: getEdgeStatus(step, 'builder-b-sidecar-b') === 'active'
           ? LSTYLE_ACTIVE('#FBBF24')
           : LSTYLE('#FBBF24'),
@@ -633,7 +634,7 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'builder-b-sidecar-b') === 'active' ? '#FBBF24' : EDGE_IDLE,
         },
       },
-      // Sidecar A -> Builder A (delivering)
+      // Sidecar A -> Builder A (ethera_submitXt / releaseXt / abortXt)
       {
         id: 'sidecar-a-builder-a',
         source: 'sidecar-a',
@@ -641,7 +642,7 @@ export default function SystemDiagram({
         type: 'smoothstep',
         pathOptions: { offset: -20 },
         animated: getEdgeStatus(step, 'sidecar-a-builder-a') === 'active',
-        label: 'deliver tx',
+        label: 'ethera_submitXt / releaseXt',
         labelStyle: getEdgeStatus(step, 'sidecar-a-builder-a') === 'active'
           ? LSTYLE_ACTIVE('#C084FC')
           : LSTYLE('#C084FC'),
@@ -655,7 +656,7 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'sidecar-a-builder-a') === 'active' ? '#C084FC' : EDGE_IDLE,
         },
       },
-      // Sidecar B -> Builder B (delivering)
+      // Sidecar B -> Builder B (ethera_submitXt / releaseXt / abortXt)
       {
         id: 'sidecar-b-builder-b',
         source: 'sidecar-b',
@@ -663,7 +664,7 @@ export default function SystemDiagram({
         type: 'smoothstep',
         pathOptions: { offset: -20 },
         animated: getEdgeStatus(step, 'sidecar-b-builder-b') === 'active',
-        label: 'deliver tx',
+        label: 'ethera_submitXt / releaseXt',
         labelStyle: getEdgeStatus(step, 'sidecar-b-builder-b') === 'active'
           ? LSTYLE_ACTIVE('#C084FC')
           : LSTYLE('#C084FC'),

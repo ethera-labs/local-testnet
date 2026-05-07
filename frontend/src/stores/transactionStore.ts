@@ -15,14 +15,15 @@ export type FlowStep =
   | 'minting_b'
   | 'minting_both'
   | 'forward_to_peer'
-  | 'builder_poll_a'
-  | 'builder_poll_b'
+  | 'lock_builder_a'
+  | 'lock_builder_b'
   | 'simulating_a'
   | 'simulating_b'
   | 'circ_exchange'
   | 'voting'
   | 'decided'
   | 'delivering'
+  | 'confirming'
   | 'complete'
 
 export interface Transaction {
