@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -36,36 +37,50 @@ func NewIntentWriter(stateDir string, writer filesystem.Writer) *IntentWriter {
 }
 
 // WriteIntent creates the intent.toml file for op-deployer
-func (i *IntentWriter) WriteIntent(walletAddress, sequencerAddress string, l1ChainID int, l2Chains map[configs.L2ChainName]configs.Chain) error {
+func (i *IntentWriter) WriteIntent(walletAddress, sequencerAddress string, l1ChainID int, l2Chains map[configs.L2ChainName]configs.Chain, altDA configs.AltDAConfig) error {
 	i.logger.
 		With("file_name", intentFileName).
 		Info("writing deployer intent file")
 
 	intentPath := filepath.Join(i.stateDir, intentFileName)
 
-	chains := make([]struct {
-		ChainID string
-	}, 0, len(l2Chains))
+	type intentChain struct {
+		ChainID     string
+		DeployAltDA bool
+	}
+
+	chains := make([]intentChain, 0, len(l2Chains))
 	for _, chainConfig := range l2Chains {
-		chains = append(chains, struct {
-			ChainID string
-		}{
-			ChainID: chainIDToHex(chainConfig.ID),
-		})
+		chains = append(chains, intentChain{ChainID: chainIDToHex(chainConfig.ID)})
+	}
+	sort.Slice(chains, func(i, j int) bool {
+		return chains[i].ChainID < chains[j].ChainID
+	})
+	if altDA.Enabled && !altDA.SkipL1Deploy && len(chains) > 0 {
+		// AltDA challenge contracts are shared across rollups. Requesting deployment once
+		// avoids op-deployer reverting when the second chain hits "contract already deployed".
+		chains[0].DeployAltDA = true
+	}
+
+	if altDA.Enabled {
+		altDA.DACommitmentType = altDA.CommitmentType()
+		altDA.DAChallengeWindow = altDA.ChallengeWindow()
+		altDA.DAResolveWindow = altDA.ResolveWindow()
+		altDA.DABondSize = altDA.BondSize()
 	}
 
 	data := struct {
 		L1ChainID int
 		Wallet    string
 		Sequencer string
-		Chains    []struct {
-			ChainID string
-		}
+		Chains    []intentChain
+		AltDA     configs.AltDAConfig
 	}{
 		L1ChainID: l1ChainID,
 		Wallet:    strings.ToLower(walletAddress),
 		Sequencer: strings.ToLower(sequencerAddress),
 		Chains:    chains,
+		AltDA:     altDA,
 	}
 
 	tmpl, err := template.New("intent").Parse(intentTemplate)

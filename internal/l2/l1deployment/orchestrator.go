@@ -25,6 +25,7 @@ Orchestrator coordinates Phase 1: L1 deployment
 type (
 	DeploymentState struct {
 		DisputeGameFactoryAddress       common.Address
+		ComposeL2OutputOracleAddress    common.Address
 		DisputeGameFactoryImplAddressOP common.Address //TODO: Determine the necessity of this variable's usage.
 		StartBlocks                     map[configs.L2ChainName]StartBlock
 		SystemConfigProxyAddresses      map[configs.L2ChainName]common.Address
@@ -94,6 +95,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		coordinatorAddress,
 		cfg.L1ChainID,
 		cfg.ChainConfigs,
+		cfg.AltDA,
 	); err != nil {
 		return deploymentState, fmt.Errorf("failed to write intent: %w", err)
 	}
@@ -106,6 +108,21 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to load OP deployment state: %w", err)
 	}
+	if cfg.AltDA.Enabled {
+		altDAConfig, patchState, err := resolveAltDAState(cfg.AltDA, opState)
+		if err != nil {
+			return deploymentState, err
+		}
+		if patchState {
+			if err := stateManager.PatchAltDAState(altDAConfig); err != nil {
+				return deploymentState, fmt.Errorf("failed to patch AltDA state: %w", err)
+			}
+			opState, err = stateManager.Load()
+			if err != nil {
+				return deploymentState, fmt.Errorf("failed to reload patched OP deployment state: %w", err)
+			}
+		}
+	}
 
 	o.logger.Info("deploying dispute contracts")
 	envBuilder := docker.NewEnvBuilder(o.rootDir, "", o.servicesDir)
@@ -117,12 +134,15 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 		return deploymentState, fmt.Errorf("failed to resolve ethera-contracts path: %w", err)
 	}
 	disputeService := dispute.NewService(o.rootDir, etheraContractsDir, cfg)
-	gameFactoryAddr, err := disputeService.Deploy(ctx)
+	disputeContracts, err := disputeService.Deploy(ctx)
 	if err != nil {
 		return deploymentState, fmt.Errorf("failed to deploy dispute contracts: %w", err)
 	}
 
-	o.logger.With("game_factory_address", gameFactoryAddr).Info("Phase 1: L1 deployment completed successfully")
+	o.logger.With(
+		"game_factory_address", disputeContracts.DisputeGameFactoryAddress,
+		"compose_l2_output_oracle_address", disputeContracts.ComposeL2OutputOracleAddress,
+	).Info("Phase 1: L1 deployment completed successfully")
 
 	startBlocks := make(map[configs.L2ChainName]StartBlock)
 	systemConfigProxyAddresses := make(map[configs.L2ChainName]common.Address)
@@ -145,11 +165,34 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2) (DeploymentS
 	}
 
 	deploymentState = DeploymentState{
-		DisputeGameFactoryAddress:       gameFactoryAddr,
+		DisputeGameFactoryAddress:       disputeContracts.DisputeGameFactoryAddress,
+		ComposeL2OutputOracleAddress:    disputeContracts.ComposeL2OutputOracleAddress,
 		DisputeGameFactoryImplAddressOP: common.HexToAddress(opState.ImplementationsDeployment.DisputeGameFactoryImplAddress),
 		StartBlocks:                     startBlocks,
 		SystemConfigProxyAddresses:      systemConfigProxyAddresses,
 	}
 
 	return deploymentState, nil
+}
+
+func resolveAltDAState(altDA configs.AltDAConfig, opState *deployer.OPDeploymentState) (configs.AltDAConfig, bool, error) {
+	if altDA.SkipL1Deploy && altDA.ChallengeProxyAddress != "" && altDA.ChallengeImplAddress != "" {
+		return altDA, true, nil
+	}
+	if altDA.SkipL1Deploy {
+		return altDA, false, nil
+	}
+
+	for _, chain := range opState.OpChainDeployments {
+		proxy := common.HexToAddress(chain.AltDAChallengeProxy)
+		impl := common.HexToAddress(chain.AltDAChallengeImpl)
+		if proxy == (common.Address{}) || impl == (common.Address{}) {
+			continue
+		}
+		altDA.ChallengeProxyAddress = proxy.Hex()
+		altDA.ChallengeImplAddress = impl.Hex()
+		return altDA, true, nil
+	}
+
+	return altDA, false, fmt.Errorf("AltDA is enabled but no deployed AltDA challenge contracts were found in state.json after op-deployer apply")
 }

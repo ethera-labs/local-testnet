@@ -16,9 +16,13 @@ type Manager struct {
 	flashblocksDockerFilePath string
 	sidecarDockerFilePath     string
 	frontendDockerFilePath    string
+	altDADockerFilePath       string
+	opSuccinctDockerFilePath  string
 	flashblocksEnabled        bool
 	sidecarEnabled            bool
 	frontendEnabled           bool
+	altDAEnabled              bool
+	opSuccinctEnabled         bool
 	logger                    *slog.Logger
 }
 
@@ -52,21 +56,55 @@ func (m *Manager) WithFrontend(frontendDockerFilePath string) *Manager {
 	return m
 }
 
+// WithAltDA enables AltDA mode with the specified docker file
+func (m *Manager) WithAltDA(altDADockerFilePath string) *Manager {
+	m.altDADockerFilePath = altDADockerFilePath
+	m.altDAEnabled = true
+	return m
+}
+
+// WithOPSuccinct enables op-succinct support with the specified docker file.
+func (m *Manager) WithOPSuccinct(opSuccinctDockerFilePath string) *Manager {
+	m.opSuccinctDockerFilePath = opSuccinctDockerFilePath
+	m.opSuccinctEnabled = true
+	return m
+}
+
 // StartAll starts all L2 services
 func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	services := []string{
 		"publisher",
 		"op-geth-a",
 		"op-geth-b",
+	}
+
+	dockerFiles := []string{m.dockerFilePath}
+
+	if m.altDAEnabled && m.altDADockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.altDADockerFilePath)
+		services = append(services,
+			"op-alt-da-a",
+			"op-alt-da-b",
+		)
+	}
+
+	if m.opSuccinctEnabled && m.opSuccinctDockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.opSuccinctDockerFilePath)
+		services = append(services,
+			"op-succinct-postgres",
+			"op-succinct-a",
+			"op-succinct-b",
+		)
+	}
+
+	services = append(services,
 		"op-node-a",
 		"op-node-b",
 		"op-batcher-a",
 		"op-batcher-b",
 		"op-proposer-a",
 		"op-proposer-b",
-	}
-
-	dockerFiles := []string{m.dockerFilePath}
+	)
 
 	if m.flashblocksEnabled && m.flashblocksDockerFilePath != "" {
 		dockerFiles = append(dockerFiles, m.flashblocksDockerFilePath)
@@ -89,7 +127,7 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	// Frontend (ethera-console) is started separately after contract deployment
 
 	if len(dockerFiles) > 1 {
-		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled).Info("starting L2 services")
+		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
 
 		if err := docker.ComposeUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)

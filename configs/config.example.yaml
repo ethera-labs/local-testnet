@@ -23,6 +23,25 @@ l2:
     enabled: false  # requires flashblocks
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
+  alt-da:
+    enabled: false  # Route batches through AltDA servers instead of posting calldata to L1
+    # Requires repositories.ethera-contracts to resolve to a checkout that contains op-alt-da.
+    # "KeccakCommitment" is the default; switch only if the target environment expects GenericCommitment.
+    da-commitment-type: "KeccakCommitment"
+    # Reuse predeployed AltDA challenge contracts instead of creating fresh ones.
+    # Enable this only for long-lived environments after the proxy and implementation addresses are pinned.
+    skip-l1-deploy: false
+    challenge-proxy-address: ""
+    challenge-impl-address: ""
+    # Deployment parameters used only when localnet owns the AltDA contract lifecycle.
+    # Small values (e.g. 4) reduce finality lag on public L1 testnets.
+    # Larger values (e.g. 100) match production timings but extend local proving cycles.
+    da-challenge-window: 4
+    da-resolve-window: 4
+    da-bond-size: 1
+    da-resolver-refund-percentage: 0
+  op-succinct:
+    enabled: false  # Run op-succinct validity services in local mock mode
   chain-configs:
     rollup-a: 
       id: 77777
@@ -76,6 +95,12 @@ l2:
     ethera-contracts:
       url: https://github.com/contracts.git
       branch: main
+    # Used only when l2.op-succinct.enabled=true.
+    op-succinct:
+      url: https://github.com/ethera-labs/op-succinct.git
+      branch: ssvlabs/altda-data-source-rebase
+      # For local development:
+      # local-path: ../op-succinct
   dispute:
     network-name: network-name # e.g. hoodi
     explorer-url: http://127.0.0.1:8080 # e.g. http://hoodi.etherscan.io

@@ -1,0 +1,120 @@
+# op-succinct overlay: adds one mock-mode validity proposer per rollup and a shared Postgres state store.
+# Runs with OP_SUCCINCT_MOCK=true; not a substitute for the production proving network.
+
+services:
+  op-succinct-postgres:
+    image: postgres:15
+    container_name: op-succinct-postgres
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      POSTGRES_USER: op_succinct
+      POSTGRES_DB: op_succinct
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - op-succinct-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U op_succinct -d op_succinct"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  op-succinct-a:
+    build:
+      context: ${OP_SUCCINCT_PATH}
+      dockerfile: ${OP_SUCCINCT_DOCKERFILE}
+      args:
+        BUILD_FEATURES: "${OP_SUCCINCT_BUILD_FEATURES:-}"
+    image: local/op-succinct:dev
+    container_name: op-succinct-a
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      op-succinct-postgres:
+        condition: service_healthy
+      op-geth-a:
+        condition: service_healthy
+      op-node-a:
+        condition: service_started
+    env_file:
+      - ${ROLLUP_A_CONFIG_PATH_CONTAINER:-../../networks/rollup-a}/opsuccinct.env
+    environment:
+      DATABASE_URL: "postgres://op_succinct@op-succinct-postgres:5432/op_succinct"
+      L1_RPC: "${L1_EL_URL}"
+      L1_BEACON_RPC: "${L1_CL_URL}"
+      L1_CONFIG_DIR: "/app/configs/L1"
+      L2_RPC: "http://op-geth-a:8545"
+      L2_NODE_RPC: "http://op-node-a:9545"
+      PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
+      NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"
+      OP_SUCCINCT_MOCK: "true"
+      ENABLE_AGGREGATION: "true"
+      RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
+      SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
+      LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
+      SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
+      ALTDA_SERVER_URL: "${OP_SUCCINCT_ALTDA_SERVER_A:-}"
+      METRICS_PORT: "8080"
+    volumes:
+      - type: bind
+        source: ${OP_SUCCINCT_PATH}/configs/L1
+        target: /app/configs/L1
+        read_only: true
+    ports:
+      - "18082:8080"
+    restart: unless-stopped
+
+  op-succinct-b:
+    build:
+      context: ${OP_SUCCINCT_PATH}
+      dockerfile: ${OP_SUCCINCT_DOCKERFILE}
+      args:
+        BUILD_FEATURES: "${OP_SUCCINCT_BUILD_FEATURES:-}"
+    image: local/op-succinct:dev
+    container_name: op-succinct-b
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      op-succinct-postgres:
+        condition: service_healthy
+      op-geth-b:
+        condition: service_healthy
+      op-node-b:
+        condition: service_started
+    env_file:
+      - ${ROLLUP_B_CONFIG_PATH_CONTAINER:-../../networks/rollup-b}/opsuccinct.env
+    environment:
+      DATABASE_URL: "postgres://op_succinct@op-succinct-postgres:5432/op_succinct"
+      L1_RPC: "${L1_EL_URL}"
+      L1_BEACON_RPC: "${L1_CL_URL}"
+      L1_CONFIG_DIR: "/app/configs/L1"
+      L2_RPC: "http://op-geth-b:8545"
+      L2_NODE_RPC: "http://op-node-b:9545"
+      PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
+      NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"
+      OP_SUCCINCT_MOCK: "true"
+      ENABLE_AGGREGATION: "true"
+      RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
+      SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
+      LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
+      SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
+      ALTDA_SERVER_URL: "${OP_SUCCINCT_ALTDA_SERVER_B:-}"
+      METRICS_PORT: "8080"
+    volumes:
+      - type: bind
+        source: ${OP_SUCCINCT_PATH}/configs/L1
+        target: /app/configs/L1
+        read_only: true
+    ports:
+      - "28082:8080"
+    restart: unless-stopped
+
+volumes:
+  op-succinct-postgres-data:

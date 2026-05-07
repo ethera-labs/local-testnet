@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.frontend.yml
+//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.frontend.yml docker-compose.altda.yml docker-compose.opsuccinct.yml
 var embeddedComposeFS embed.FS
 
 const (
@@ -15,112 +15,55 @@ const (
 	composeFlashblocksFileName = "docker-compose.flashblocks.yml"
 	composeSidecarFileName     = "docker-compose.sidecar.yml"
 	composeFrontendFileName    = "docker-compose.frontend.yml"
+	composeAltDAFileName       = "docker-compose.altda.yml"
+	composeOPSuccinctFileName  = "docker-compose.opsuccinct.yml"
 )
 
-// EnsureComposeFile ensures the docker-compose.yml file exists in the specified directory
-// and returns its path. It always writes the embedded content to ensure the file is up-to-date.
-// This allows the compose file to be used from anywhere (including when running
-// the binary from a different directory).
+// ensureEmbeddedFile writes the named embedded compose file to localnetDir and returns its path.
+// The file is always overwritten to stay in sync with the embedded version.
+func ensureEmbeddedFile(localnetDir, filename string) (string, error) {
+	dest := filepath.Join(localnetDir, filename)
+
+	content, err := embeddedComposeFS.ReadFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to read embedded %s: %w", filename, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return "", fmt.Errorf("failed to create directory %s: %w", localnetDir, err)
+	}
+	if err := os.WriteFile(dest, content, 0644); err != nil {
+		return "", fmt.Errorf("failed to write %s: %w", filename, err)
+	}
+
+	return dest, nil
+}
+
+// EnsureComposeFile writes the embedded docker-compose.yml to localnetDir and returns its path.
 func EnsureComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, dockerFileName)
-
-	content, err := getComposeFileContent()
-	if err != nil {
-		return "", err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
-		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
-	}
-
-	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", dockerFileName, err)
-	}
-
-	return composePath, nil
+	return ensureEmbeddedFile(localnetDir, dockerFileName)
 }
 
-// getComposeFileContent returns the embedded docker-compose.yml content.
-func getComposeFileContent() (string, error) {
-	content, err := embeddedComposeFS.ReadFile(dockerFileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", dockerFileName, err)
-	}
-	return string(content), nil
-}
-
-// EnsureFlashblocksComposeFile ensures the docker-compose.flashblocks.yml file exists
-// in the specified directory and returns its path.
+// EnsureFlashblocksComposeFile writes the embedded docker-compose.flashblocks.yml to localnetDir and returns its path.
 func EnsureFlashblocksComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, composeFlashblocksFileName)
-
-	content, err := getFlashblocksComposeContent()
-	if err != nil {
-		return "", err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
-		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
-	}
-
-	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", composeFlashblocksFileName, err)
-	}
-
-	return composePath, nil
+	return ensureEmbeddedFile(localnetDir, composeFlashblocksFileName)
 }
 
-// getFlashblocksComposeContent returns the embedded docker-compose.flashblocks.yml content.
-func getFlashblocksComposeContent() (string, error) {
-	content, err := embeddedComposeFS.ReadFile(composeFlashblocksFileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", composeFlashblocksFileName, err)
-	}
-	return string(content), nil
-}
-
-// EnsureSidecarComposeFile ensures the docker-compose.sidecar.yml file exists
-// in the specified directory and returns its path.
+// EnsureSidecarComposeFile writes the embedded docker-compose.sidecar.yml to localnetDir and returns its path.
 func EnsureSidecarComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, composeSidecarFileName)
-
-	content, err := getSidecarComposeContent()
-	if err != nil {
-		return "", err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
-		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
-	}
-
-	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", composeSidecarFileName, err)
-	}
-
-	return composePath, nil
+	return ensureEmbeddedFile(localnetDir, composeSidecarFileName)
 }
 
-// getSidecarComposeContent returns the embedded docker-compose.sidecar.yml content.
-func getSidecarComposeContent() (string, error) {
-	content, err := embeddedComposeFS.ReadFile(composeSidecarFileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", composeSidecarFileName, err)
-	}
-	return string(content), nil
-}
-
-// EnsureFrontendComposeFile ensures the docker-compose.frontend.yml file exists.
+// EnsureFrontendComposeFile writes the embedded docker-compose.frontend.yml to localnetDir and returns its path.
 func EnsureFrontendComposeFile(localnetDir string) (string, error) {
-	composePath := filepath.Join(localnetDir, composeFrontendFileName)
-	content, err := embeddedComposeFS.ReadFile(composeFrontendFileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to read embedded %s: %w", composeFrontendFileName, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(composePath), 0755); err != nil {
-		return "", fmt.Errorf("failed to create %s directory: %w", localnetDir, err)
-	}
-	if err := os.WriteFile(composePath, content, 0644); err != nil {
-		return "", fmt.Errorf("failed to write %s: %w", composeFrontendFileName, err)
-	}
-	return composePath, nil
+	return ensureEmbeddedFile(localnetDir, composeFrontendFileName)
+}
+
+// EnsureAltDAComposeFile writes the embedded docker-compose.altda.yml to localnetDir and returns its path.
+func EnsureAltDAComposeFile(localnetDir string) (string, error) {
+	return ensureEmbeddedFile(localnetDir, composeAltDAFileName)
+}
+
+// EnsureOPSuccinctComposeFile writes the embedded docker-compose.opsuccinct.yml to localnetDir and returns its path.
+func EnsureOPSuccinctComposeFile(localnetDir string) (string, error) {
+	return ensureEmbeddedFile(localnetDir, composeOPSuccinctFileName)
 }

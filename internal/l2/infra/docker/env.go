@@ -13,8 +13,8 @@ import (
 )
 
 // EnvBuilder constructs environment variables for docker-compose operations.
-// It handles path resolution for both local development (local-path) and
-// production (cloned repositories) scenarios.
+// It handles path resolution for both operator-supplied local checkouts
+// (`local-path`) and workspace-managed clones under `.localnet/services`.
 type EnvBuilder struct {
 	rootDir     string
 	networksDir string
@@ -30,8 +30,9 @@ func NewEnvBuilder(rootDir, networksDir, servicesDir string) *EnvBuilder {
 }
 
 // BuildComposeEnv builds environment variables for docker-compose.
-// The gameFactoryAddr parameter can be empty (zero address) for dev deployments.
-func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address) (map[string]string, error) {
+// gameFactoryAddr and composeL2OOAddr may be the zero address during bootstrap
+// before dispute-game contract addresses are known.
+func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address, composeL2OOAddr common.Address) (map[string]string, error) {
 	env := make(map[string]string)
 
 	publisherPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNamePublisher], configs.RepositoryNamePublisher)
@@ -69,10 +70,27 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["ETHERA_NETWORK_NAME"] = cfg.EtheraNetworkName
 	env["COORDINATOR_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
-	env["SP_L1_SUPERBLOCK_CONTRACT"] = ""
+	env["SP_L1_SUPERBLOCK_CONTRACT"] = composeL2OOAddr.Hex()
 
 	env["PUBLISHER_PATH"] = publisherPath
 	env["OP_GETH_PATH"] = opGethPath
+
+	if cfg.OPSuccinct.Enabled {
+		opSuccinctPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOPSuccinct], configs.RepositoryNameOPSuccinct)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve op-succinct path: %w", err)
+		}
+		env["OP_SUCCINCT_PATH"] = opSuccinctPath
+
+		env["OP_SUCCINCT_DOCKERFILE"] = filepath.Join(opSuccinctPath, "validity", "Dockerfile.ethera")
+		if cfg.AltDA.Enabled {
+			env["OP_SUCCINCT_BUILD_FEATURES"] = "altda"
+			env["OP_SUCCINCT_ALTDA_SERVER_A"] = "http://op-alt-da-a:3100"
+			env["OP_SUCCINCT_ALTDA_SERVER_B"] = "http://op-alt-da-b:3100"
+		} else {
+			env["OP_SUCCINCT_BUILD_FEATURES"] = ""
+		}
+	}
 
 	if cfg.Flashblocks.Enabled {
 		opRbuilderPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOpRbuilder], configs.RepositoryNameOpRbuilder)
@@ -89,6 +107,14 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 		env["SIDECAR_PATH"] = sidecarPath
 	}
+	if cfg.AltDA.Enabled {
+		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve ethera-contracts path for AltDA DA server build: %w", err)
+		}
+		env["COMPOSE_CONTRACTS_PATH"] = composeContractsPath
+	}
+	env["ALTDA_USE_GENERIC_COMMITMENT"] = fmt.Sprintf("%t", cfg.AltDA.CommitmentType() == configs.AltDACommitmentTypeGeneric)
 
 	env["ROLLUP_A_CHAIN_ID"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].ID)
 	env["ROLLUP_A_RPC_PORT"] = fmt.Sprintf("%d", cfg.ChainConfigs[configs.L2ChainNameRollupA].RPCPort)

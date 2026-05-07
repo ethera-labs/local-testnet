@@ -38,7 +38,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		envBuilder := docker.NewEnvBuilder(rootDir, networksDir, servicesDir)
-		envVars, err := envBuilder.BuildComposeEnv(configs.Values.L2, common.Address{})
+		envVars, err := envBuilder.BuildComposeEnv(configs.Values.L2, common.Address{}, common.Address{})
 		if err != nil {
 			return err
 		}

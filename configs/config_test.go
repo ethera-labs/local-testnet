@@ -42,6 +42,36 @@ func TestNormalizePrivateKeyStripsAtMostOnePrefix(t *testing.T) {
 	}
 }
 
+func TestL2ValidateRequiresOpSuccinctRepositoryWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.OPSuccinct.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error when op-succinct is enabled without repository config")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.repositories.op-succinct is required") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestL2ValidateAllowsOpSuccinctRepositoryWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.OPSuccinct.Enabled = true
+	cfg.Repositories[RepositoryNameOPSuccinct] = Repository{
+		LocalPath: "../op-succinct",
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected validation to succeed, got: %v", err)
+	}
+}
+
 func TestL2ValidateRequiresOpRbuilderRepositoryWhenFlashblocksEnabled(t *testing.T) {
 	t.Parallel()
 
@@ -106,7 +136,6 @@ func TestL2ValidateRejectsSidecarWithoutFlashblocks(t *testing.T) {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
 }
-
 func validL2Config() L2 {
 	return L2{
 		L1ChainID:         1,

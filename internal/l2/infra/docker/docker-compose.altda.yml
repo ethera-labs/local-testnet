@@ -1,0 +1,106 @@
+# AltDA overlay: adds per-rollup DA server services and reconfigures op-node/op-batcher to use them.
+# Load this on top of docker-compose.yml.
+# Data flow: op-batcher -> op-alt-da -> op-node derivation and verification
+
+services:
+  op-alt-da-a:
+    build:
+      context: ${COMPOSE_CONTRACTS_PATH}/L1-settlement/lib/optimism
+      dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-alt-da.Dockerfile
+    image: local/op-alt-da:dev
+    container_name: op-alt-da-a
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      OP_ALTDA_SERVER_GENERIC_COMMITMENT: "${ALTDA_USE_GENERIC_COMMITMENT:-false}"
+    command:
+      - --addr=0.0.0.0
+      - --port=3100
+      - --file.path=/data
+      - --log.level=info
+    ports:
+      - "3100:3100"
+    volumes:
+      - op-alt-da-a-data:/data
+    restart: unless-stopped
+
+  op-alt-da-b:
+    build:
+      context: ${COMPOSE_CONTRACTS_PATH}/L1-settlement/lib/optimism
+      dockerfile: ${ROOT_DIR}/internal/l2/infra/docker/op-alt-da.Dockerfile
+    image: local/op-alt-da:dev
+    container_name: op-alt-da-b
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      OP_ALTDA_SERVER_GENERIC_COMMITMENT: "${ALTDA_USE_GENERIC_COMMITMENT:-false}"
+    command:
+      - --addr=0.0.0.0
+      - --port=3100
+      - --file.path=/data
+      - --log.level=info
+    ports:
+      - "3101:3100"
+    volumes:
+      - op-alt-da-b-data:/data
+    restart: unless-stopped
+
+  # Point op-node-{a,b} at the per-rollup DA servers.
+  op-node-a:
+    depends_on:
+      op-alt-da-a:
+        condition: service_started
+    environment:
+      OP_NODE_ALTDA_ENABLED: "true"
+      OP_NODE_ALTDA_DA_SERVER: "http://op-alt-da-a:3100"
+      OP_NODE_ALTDA_DA_SERVICE: "true"
+      OP_NODE_ALTDA_VERIFY_ON_READ: "true"
+      OP_NODE_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "1"
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
+    volumes:
+      - ${ROLLUP_A_CONFIG_PATH}/safedb:/data/safedb
+
+  op-node-b:
+    depends_on:
+      op-alt-da-b:
+        condition: service_started
+    environment:
+      OP_NODE_ALTDA_ENABLED: "true"
+      OP_NODE_ALTDA_DA_SERVER: "http://op-alt-da-b:3100"
+      OP_NODE_ALTDA_DA_SERVICE: "true"
+      OP_NODE_ALTDA_VERIFY_ON_READ: "true"
+      OP_NODE_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "1"
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
+    volumes:
+      - ${ROLLUP_B_CONFIG_PATH}/safedb:/data/safedb
+
+  # Point op-batcher-{a,b} at the per-rollup DA servers for batch publishing.
+  op-batcher-a:
+    depends_on:
+      op-alt-da-a:
+        condition: service_started
+    environment:
+      OP_BATCHER_ALTDA_ENABLED: "true"
+      OP_BATCHER_ALTDA_DA_SERVER: "http://op-alt-da-a:3100"
+      OP_BATCHER_ALTDA_DA_SERVICE: "true"
+      OP_BATCHER_ALTDA_VERIFY_ON_READ: "true"
+      OP_BATCHER_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "1"
+
+  op-batcher-b:
+    depends_on:
+      op-alt-da-b:
+        condition: service_started
+    environment:
+      OP_BATCHER_ALTDA_ENABLED: "true"
+      OP_BATCHER_ALTDA_DA_SERVER: "http://op-alt-da-b:3100"
+      OP_BATCHER_ALTDA_DA_SERVICE: "true"
+      OP_BATCHER_ALTDA_VERIFY_ON_READ: "true"
+      OP_BATCHER_ALTDA_MAX_CONCURRENT_DA_REQUESTS: "1"
+
+volumes:
+  op-alt-da-a-data:
+  op-alt-da-b-data:

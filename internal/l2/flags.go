@@ -45,6 +45,8 @@ var (
 		{"sidecar-branch", "l2.repositories.sidecar.branch", "", "sidecar repository branch"},
 		{"ethera-contracts-url", "l2.repositories.ethera-contracts.url", "", "ethera-contracts repository URL"},
 		{"ethera-contracts-branch", "l2.repositories.ethera-contracts.branch", "", "ethera-contracts repository branch"},
+		{"op-succinct-url", "l2.repositories.op-succinct.url", "", "op-succinct repository URL"},
+		{"op-succinct-branch", "l2.repositories.op-succinct.branch", "", "op-succinct repository branch"},
 
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},
@@ -95,6 +97,8 @@ var (
 		{"flashblocks-enabled", "l2.flashblocks.enabled", false, "Enable flashblocks support (op-rbuilder and rollup-boost)"},
 		{"sidecar-enabled", "l2.sidecar.enabled", false, "Enable sidecar for cross-chain coordination (requires flashblocks)"},
 		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Ethera Labs Console (requires flashblocks and sidecar)"},
+		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},
+		{"op-succinct-enabled", "l2.op-succinct.enabled", false, "Enable op-succinct mock-mode validity services in localnet"},
 	}
 )
 

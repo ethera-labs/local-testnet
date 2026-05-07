@@ -39,8 +39,9 @@ Starts L2 services using Docker:
 - **op-proposer**: Proposes output roots to L1
 - **Publisher**: Publishes superblocks to L1
 
-**Optional services** (enabled via CLI flags):
+**Optional services / modes** (enabled via CLI flags):
 
+- **AltDA**: Alternative data availability mode with per-rollup DA servers (`--alt-da-enabled`)
 - **op-rbuilder**: External block builder for flashblocks (`--flashblocks-enabled`)
 - **rollup-boost**: Engine API multiplexer for flashblocks (`--flashblocks-enabled`)
 - **blockscout**: Block explorer UI (`--blockscout-enabled`)
@@ -68,7 +69,8 @@ available options.
 
 - L1 connection (chain ID, EL URL, CL URL)
 - Wallet credentials (private key, address)
-- Coordinator credentials — must use a **different private key** than the wallet to avoid nonce collisions (both submit L1 transactions independently)
+- Coordinator credentials — must use a **different private key** than the wallet to avoid nonce collisions (both submit
+  L1 transactions independently)
 - Ethera Labs network name
 - Dispute game settings (addresses, vkeys, explorer URLs)
 
@@ -81,6 +83,7 @@ available options.
 make run-l2
 
 # With optional features
+make run-l2 L2_ARGS="--alt-da-enabled"                   # Route batches through AltDA servers
 make run-l2 L2_ARGS="--flashblocks-enabled"              # Enable flashblocks
 make run-l2 L2_ARGS="--blockscout-enabled"               # Enable block explorer
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled"  # Both
@@ -124,6 +127,20 @@ When using remote `url` and `branch` values, Docker BuildKit must be able to acc
 eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
 ```
 
+### AltDA
+
+`--alt-da-enabled` switches each rollup from calldata publication to a dedicated AltDA server.
+
+Operational guidance:
+
+- Leave `l2.alt-da.skip-l1-deploy=false` for ephemeral environments where localnet should deploy the AltDA challenge
+  contracts.
+- Set `l2.alt-da.skip-l1-deploy=true` only in long-lived environments that already have pinned `challenge-proxy-address`
+  and `challenge-impl-address` values.
+- When using AltDA on a public L1 testnet, set `l2.alt-da.da-challenge-window` and `l2.alt-da.da-resolve-window` to
+  small values such as `4`. Values of `100` or more can stall the finalized L2 head at genesis for an extended period.
+- Ensure `repositories.ethera-contracts` resolves to a checkout that contains the `op-alt-da` sources used to build the
+  DA server image.
 ### Local Development
 
 Point source-built services at checked-out repositories through `l2.repositories.*.local-path`:
