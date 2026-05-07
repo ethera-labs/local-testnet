@@ -27,7 +27,9 @@ Generates configuration files for each L2 chain:
 
 - `genesis.json` - Initial blockchain state
 - `rollup.json` - Rollup configuration
-- `jwt-secret.txt` - Authentication between services
+- `jwt.txt` - Engine API JWT secret (shared between op-node and op-geth)
+- `runtime.env` / `opsuccinct.env` - Per-service runtime overrides
+- `contracts.json` - Deployed L2 contract addresses (written after Phase 3)
 
 ### Phase 3: Runtime Deployment
 
@@ -48,10 +50,13 @@ Starts L2 services using Docker:
 - **sidecar**: Cross-chain coordination (`--sidecar-enabled`, requires flashblocks)
 - **Ethera Labs Console**: Web UI for XT testing (`--frontend-enabled`, requires flashblocks and sidecar)
 
-Deploys Ethera Labs contracts to L2:
+Deploys Ethera Labs contracts to each L2 rollup:
 
-- Dispute settlement contracts
-- Verification contracts
+- `UniversalBridgeMailbox` - Cross-rollup message inbox/outbox
+- `CetFactory` - Composable ERC-20 token factory
+- `ComposeETHLiquidity` - ETH liquidity helper for the L2-to-L2 bridge
+- `ComposeL2ToL2Bridge` - L2-to-L2 bridge that composes the contracts above
+- `MockL2ERC20` - Test ERC-20 used by the console and integration tests
 
 ## Prerequisites
 

@@ -155,8 +155,8 @@ services:
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
       OP_NODE_P2P_DISABLE: "true"
       OP_NODE_SEQUENCER_ENABLED: "true"
-      OP_NODE_SEQUENCER_L1_CONFS: "0" #"5" Don't wait for confirmations
-      OP_NODE_VERIFIER_L1_CONFS: "0" #"4" Don't wait for confirmations
+      OP_NODE_SEQUENCER_L1_CONFS: "0"
+      OP_NODE_VERIFIER_L1_CONFS: "0"
       OP_NODE_P2P_SEQUENCER_KEY: "${SEQUENCER_PRIVATE_KEY:-${WALLET_PRIVATE_KEY}}"
       OP_NODE_RPC_ADDR: "0.0.0.0"
       OP_NODE_RPC_PORT: "9545"
@@ -234,7 +234,6 @@ services:
       COORDINATOR_PRIVATE_KEY: "${COORDINATOR_PRIVATE_KEY}"
       MAILBOX_A: "${MAILBOX_A:-}"
       MAILBOX_B: "${MAILBOX_B:-}"
-      ETHERA_NETWORK_NAME: "${ETHERA_NETWORK_NAME}"
     volumes:
       - rollup-b-geth:/data
       - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}:/config:ro
@@ -332,8 +331,8 @@ services:
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
       OP_NODE_P2P_DISABLE: "true"
       OP_NODE_SEQUENCER_ENABLED: "true"
-      OP_NODE_SEQUENCER_L1_CONFS: "0" #"5" Don't wait for confirmations
-      OP_NODE_VERIFIER_L1_CONFS: "0" #"4" Don't wait for confirmations
+      OP_NODE_SEQUENCER_L1_CONFS: "0"
+      OP_NODE_VERIFIER_L1_CONFS: "0"
       OP_NODE_P2P_SEQUENCER_KEY: "${SEQUENCER_PRIVATE_KEY:-${WALLET_PRIVATE_KEY}}"
       OP_NODE_RPC_ADDR: "0.0.0.0"
       OP_NODE_RPC_PORT: "9545"

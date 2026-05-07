@@ -49,4 +49,4 @@ CMD ["--help"]
 
 LABEL org.opencontainers.image.source="https://github.com/ethera-labs/local-testnet"
 LABEL org.opencontainers.image.description="Local testnet control plane for L1 and L2 Ethereum networks"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.licenses="GPL-3.0"

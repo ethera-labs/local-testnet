@@ -148,10 +148,10 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_NODE_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpNode].Tag
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
 
-	if ma := b.readMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
+	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
 		env["MAILBOX_A"] = ma
 	}
-	if mb := b.readMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
+	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
 		env["MAILBOX_B"] = mb
 	}
 
@@ -194,9 +194,10 @@ func (b *EnvBuilder) ResolveRepoPath(repo configs.Repository, name configs.Repos
 	return "", fmt.Errorf("repository %s has neither URL nor local-path set", name)
 }
 
-// readMailboxAddress reads the mailbox address from contracts.json for a given chain.
-// Returns empty string if file doesn't exist or address not found (best-effort).
-func (b *EnvBuilder) readMailboxAddress(chainName configs.L2ChainName) string {
+// readUniversalBridgeMailboxAddress reads the deployed UniversalBridgeMailbox
+// address from the chain's contracts.json. Returns an empty string before the
+// file is written or if the address is missing.
+func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2ChainName) string {
 	path := filepath.Join(b.networksDir, string(chainName), "contracts.json")
 
 	data, err := os.ReadFile(path)
@@ -211,11 +212,7 @@ func (b *EnvBuilder) readMailboxAddress(chainName configs.L2ChainName) string {
 		return ""
 	}
 
-	if v := cf.Addresses["Mailbox"]; strings.TrimSpace(v) != "" {
-		return v
-	}
-
-	return ""
+	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
 }
 
 // expandUserHome expands a leading ~ to the current user's home directory.
