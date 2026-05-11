@@ -23,9 +23,9 @@ import (
 
 // Orchestrator coordinates Phase 3: L2 runtime operations
 //   - Builds Docker images via docker-compose
-//   - Starts initial services (publisher, op-geth)
+//   - Starts initial services (publisher, op-reth)
 //   - Deploys L2 helper contracts
-//   - Restarts services to pick up contract addresses
+//   - Restarts dependent services to pick up contract addresses
 //   - Starts final services (op-node, batcher, proposer)
 type Orchestrator struct {
 	rootDir     string
@@ -139,10 +139,14 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, fmt.Errorf("failed to deploy contracts: %w", err)
 	}
 
-	o.logger.Info("restarting op-geth services to apply mailbox configuration")
-	if err := o.restartOpGeth(ctx, dockerPath, envVars, deployedContracts); err != nil {
-		return nil, fmt.Errorf("failed to restart op-geth services after contract deployment. Error: '%w'", err)
+	// envVars was built before contract deployment, so MAILBOX_A/B aren't in it
+	// yet. Inject them now so dependent services pick them up on restart.
+	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve mailbox addresses: %w", err)
 	}
+	envVars["MAILBOX_A"] = mailboxA.Hex()
+	envVars["MAILBOX_B"] = mailboxB.Hex()
 
 	if overlays.sidecar != "" {
 		o.logger.Info("restarting sidecar services to apply mailbox configuration")
@@ -282,29 +286,6 @@ func (o *Orchestrator) waitForNetworkFiles() error {
 	}
 }
 
-func (o *Orchestrator) restartOpGeth(ctx context.Context, dockerFilePath string, env map[string]string, deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) error {
-	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
-	if err != nil {
-		return err
-	}
-
-	env["MAILBOX_A"] = mailboxA.Hex()
-	env["MAILBOX_B"] = mailboxB.Hex()
-
-	o.logger.Info("restarting op-geth with mailbox addresses",
-		"mailbox_a", mailboxA.Hex(),
-		"mailbox_b", mailboxB.Hex())
-
-	services := []string{"op-geth-a", "op-geth-b"}
-	if err := docker.ComposeRestart(ctx, dockerFilePath, env, services...); err != nil {
-		return fmt.Errorf("failed to restart op-geth: %w", err)
-	}
-
-	o.logger.Info("op-geth services restarted successfully, waiting for them to be ready")
-
-	return nil
-}
-
 func (o *Orchestrator) restartOpSuccinct(ctx context.Context, dockerFilePath, opSuccinctDockerPath string, env map[string]string, deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) error {
 	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
 	if err != nil {
@@ -360,8 +341,6 @@ func mailboxAddresses(deployedContracts map[configs.L2ChainName]map[contracts.Co
 func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, overlays overlayPaths) error {
 	services := []string{
 		"publisher",
-		"op-geth-a",
-		"op-geth-b",
 	}
 
 	dockerFiles := []string{dockerFilePath}

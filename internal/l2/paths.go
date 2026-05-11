@@ -6,7 +6,7 @@ const (
 	// localnetDirName is the root directory for all L2 runtime artifacts
 	localnetDirName = ".localnet"
 
-	// servicesDirName is the subdirectory for cloned repositories (op-geth, publisher, etc.)
+	// servicesDirName is the subdirectory for cloned repositories (publisher, op-rbuilder, sidecar, etc.)
 	servicesDirName = "services"
 
 	// stateDirName is the subdirectory for L1 deployment state

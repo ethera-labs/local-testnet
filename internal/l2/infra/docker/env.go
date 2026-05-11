@@ -40,11 +40,6 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		return nil, fmt.Errorf("failed to resolve publisher path: %w", err)
 	}
 
-	opGethPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOpGeth], configs.RepositoryNameOpGeth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve op-geth path: %w", err)
-	}
-
 	rollupAConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupA))
 	rollupBConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupB))
 
@@ -73,7 +68,6 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["SP_L1_SUPERBLOCK_CONTRACT"] = composeL2OOAddr.Hex()
 
 	env["PUBLISHER_PATH"] = publisherPath
-	env["OP_GETH_PATH"] = opGethPath
 
 	if cfg.OPSuccinct.Enabled {
 		opSuccinctPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOPSuccinct], configs.RepositoryNameOPSuccinct)
@@ -147,6 +141,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_BATCHER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpBatcher].Tag
 	env["OP_NODE_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpNode].Tag
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
+	env["OP_RETH_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpReth].Tag
 
 	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
 		env["MAILBOX_A"] = ma
@@ -168,7 +163,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 //   - Local paths get translated to host paths (outside workspace mount)
 func (b *EnvBuilder) ResolveRepoPath(repo configs.Repository, name configs.RepositoryName) (string, error) {
 	// If URL is provided (via CLI or config), use cloned path
-	// This ensures CLI flags like --op-geth-url override local-path from config
+	// This ensures CLI flags like --op-reth-url override local-path from config
 	// Cloned paths are inside the workspace mount, so they stay as container paths
 	if repo.URL != "" {
 		return filepath.Join(b.servicesDir, string(name)), nil

@@ -27,7 +27,7 @@ Generates configuration files for each L2 chain:
 
 - `genesis.json` - Initial blockchain state
 - `rollup.json` - Rollup configuration
-- `jwt.txt` - Engine API JWT secret (shared between op-node and op-geth)
+- `jwt.txt` - Engine API JWT secret (shared between op-node and op-reth)
 - `runtime.env` / `opsuccinct.env` - Per-service runtime overrides
 - `contracts.json` - Deployed L2 contract addresses (written after Phase 3)
 
@@ -35,7 +35,7 @@ Generates configuration files for each L2 chain:
 
 Starts L2 services using Docker:
 
-- **op-geth**: Execution client for each rollup
+- **op-reth**: Execution client for each rollup
 - **op-node**: Consensus/derivation client
 - **op-batcher**: Batches transactions to L1
 - **op-proposer**: Proposes output roots to L1
@@ -111,6 +111,7 @@ For flashblocks documentation, see [docs/flashblocks.md](../../docs/flashblocks.
 
 Flashblocks and sidecar build sources are configured through `l2.repositories`.
 Each source-built repository must set exactly one of:
+
 - `local-path` for a checked-out repository
 - `url` and `branch` for a cloned repository source
 
@@ -146,6 +147,7 @@ Operational guidance:
   small values such as `4`. Values of `100` or more can stall the finalized L2 head at genesis for an extended period.
 - Ensure `repositories.ethera-contracts` resolves to a checkout that contains the `op-alt-da` sources used to build the
   DA server image.
+
 ### Local Development
 
 Point source-built services at checked-out repositories through `l2.repositories.*.local-path`:
@@ -154,8 +156,9 @@ Point source-built services at checked-out repositories through `l2.repositories
 # configs/config.yaml
 l2:
   repositories:
-    op-geth:
-      local-path: ../op-geth  # Relative path
+    op-reth:
+      local-path: ../reth     # Relative path to a reth checkout
+      branch: v1.10.2
     op-rbuilder:
       local-path: ../op-rbuilder
     publisher:
@@ -170,8 +173,8 @@ Rebuild and restart specific services after code changes:
 # Rebuild and restart publisher service only
 make run-l2-deploy SERVICE=publisher
 
-# Rebuild and restart op-geth services only
-make run-l2-deploy SERVICE=op-geth
+# Rebuild and restart op-reth services only
+make run-l2-deploy SERVICE=op-reth
 
 # Rebuild and restart all services
 make run-l2-deploy SERVICE=all
@@ -227,8 +230,8 @@ L2 services run as Docker containers. View logs using standard Docker commands:
 ```bash
 # Core services
 docker logs publisher -f
-docker logs op-geth-a -f
-docker logs op-geth-b -f
+docker logs op-reth-a -f
+docker logs op-reth-b -f
 docker logs op-node-a -f
 docker logs op-node-b -f
 docker logs op-batcher-a -f
@@ -247,23 +250,23 @@ docker logs blockscout-a -f
 docker logs blockscout-b -f
 
 # View last N lines
-docker logs op-geth-a --tail 100
+docker logs op-reth-a --tail 100
 
 # View logs with timestamps
-docker logs op-geth-a -t
+docker logs op-reth-a -t
 
 # View all L2 logs aggregated via docker-compose
 docker compose -f .localnet/docker-compose.yml logs -f
 
 # View specific services via docker-compose
-docker compose -f .localnet/docker-compose.yml logs -f publisher op-geth-a op-geth-b
+docker compose -f .localnet/docker-compose.yml logs -f publisher op-reth-a op-reth-b
 ```
 
 ## Service Ports
 
 | Service         | Chain A | Chain B | Description                 |
 |-----------------|---------|---------|-----------------------------|
-| op-geth RPC     | 18545   | 28545   | Execution RPC               |
+| op-reth RPC     | 18545   | 28545   | Execution RPC               |
 | op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC             |
 | sidecar         | 17090   | 27090   | Sidecar API                 |
 | Blockscout      | 19000   | 29000   | Block explorer UI           |

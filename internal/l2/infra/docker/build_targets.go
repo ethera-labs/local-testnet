@@ -4,7 +4,6 @@ package docker
 // Build one representative target to avoid racing docker compose --parallel
 // against the same local image tag.
 var sharedImageBuildTargets = map[string]string{
-	"op-geth-b":     "op-geth-a",
 	"op-alt-da-b":   "op-alt-da-a",
 	"op-succinct-b": "op-succinct-a",
 	"op-rbuilder-b": "op-rbuilder-a",

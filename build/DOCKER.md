@@ -64,14 +64,15 @@ This approach is useful for:
 
 ### Local Development Workflow
 
-For iterating on local changes to repositories (op-geth, publisher):
+For iterating on local changes to repositories (op-reth, publisher):
 
 1. Configure local paths in `configs/config.yaml`:
 
 ```yaml
-repositories:
-  op-geth:
-    local-path: ../op-geth  # Path to your local clone
+  repositories:
+    op-reth:
+      local-path: ../reth     # Path to your local reth clone
+      branch: v1.10.2
 ```
 
 2. Make your changes in the local repository

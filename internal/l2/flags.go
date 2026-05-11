@@ -35,8 +35,6 @@ var (
 		{"genesis-balance-wei", "l2.genesis-balance-wei", "100000000000000000000000", "Genesis balance in wei for funded accounts (default: 100_000 ETH)"},
 
 		// Repositories (no defaults - must be explicitly set in config or via CLI)
-		{"op-geth-url", "l2.repositories.op-geth.url", "", "op-geth repository URL"},
-		{"op-geth-branch", "l2.repositories.op-geth.branch", "", "op-geth repository branch"},
 		{"op-rbuilder-url", "l2.repositories.op-rbuilder.url", "", "op-rbuilder repository URL"},
 		{"op-rbuilder-branch", "l2.repositories.op-rbuilder.branch", "", "op-rbuilder repository branch"},
 		{"publisher-url", "l2.repositories.publisher.url", "", "publisher repository URL"},
@@ -53,6 +51,7 @@ var (
 		{"op-node-tag", "l2.images.op-node.tag", "v1.16.2", "op-node image tag"},
 		{"op-proposer-tag", "l2.images.op-proposer.tag", "v1.10.0", "op-proposer image tag"},
 		{"op-batcher-tag", "l2.images.op-batcher.tag", "v1.16.2", "op-batcher image tag"},
+		{"op-reth-tag", "l2.images.op-reth.tag", "v1.11.5", "op-reth image tag"},
 
 		// Dispute config
 		{"dispute-network-name", "l2.dispute.network-name", "", "Dispute network name"},

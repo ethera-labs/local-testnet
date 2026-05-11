@@ -135,7 +135,6 @@ type (
 )
 
 const (
-	RepositoryNameOpGeth          RepositoryName = "op-geth"
 	RepositoryNameOpRbuilder      RepositoryName = "op-rbuilder"
 	RepositoryNamePublisher       RepositoryName = "publisher"
 	RepositoryNameSidecar         RepositoryName = "sidecar"
@@ -146,6 +145,9 @@ const (
 	ImageNameOpNode     ImageName = "op-node"
 	ImageNameOpProposer ImageName = "op-proposer"
 	ImageNameOpBatcher  ImageName = "op-batcher"
+	ImageNameOpReth     ImageName = "op-reth"
+
+	oplabsImageRegistry = "us-docker.pkg.dev/oplabs-tools-artifacts/images"
 
 	L2ChainNameRollupA L2ChainName = "rollup-a"
 	L2ChainNameRollupB L2ChainName = "rollup-b"
@@ -157,6 +159,12 @@ const (
 	altDADefaultResolveWindow   = 100
 	altDADefaultBondSize        = 1
 )
+
+// ImageRef returns the fully-qualified oplabs-tools-artifacts reference for
+// the named image.
+func (c *L2) ImageRef(name ImageName) string {
+	return fmt.Sprintf("%s/%s:%s", oplabsImageRegistry, name, c.Images[name].Tag)
+}
 
 // CommitmentType returns the configured DA commitment type, defaulting to KeccakCommitment.
 func (c AltDAConfig) CommitmentType() string {
@@ -216,7 +224,6 @@ func (c *L2) Validate() error {
 	}
 
 	requiredRepos := []RepositoryName{
-		RepositoryNameOpGeth,
 		RepositoryNamePublisher,
 		RepositoryNameEtheraContracts,
 	}
@@ -239,7 +246,7 @@ func (c *L2) Validate() error {
 		}
 	}
 
-	requiredImages := []ImageName{ImageNameOpDeployer, ImageNameOpNode, ImageNameOpProposer, ImageNameOpBatcher}
+	requiredImages := []ImageName{ImageNameOpDeployer, ImageNameOpNode, ImageNameOpProposer, ImageNameOpBatcher, ImageNameOpReth}
 	for _, name := range requiredImages {
 		img, exists := c.Images[name]
 		if !exists {
