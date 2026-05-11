@@ -25,10 +25,9 @@ and [rollup-boost](https://github.com/flashbots/rollup-boost).
 ```bash
 # Run L2 with flashblocks enabled
 make run-l2 L2_ARGS="--flashblocks-enabled"
-
-# Or with custom image tags
-make run-l2 L2_ARGS="--flashblocks-enabled --op-rbuilder-tag=v1.0.0 --rollup-boost-tag=v1.0.0"
 ```
+
+Image tags are configured under `l2.flashblocks` in `configs/config.yaml`.
 
 ## Builder Source
 

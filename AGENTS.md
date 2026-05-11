@@ -1,12 +1,12 @@
 # Repository Guidelines
 
-This Go 1.25 project orchestrates a local L1/L2 stack for Ethera Labs contributors. Follow the practices below to keep the control plane predictable and easy to debug.
+This Go 1.26 project orchestrates a local L1/L2 stack for Ethera Labs contributors. Follow the practices below to keep the control plane predictable and easy to debug.
 
 ## Project Structure & Module Organization
 - `cmd/localnet` contains the Cobra CLI entry point that wires configuration and subcommands.
 - `internal/l1`, `internal/l2`, and `internal/observability` host service-specific orchestration logic; shared logging lives in `internal/logger`.
 - `configs/` stores the source-of-truth `config.yaml` plus per-service templates consumed at runtime.
-- `services/` holds container assets (Dockerfiles, Kurtosis bundles), while `state/` is generated during runs and may be safely wiped.
+- `internal/l2/infra/docker/` holds the docker-compose overlays and Dockerfiles that drive the L2 stack; `.localnet/` is generated at runtime and can be wiped via `make clean-l2`.
 - Tests live beside their packages as Go `_test.go` files; architecture notes sit in `docs/`.
 
 ## Build, Test, and Development Commands
@@ -14,7 +14,7 @@ This Go 1.25 project orchestrates a local L1/L2 stack for Ethera Labs contributo
 - `make run` starts the CLI with the default stack; use `make run-l1`, `make run-l2`, or `make run-observability` for targeted bring-up.
 - `make test` executes `go test ./...`.
 - `make lint` runs `golangci-lint` with `.golangci.yml` defaults.
-- `make clean`, `make clean-l1`, and `make clean-l2` tear down Docker/Kurtosis resources and clear `state/`.
+- `make clean`, `make clean-l1`, and `make clean-l2` tear down Docker/Kurtosis resources and clear `.localnet/`.
 
 ## Coding Style & Naming Conventions
 - Always format Go code with `gofmt` (tabs for indentation, single blank line between logical blocks) before sending a review.

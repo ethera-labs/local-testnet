@@ -5,57 +5,57 @@ The observability stack provides monitoring, logging, and tracing capabilities f
 ## What It Does
 
 Deploys a complete Docker-based observability infrastructure with:
+
 - **Grafana**: Visualization dashboards (port 3000)
 - **Prometheus**: Metrics collection and storage
 - **Loki**: Log aggregation
 - **Tempo**: Distributed tracing
 - **Alloy**: Telemetry data collection agent
 
-## Configuration
-
-Enable observability in `configs/config.yaml`:
-
-```yaml
-l1:
-  observability:
-    enabled: true
-```
-
-When enabled, the observability stack starts automatically with the L1 command.
-
 ## Usage
 
+The observability stack runs independently of the L1 and L2 commands:
+
 ```bash
-# Start observability stack (starts with L1)
+# Start observability stack
 make run-observability
 
 # Show running containers
 make show-observability
 
-# Clean up
+# Stop containers without removing them
+make stop-observability
+
+# Remove containers
 make clean-observability
 ```
 
 ## Accessing Services
 
 ### Grafana
+
 - **URL**: http://localhost:3000
 - **Authentication**: Anonymous access enabled (admin role)
 - **Pre-configured**: Connected to Prometheus, Loki, and Tempo data sources
 
 ### Service Ports
+
 All services use internal Docker networking. Only Grafana is exposed to the host.
 
 ## Implementation Details
 
 ### Architecture
+
 Each service runs as a separate Docker container:
+
 - All containers share the `stack=localnet-observability` label
 - Connected via a dedicated Docker network
 - Service-specific configurations in `configs/{service-name}/`
 
 ### Service Packages
+
 Each observability service has its own package under `internal/observability/`:
+
 - `alloy/` - Telemetry collection
 - `grafana/` - Dashboard and visualization
 - `loki/` - Log aggregation
@@ -64,11 +64,14 @@ Each observability service has its own package under `internal/observability/`:
 - `shared/` - Shared Docker network management
 
 ### Data Persistence
-By default, data is stored in Docker volumes. Configure volume mounts in service configurations if persistent storage is needed.
+
+By default, data is stored in Docker volumes. Configure volume mounts in service configurations if persistent storage is
+needed.
 
 ## Configuration Files
 
 Service configurations are located in:
+
 - `configs/alloy/` - Alloy configuration
 - `configs/grafana/` - Dashboards and datasource definitions
 - `configs/loki/` - Log retention and storage settings

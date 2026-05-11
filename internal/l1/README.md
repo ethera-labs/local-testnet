@@ -21,21 +21,14 @@ The L1 command deploys a complete Ethereum network with:
 
 ## Configuration
 
-Configure the L1 network in `configs/config.yaml`:
-
-```yaml
-l1:
-  enabled: true
-  observability:
-    enabled: true  # Optional: Enable monitoring stack
-```
-
-Network parameters are defined in `internal/l1/localnet/params.yaml`:
+Network parameters are embedded from `internal/l1/params.yaml` at build time:
 - Ethereum fork configurations (Capella, Deneb, etc.)
 - Network participants (execution and consensus clients)
 - Validator counts
 - SSV and Anchor node configurations
 - MEV settings
+
+The observability stack runs independently — see [`internal/observability`](../observability/README.md).
 
 ## Usage
 
@@ -60,10 +53,6 @@ The L1 network is orchestrated through Kurtosis:
 - Runs the `github.com/ssvlabs/ssv-mini` Starlark package
 - Parameters are embedded from `params.yaml`
 - Real-time progress logging via structured output streams
-
-## Observability
-
-When observability is enabled, the L1 command also starts a Docker-based monitoring stack. See the [observability README](../observability/README.md) for details.
 
 ## Stopping Services
 
@@ -94,8 +83,5 @@ kurtosis service logs localnet <service-name> -f
 
 **Issue:** Kurtosis enclave already exists
 **Solution:** Clean existing enclaves with `make clean-l1` or `kurtosis clean -a`
-
-**Issue:** Port conflicts
-**Solution:** Ensure ports 8545 (EL RPC) and 5052 (CL REST) are available
 
 For more details, see the [main README](../../README.md).

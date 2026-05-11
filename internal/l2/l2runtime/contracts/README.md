@@ -1,48 +1,50 @@
-# Precompiled Smart Contracts
+# Precompiled L2 Contracts
 
-This directory contains precompiled Solidity smart contracts for the Ethera Labs rollup system.
+This package embeds and deploys the L2 contracts that the rollup pair requires
+for cross-chain composability.
 
-## Contents
+## Layout
 
-- `compiled/contracts.json` - Precompiled contract ABIs and bytecode
+- `compiled/contracts.json` — embedded ABI + bytecode for every contract listed
+  in `contract.go`.
+- `loader.go` — loads `compiled/contracts.json` at runtime.
+- `deployer.go` — deploys the contracts to each rollup and writes
+  `<networks-dir>/<chain>/contracts.json`.
+- `compiler.go` — invokes the contracts repository to regenerate
+  `compiled/contracts.json`.
 
 ## Contracts
 
-The following contracts are included:
+| Name                     | Purpose                                           |
+|--------------------------|---------------------------------------------------|
+| `UniversalBridgeMailbox` | Cross-rollup message inbox/outbox                 |
+| `CetFactory`             | Composable ERC-20 token factory                   |
+| `ComposeETHLiquidity`    | ETH liquidity helper used by the L2-to-L2 bridge  |
+| `ComposeL2ToL2Bridge`    | L2-to-L2 bridge that composes the contracts above |
+| `MockL2ERC20`            | ERC-20 token used by integration tests            |
 
-1. **UniversalBridgeMailbox** - Universal bridge message passing contract
-2. **CetFactory** - Composable ERC20 factory
-3. **ComposeETHLiquidity** - ETH liquidity helper for L2-to-L2 bridging
-4. **ComposeL2ToL2Bridge** - Universal L2-to-L2 bridge
-5. **MockL2ERC20** - ERC20 token for local testing
+## Regenerating `contracts.json`
 
-## Deployment
-
-These contracts are deployed automatically by the Go deployment code in `../shared/contracts/deploy.go`. The deployment process:
-
-1. Loads precompiled contracts from `compiled/contracts.json`
-2. Deploys to both Rollup A and Rollup B
-3. Writes contract addresses to configuration files
-
-## Recompiling Contracts
-
-If you need to modify the contracts and recompile them:
-
-1. Get the source files from the parent repository or git history
-2. Install dependencies: `forge install`
-3. Compile: `forge build` or use solc directly
-4. Extract ABI and bytecode to `compiled/contracts.json` in this format:
-
-```json
-{
-  "ContractName": {
-    "abi": "[...]",
-    "bytecode": "0x..."
-  }
-}
+```bash
+make run-l2-compile
 ```
 
-The original source was located at:
-- Solidity files: `src/*.sol`
-- Dependencies: `lib/openzeppelin-contracts`, `lib/forge-std`
-- Remappings: `remappings.txt`
+This runs `localnet l2 compile`, which builds the contracts repository checked
+out in `l2.repositories.ethera-contracts` and writes
+`.localnet/compiled-contracts/contracts.json`. To embed the new artefact in the
+binary, copy it into `compiled/` and commit:
+
+```bash
+cp .localnet/compiled-contracts/contracts.json \
+   internal/l2/l2runtime/contracts/compiled/contracts.json
+```
+
+## Deployment Flow
+
+1. `Deployer.Deploy` waits for each rollup RPC to be reachable and producing
+   blocks.
+2. Contracts deploy to both rollups using the coordinator key.
+3. Bridges are authorised against `UniversalBridgeMailbox`, `CetFactory`, and
+   `ComposeETHLiquidity` so `ComposeL2ToL2Bridge` can move state.
+4. Deployed addresses are validated to match across rollups (CREATE2-style
+   determinism is required) and written to `contracts.json` per chain.
