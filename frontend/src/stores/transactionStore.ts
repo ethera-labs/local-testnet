@@ -52,6 +52,7 @@ interface TransactionStore {
 
   addTransaction: (tx: Transaction) => void
   updateTransaction: (instanceId: string, updates: Partial<Transaction>) => void
+  clearTransactions: () => void
   setCurrentStatus: (status: Partial<CurrentStatus>) => void
   setFlowStep: (step: FlowStep) => void
   reset: () => void
@@ -80,6 +81,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
         tx.instanceId === instanceId ? { ...tx, ...updates } : tx
       ),
     })),
+
+  clearTransactions: () => set({ transactions: [] }),
 
   setCurrentStatus: (status) =>
     set((state) => ({

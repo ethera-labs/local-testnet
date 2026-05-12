@@ -1,11 +1,13 @@
 import { ethers } from 'ethers'
 import {
   CHAIN_A_BRIDGE_ADDRESS,
+  CHAIN_A_ETH_LIQUIDITY_ADDRESS,
   CHAIN_A_ID,
   CHAIN_A_PRIVATE_KEY,
   CHAIN_A_RPC,
   CHAIN_A_TOKEN_ADDRESS,
   CHAIN_B_BRIDGE_ADDRESS,
+  CHAIN_B_ETH_LIQUIDITY_ADDRESS,
   CHAIN_B_ID,
   CHAIN_B_PRIVATE_KEY,
   CHAIN_B_RPC,
@@ -26,11 +28,17 @@ const ERC20_ABI = [
 
 const BRIDGE_ABI = [
   'function bridgeERC20To(uint256 chainDest, address tokenSrc, uint256 amount, address receiver, uint256 sessionId)',
+  'function bridgeEthTo(uint256 sessionId, uint256 chainDest, address receiver) payable',
   'function receiveTokens(tuple(uint256 chainSrc, uint256 chainDest, address sender, address receiver, uint256 sessionId, string label) msgHeader) returns (address token, uint256 amount)',
+  'function receiveETH(tuple(uint256 chainSrc, uint256 chainDest, address sender, address receiver, uint256 sessionId, string label) msgHeader) returns (uint256 amount)',
 ]
 
 const CET_FACTORY_ABI = [
   'function predictAddress(address remoteAsset, uint256 remoteChainID) view returns (address)',
+]
+
+const ETH_LIQUIDITY_ABI = [
+  'function fund() payable',
 ]
 
 const providerCache = new Map<string, ethers.JsonRpcProvider>()
@@ -83,6 +91,21 @@ export function getCetFactoryAddress(): string {
     throw new Error('Missing CET factory address. Set VITE_CET_FACTORY_ADDRESS.')
   }
   return CET_FACTORY_ADDRESS
+}
+
+export function getEthLiquidityAddress(chain: 'A' | 'B'): string {
+  const address =
+    chain === 'A' ? CHAIN_A_ETH_LIQUIDITY_ADDRESS : CHAIN_B_ETH_LIQUIDITY_ADDRESS
+  if (!address) {
+    throw new Error(
+      `Missing ETH liquidity address for chain ${chain}. Set VITE_CHAIN_${chain}_ETH_LIQUIDITY_ADDRESS.`
+    )
+  }
+  return address
+}
+
+export async function getEthLiquidityBalance(chain: 'A' | 'B'): Promise<bigint> {
+  return getProvider(chain).getBalance(getEthLiquidityAddress(chain))
 }
 
 export function getSigner(chain: 'A' | 'B'): ethers.Wallet {
@@ -185,6 +208,90 @@ export async function buildBridgeERC20ToTx(
     {
       ...tx,
       gasLimit: 900000n,
+    },
+    BigInt(chainId),
+    nonceOverride
+  )
+}
+
+export async function buildBridgeEthToTx(
+  bridgeAddress: string,
+  chainDest: number,
+  receiver: string,
+  sessionId: string,
+  value: bigint,
+  signer: ethers.Wallet,
+  chainId: number,
+  nonceOverride?: number
+): Promise<string> {
+  const bridge = new ethers.Contract(bridgeAddress, BRIDGE_ABI, signer)
+  const tx = await bridge.bridgeEthTo.populateTransaction(
+    sessionId,
+    chainDest,
+    receiver,
+    { value }
+  )
+
+  return signContractTx(
+    signer,
+    {
+      ...tx,
+      gasLimit: 900000n,
+    },
+    BigInt(chainId),
+    nonceOverride
+  )
+}
+
+export async function buildBridgeReceiveEthTx(
+  bridgeAddress: string,
+  sessionId: string,
+  chainSrc: number,
+  chainDest: number,
+  bridgeSrc: string,
+  receiver: string,
+  signer: ethers.Wallet,
+  chainId: number,
+  nonceOverride?: number,
+  gasOverride?: bigint
+): Promise<string> {
+  const bridge = new ethers.Contract(bridgeAddress, BRIDGE_ABI, signer)
+  const msgHeader = {
+    chainSrc,
+    chainDest,
+    sender: bridgeSrc,
+    receiver,
+    sessionId,
+    label: 'SEND_ETH',
+  }
+  const tx = await bridge.receiveETH.populateTransaction(msgHeader)
+
+  return signContractTx(
+    signer,
+    {
+      ...tx,
+      gasLimit: gasOverride ?? DEFAULT_BRIDGE_RECEIVE_GAS_LIMIT,
+    },
+    BigInt(chainId),
+    nonceOverride
+  )
+}
+
+export async function buildFundEthLiquidityTx(
+  liquidityAddress: string,
+  value: bigint,
+  signer: ethers.Wallet,
+  chainId: number,
+  nonceOverride?: number
+): Promise<string> {
+  const liquidity = new ethers.Contract(liquidityAddress, ETH_LIQUIDITY_ABI, signer)
+  const tx = await liquidity.fund.populateTransaction({ value })
+
+  return signContractTx(
+    signer,
+    {
+      ...tx,
+      gasLimit: 120000n,
     },
     BigInt(chainId),
     nonceOverride

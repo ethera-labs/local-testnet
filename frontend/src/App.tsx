@@ -24,11 +24,14 @@ function StatusDot({ active, label }: { active?: boolean; label: string }) {
   )
 }
 
+type LogFilter = 'all' | 'pending' | 'committed' | 'aborted'
+
 function App() {
   const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
   const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
-  const { transactions, currentStatus, setCurrentStatus } = useTransactionStore()
+  const { transactions, currentStatus, setCurrentStatus, clearTransactions } = useTransactionStore()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [logFilter, setLogFilter] = useState<LogFilter>('all')
 
   useEffect(() => {
     const poll = async () => {
@@ -219,10 +222,10 @@ function App() {
         </div>
 
         {/* Right column: Controls + Log */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 min-w-0">
           {/* Tab selector */}
-          <div className="cb bg-bg-card border border-border">
-            <div className="border-b border-border">
+          <div className="cb bg-bg-card border border-border flex flex-col h-[560px]">
+            <div className="border-b border-border flex-none">
               <div className="flex">
                 <button
                   onClick={() => setActiveTab('mint')}
@@ -246,7 +249,7 @@ function App() {
                     activeTab === 'atomicity' ? 'border-warning text-warning bg-warning/5' : 'border-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  Atomicity
+                  Scenarios
                 </button>
                 <button
                   onClick={() => setActiveTab('stress')}
@@ -258,24 +261,71 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-5 flex-1 min-h-0 overflow-y-auto">
               <TransactionPanel mode={activeTab} onSelectFlow={setFlowMode} />
             </div>
           </div>
 
           {/* Transaction log */}
-          {transactions.length > 0 && (
-            <div className="cb bg-bg-card border border-border flex-1">
-              <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
-                <span className="font-display text-[10px] tracking-[0.3em] uppercase text-text-secondary">
-                  TX Log
-                </span>
-                <span className="text-[10px] text-text-dim font-mono">
-                  {transactions.length} entries
-                </span>
+          {transactions.length > 0 && (() => {
+            const counts = transactions.reduce(
+              (acc, tx) => {
+                if (tx.status === 'committed') acc.committed += 1
+                else if (tx.status === 'aborted') acc.aborted += 1
+                else acc.pending += 1
+                return acc
+              },
+              { committed: 0, aborted: 0, pending: 0 }
+            )
+            const filtered = transactions.filter((tx) => {
+              if (logFilter === 'all') return true
+              if (logFilter === 'pending') {
+                return tx.status !== 'committed' && tx.status !== 'aborted'
+              }
+              return tx.status === logFilter
+            })
+            const filters: { id: LogFilter; label: string; count: number; tone: string }[] = [
+              { id: 'all', label: 'All', count: transactions.length, tone: 'text-text-secondary' },
+              { id: 'pending', label: 'Pending', count: counts.pending, tone: 'text-yellow-400' },
+              { id: 'committed', label: 'Commit', count: counts.committed, tone: 'text-cyan' },
+              { id: 'aborted', label: 'Abort', count: counts.aborted, tone: 'text-error' },
+            ]
+            return (
+            <div className="cb bg-bg-card border border-border">
+              <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1">
+                  {filters.map((f) => {
+                    const active = logFilter === f.id
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setLogFilter(f.id)}
+                        className={`px-2 py-1 font-display text-[9px] tracking-[0.2em] uppercase border transition-colors ${
+                          active
+                            ? `border-amber bg-amber/5 text-amber`
+                            : `border-transparent ${f.tone} hover:border-border-bright`
+                        }`}
+                      >
+                        {f.label} <span className="text-text-dim ml-0.5">{f.count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={clearTransactions}
+                  className="px-2 py-1 font-display text-[9px] tracking-[0.2em] uppercase border border-transparent text-text-secondary hover:border-error hover:text-error transition-colors"
+                  title="Clear log"
+                >
+                  Clear
+                </button>
               </div>
               <div className="divide-y divide-border max-h-[360px] overflow-y-auto">
-                {transactions.map((tx) => (
+                {filtered.length === 0 && (
+                  <div className="px-4 py-6 text-center text-[10px] text-text-dim font-mono">
+                    No {logFilter === 'all' ? '' : logFilter + ' '}entries
+                  </div>
+                )}
+                {filtered.map((tx) => (
                   <div
                     key={tx.instanceId}
                     className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-bg-elevated/50 transition-colors animate-fade-slide-in"
@@ -292,6 +342,9 @@ function App() {
                         <span className="text-[10px] font-display tracking-widest uppercase text-text-secondary">
                           {tx.type}
                         </span>
+                        <span className="text-[9px] font-display tracking-widest uppercase text-text-dim">
+                          chain {tx.chainId === CHAIN_A_ID ? 'A' : 'B'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <a
@@ -299,8 +352,9 @@ function App() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-mono text-[11px] text-text-secondary hover:text-amber transition-colors"
+                          title={tx.instanceId}
                         >
-                          {tx.instanceId.slice(0, 18)}…{tx.instanceId.slice(-6)}
+                          {tx.instanceId.slice(0, 12)}…{tx.instanceId.slice(-6)}
                         </a>
                         <button
                           onClick={() => handleCopyId(tx.instanceId)}
@@ -335,7 +389,8 @@ function App() {
                 ))}
               </div>
             </div>
-          )}
+            )
+          })()}
         </div>
       </main>
     </div>

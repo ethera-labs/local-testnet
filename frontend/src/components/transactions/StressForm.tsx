@@ -5,10 +5,13 @@ import {
   CHAIN_B_ID,
   buildApproveTx,
   buildBridgeERC20ToTx,
+  buildBridgeEthToTx,
+  buildBridgeReceiveEthTx,
   buildBridgeReceiveTokensTx,
   buildNativeTransferTx,
   generateSessionId,
   getBridgeAddress,
+  getEthLiquidityBalance,
   getSigner,
   getTokenAddress,
   parseAmount,
@@ -18,7 +21,12 @@ import {
 import { submitXT, waitForDecision } from '../../api/sidecar'
 import { useTransactionStore } from '../../stores/transactionStore'
 
-type StressTestId = 'burst-bridge' | 'bidirectional' | 'mixed-normal-xt' | 'half-wrong-nonce'
+type StressTestId =
+  | 'burst-bridge'
+  | 'bidirectional'
+  | 'mixed-normal-xt'
+  | 'half-wrong-nonce'
+  | 'burst-eth-bridge'
 
 interface TestProgress {
   running: boolean
@@ -64,6 +72,12 @@ const STRESS_TESTS: StressTest[] = [
     label: 'Half Wrong Nonce',
     description: 'N/2 valid bridge XTs interleaved with N/2 stale-nonce XTs — only valid ones should commit',
     detail: 'Wrong nonces are set below current nonce and will be rejected. Valid XTs proceed normally.',
+  },
+  {
+    id: 'burst-eth-bridge',
+    label: 'Burst ETH Bridge A→B',
+    description: 'N sequential ETH bridge XTs via bridgeEthTo / receiveETH',
+    detail: 'Each XT: bridgeEthTo on A, receiveETH on B. Destination ETH liquidity pool must hold ≥ N × amount.',
   },
 ]
 
@@ -277,6 +291,61 @@ export default function StressForm() {
     }
   }
 
+  const submitEthBridgeXT = async (
+    testId: StressTestId,
+    signerA: ethers.Wallet,
+    signerB: ethers.Wallet,
+    senderB: string,
+    bridgeA: string,
+    bridgeB: string,
+    value: bigint,
+    sessionId: string,
+    nonceA: number,
+    nonceB: number
+  ) => {
+    const txABridge = await buildBridgeEthToTx(bridgeA, CHAIN_B_ID, senderB, sessionId, value, signerA, CHAIN_A_ID, nonceA)
+    const txBReceive = await buildBridgeReceiveEthTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB)
+    const response = await submitXT({ [CHAIN_A_ID]: [txABridge], [CHAIN_B_ID]: [txBReceive] })
+    const txHashA = ethers.Transaction.from(txABridge).hash!
+    const txHashB = ethers.Transaction.from(txBReceive).hash!
+    addTransaction({ instanceId: txHashA, type: 'scenario', status: 'pending', chainId: CHAIN_A_ID, createdAt: new Date() })
+    addTransaction({ instanceId: txHashB, type: 'scenario', status: 'pending', chainId: CHAIN_B_ID, createdAt: new Date() })
+    setProgress(prev => ({ ...prev, [testId]: { ...prev[testId], submitted: prev[testId].submitted + 1 } }))
+    trackXT(response.instance_id, txHashA, txHashB, testId)
+  }
+
+  const runBurstEthBridge = async (N: number, delay: number, bridgeAmount: bigint) => {
+    const id: StressTestId = 'burst-eth-bridge'
+    const signerA = getSigner('A')
+    const signerB = getSigner('B')
+    const senderA = await signerA.getAddress()
+    const senderB = await signerB.getAddress()
+    const bridgeA = getBridgeAddress('A')
+    const bridgeB = getBridgeAddress('B')
+    const providerA = getProvider('A')
+    const providerB = getProvider('B')
+    const baseNonceA = await providerA.getTransactionCount(senderA, 'pending')
+    const baseNonceB = await providerB.getTransactionCount(senderB, 'pending')
+
+    const destBalance = await getEthLiquidityBalance('B')
+    const needed = bridgeAmount * BigInt(N)
+    if (destBalance < needed) {
+      throw new Error(
+        `ETH liquidity pool B holds ${ethers.formatEther(destBalance)} ETH but ${
+          ethers.formatEther(needed)
+        } ETH is required for ${N} bridge ops. Seed pool B from the Bridge tab first.`
+      )
+    }
+
+    for (let i = 0; i < N; i++) {
+      await submitEthBridgeXT(
+        id, signerA, signerB, senderB, bridgeA, bridgeB,
+        bridgeAmount, generateSessionId(), baseNonceA + i, baseNonceB + i
+      )
+      if (i < N - 1) await new Promise(r => setTimeout(r, delay))
+    }
+  }
+
   const runHalfWrongNonce = async (N: number, delay: number, bridgeAmount: bigint) => {
     const id: StressTestId = 'half-wrong-nonce'
     const half = Math.max(1, Math.floor(N / 2))
@@ -323,6 +392,7 @@ export default function StressForm() {
       else if (id === 'bidirectional') await runBidirectional(N, delay, bridgeAmount)
       else if (id === 'mixed-normal-xt') await runMixedNormalXT(N, delay, bridgeAmount)
       else if (id === 'half-wrong-nonce') await runHalfWrongNonce(N, delay, bridgeAmount)
+      else if (id === 'burst-eth-bridge') await runBurstEthBridge(N, delay, bridgeAmount)
     } catch (err) {
       setErrors(prev => ({ ...prev, [id]: err instanceof Error ? err.message : 'Unknown error' }))
     } finally {
@@ -330,8 +400,47 @@ export default function StressForm() {
     }
   }
 
+  const totals = Object.values(progress).reduce(
+    (acc, p) => {
+      acc.submitted += p.submitted
+      acc.committed += p.committed
+      acc.aborted += p.aborted
+      acc.errors += p.errors
+      return acc
+    },
+    { submitted: 0, committed: 0, aborted: 0, errors: 0 }
+  )
+  const anyRunning = Object.values(progress).some(q => q.running)
+
+  const resetAll = () => {
+    setProgress(Object.fromEntries(STRESS_TESTS.map(t => [t.id, emptyProgress()])) as Record<StressTestId, TestProgress>)
+    setErrors(Object.fromEntries(STRESS_TESTS.map(t => [t.id, null])) as Record<StressTestId, string | null>)
+  }
+
   return (
     <div className="space-y-5">
+      {/* Summary bar */}
+      <div className="bg-bg-elevated border border-border px-3 py-2 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 text-[10px] font-mono">
+          <span className="text-text-dim">{totals.submitted} submitted</span>
+          {totals.committed > 0 && <span className="text-cyan">{totals.committed} commit</span>}
+          {totals.aborted > 0 && <span className="text-amber">{totals.aborted} abort</span>}
+          {totals.errors > 0 && <span className="text-error">{totals.errors} err</span>}
+        </div>
+        <button
+          type="button"
+          onClick={resetAll}
+          disabled={anyRunning}
+          className={`px-2.5 py-1 font-display text-[9px] tracking-[0.2em] uppercase border transition-colors ${
+            anyRunning
+              ? 'border-border text-text-dim cursor-not-allowed'
+              : 'border-border text-text-secondary hover:border-error hover:text-error'
+          }`}
+        >
+          Reset
+        </button>
+      </div>
+
       {/* Config */}
       <div className="grid grid-cols-3 gap-3">
         <div>
@@ -384,7 +493,6 @@ export default function StressForm() {
           const err = errors[test.id]
           const pct = p.total > 0 ? (p.submitted / p.total) * 100 : 0
           const decidedTotal = p.committed + p.aborted + p.errors
-          const anyRunning = Object.values(progress).some(q => q.running)
 
           return (
             <div

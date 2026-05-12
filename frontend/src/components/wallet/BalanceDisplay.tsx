@@ -69,40 +69,28 @@ export default function BalanceDisplay({ chain, remoteChain }: BalanceDisplayPro
     return () => clearInterval(interval)
   }, [chain, remoteChain])
 
-  if (loading && balances.native === '0.0') {
-    return (
-      <div className="flex items-center gap-1.5">
-        <span className="w-1 h-1 rounded-full bg-border-bright indicator-active" />
-        <span className="text-[10px] text-text-dim font-mono">—</span>
-      </div>
-    )
-  }
+  const nativeDisplay = error
+    ? <span className="text-[11px] font-mono text-error/70">err</span>
+    : loading && balances.native === '0.0'
+    ? <span className="text-[11px] font-mono text-text-dim">—</span>
+    : <span className="text-[11px] font-mono text-text-secondary">
+        {parseFloat(balances.native).toFixed(4)}
+      </span>
 
-  if (error) {
-    return (
-      <span className="text-[10px] text-error/70 font-mono">err</span>
-    )
-  }
+  const wrappedValue = balances.wrapped !== undefined
+    ? parseFloat(balances.wrapped).toFixed(4)
+    : '—'
+  const wrappedColor = balances.wrapped !== undefined ? 'text-amber' : 'text-text-dim'
 
   return (
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-1.5">
-        <span className="text-[11px] font-mono text-text-secondary">
-          {parseFloat(balances.native).toFixed(4)}
-        </span>
+        {nativeDisplay}
         <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">native</span>
       </div>
-      {balances.wrapped !== undefined && (
+      {remoteChain && (
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-mono text-amber">
-            {parseFloat(balances.wrapped).toFixed(4)}
-          </span>
-          <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">bridged</span>
-        </div>
-      )}
-      {balances.wrappedUnavailable && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-text-dim">—</span>
+          <span className={`text-[11px] font-mono ${wrappedColor}`}>{wrappedValue}</span>
           <span className="text-[9px] text-text-dim font-display tracking-widest uppercase">bridged</span>
         </div>
       )}
