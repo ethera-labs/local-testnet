@@ -239,7 +239,7 @@ export default function SystemDiagram({
     [currentStatus, step]
   )
 
-  // Shared label background — transparent so no white box appears
+  // Shared label background - transparent so no white box appears
   const LBG = { fill: 'transparent' } as const
   const LSTYLE = (_activeColor: string, idleColor = '#9090B0') =>
     ({ fontSize: 9, fontFamily: '"IBM Plex Mono", monospace', fill: idleColor } as const)
@@ -488,7 +488,7 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'sidecar-b-simulate-builder-b') === 'active' || highlightXt ? '#60A5FA' : EDGE_IDLE,
         },
       },
-      // Sidecar A <-> Sidecar B (cross-chain coordination — always prominent)
+      // Sidecar A <-> Sidecar B (cross-chain coordination - always prominent)
       {
         id: 'sidecar-a-sidecar-b',
         source: 'sidecar-a',

@@ -74,7 +74,7 @@ available options.
 
 - L1 connection (chain ID, EL URL, CL URL)
 - Wallet credentials (private key, address)
-- Coordinator credentials — must use a **different private key** than the wallet to avoid nonce collisions (both submit
+- Coordinator credentials - must use a **different private key** than the wallet to avoid nonce collisions (both submit
   L1 transactions independently)
 - Ethera Labs network name
 - Dispute game settings (addresses, vkeys, explorer URLs)
@@ -267,7 +267,7 @@ docker compose -f .localnet/docker-compose.yml logs -f publisher op-geth-a op-ge
 | op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC             |
 | sidecar         | 17090   | 27090   | Sidecar API                 |
 | Blockscout      | 19000   | 29000   | Block explorer UI           |
-| Ethera Console  | 3000    | —       | Web UI (--frontend-enabled) |
+| Ethera Console  | 3000    | -       | Web UI (--frontend-enabled) |
 
 ## Sidecar Mode
 

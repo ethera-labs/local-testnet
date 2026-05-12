@@ -81,7 +81,7 @@ const flowContent: Record<FlowMode, FlowContent> = {
         subDetails: [
           'JSON-RPC method: ethera_submitXt',
           'order = (period_id, sequence_number) from the SBCP period',
-          'No polling — sidecar drives the lifecycle',
+          'No polling - sidecar drives the lifecycle',
         ],
       },
       {
@@ -128,7 +128,7 @@ const flowContent: Record<FlowMode, FlowContent> = {
         'builder includes XT, then calls POST /ethera/confirm',
       ],
     },
-    note: 'The sidecar drives the builder via JSON-RPC pushes (ethera_submitXt / releaseXt / abortXt). Inclusion is reported back over POST /ethera/confirm — there is no polling or hold-and-deliver loop.',
+    note: 'The sidecar drives the builder via JSON-RPC pushes (ethera_submitXt / releaseXt / abortXt). Inclusion is reported back over POST /ethera/confirm - there is no polling or hold-and-deliver loop.',
   },
 }
 

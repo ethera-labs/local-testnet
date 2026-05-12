@@ -70,7 +70,7 @@ const STRESS_TESTS: StressTest[] = [
   {
     id: 'half-wrong-nonce',
     label: 'Half Wrong Nonce',
-    description: 'N/2 valid bridge XTs interleaved with N/2 stale-nonce XTs — only valid ones should commit',
+    description: 'N/2 valid bridge XTs interleaved with N/2 stale-nonce XTs - only valid ones should commit',
     detail: 'Wrong nonces are set below current nonce and will be rejected. Valid XTs proceed normally.',
   },
   {

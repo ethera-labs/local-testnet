@@ -28,7 +28,7 @@ Network parameters are embedded from `internal/l1/params.yaml` at build time:
 - SSV and Anchor node configurations
 - MEV settings
 
-The observability stack runs independently — see [`internal/observability`](../observability/README.md).
+The observability stack runs independently - see [`internal/observability`](../observability/README.md).
 
 ## Usage
 

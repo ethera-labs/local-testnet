@@ -74,7 +74,7 @@ function App() {
               })
             }
           } catch {
-            // ignore — tx may not be on-chain yet
+            // ignore - tx may not be on-chain yet
           }
         })
       )

@@ -5,12 +5,12 @@ for cross-chain composability.
 
 ## Layout
 
-- `compiled/contracts.json` — embedded ABI + bytecode for every contract listed
+- `compiled/contracts.json` - embedded ABI + bytecode for every contract listed
   in `contract.go`.
-- `loader.go` — loads `compiled/contracts.json` at runtime.
-- `deployer.go` — deploys the contracts to each rollup and writes
+- `loader.go` - loads `compiled/contracts.json` at runtime.
+- `deployer.go` - deploys the contracts to each rollup and writes
   `<networks-dir>/<chain>/contracts.json`.
-- `compiler.go` — invokes the contracts repository to regenerate
+- `compiler.go` - invokes the contracts repository to regenerate
   `compiled/contracts.json`.
 
 ## Contracts

@@ -401,8 +401,8 @@ export default function ScenariosForm() {
                 {state.error
                   ? state.error
                   : state.outcome === 'committed'
-                  ? 'Committed — both chains executed'
-                  : 'Aborted — neither chain executed'}
+                  ? 'Committed - both chains executed'
+                  : 'Aborted - neither chain executed'}
                 {!state.error && (() => {
                   const matched = state.outcome === (scenario.expected === 'commit' ? 'committed' : 'aborted')
                   return matched

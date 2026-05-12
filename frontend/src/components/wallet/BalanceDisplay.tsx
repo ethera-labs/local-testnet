@@ -72,14 +72,14 @@ export default function BalanceDisplay({ chain, remoteChain }: BalanceDisplayPro
   const nativeDisplay = error
     ? <span className="text-[11px] font-mono text-error/70">err</span>
     : loading && balances.native === '0.0'
-    ? <span className="text-[11px] font-mono text-text-dim">—</span>
+    ? <span className="text-[11px] font-mono text-text-dim">-</span>
     : <span className="text-[11px] font-mono text-text-secondary">
         {parseFloat(balances.native).toFixed(4)}
       </span>
 
   const wrappedValue = balances.wrapped !== undefined
     ? parseFloat(balances.wrapped).toFixed(4)
-    : '—'
+    : '-'
   const wrappedColor = balances.wrapped !== undefined ? 'text-amber' : 'text-text-dim'
 
   return (

@@ -102,9 +102,9 @@ function EthLiquidityPanel({ seeding, setSeeding, setError }: EthLiquidityPanelP
           ETH Pools
         </span>
         <div className="flex items-center gap-3 font-mono text-[11px] text-text-secondary">
-          <span>A {balances ? fmt(balances.a) : '—'}</span>
+          <span>A {balances ? fmt(balances.a) : '-'}</span>
           <span className="text-border-bright">·</span>
-          <span>B {balances ? fmt(balances.b) : '—'}</span>
+          <span>B {balances ? fmt(balances.b) : '-'}</span>
         </div>
       </div>
       <div className="flex gap-2">
