@@ -107,8 +107,8 @@ Configuration is managed via `configs/config.yaml`. Use `configs/config.example.
 
 Each component has its own logging approach:
 
-- **L1**: Uses Kurtosis — see [L1 Documentation](internal/l1/README.md#viewing-logs)
-- **L2**: Uses Docker containers — see [L2 Documentation](internal/l2/README.md#viewing-logs)
+- **L1**: Uses Kurtosis - see [L1 Documentation](internal/l1/README.md#viewing-logs)
+- **L2**: Uses Docker containers - see [L2 Documentation](internal/l2/README.md#viewing-logs)
 - **Observability**: Access Grafana at http://localhost:3000 for dashboards and Loki log aggregation
 
 ## ⏹️ Stopping Services

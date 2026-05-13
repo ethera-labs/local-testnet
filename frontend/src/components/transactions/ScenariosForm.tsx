@@ -6,6 +6,8 @@ import {
   buildMintTx,
   buildApproveTx,
   buildBridgeERC20ToTx,
+  buildBridgeEthToTx,
+  buildBridgeReceiveEthTx,
   buildBridgeReceiveTokensTx,
   buildNativeTransferTx,
   generateSessionId,
@@ -25,6 +27,9 @@ type ScenarioId =
   | 'bridge-oog'
   | 'native-receive-no-send'
   | 'native-overdraft'
+  | 'eth-bridge-oog'
+
+type CategoryId = 'happy' | 'bridge' | 'eth' | 'native'
 
 interface ScenarioDef {
   id: ScenarioId
@@ -33,7 +38,21 @@ interface ScenarioDef {
   chainADesc: string
   chainBDesc: string
   expected: 'commit' | 'abort'
+  category: CategoryId
 }
+
+interface CategoryDef {
+  id: CategoryId | 'all'
+  label: string
+}
+
+const CATEGORIES: CategoryDef[] = [
+  { id: 'all', label: 'All' },
+  { id: 'happy', label: 'Happy path' },
+  { id: 'bridge', label: 'Bridge fails' },
+  { id: 'eth', label: 'ETH bridge fails' },
+  { id: 'native', label: 'Native fails' },
+]
 
 const SCENARIOS: ScenarioDef[] = [
   {
@@ -43,22 +62,34 @@ const SCENARIOS: ScenarioDef[] = [
     chainADesc: 'token.mint(1 TKN → self)',
     chainBDesc: 'token.mint(1 TKN → self)',
     expected: 'commit',
+    category: 'happy',
   },
   {
     id: 'bridge-native-fail',
     label: 'Bridge + Native Overdraft',
-    description: 'Bridge send on A paired with an impossible ETH transfer on B',
-    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B)',
+    description: 'Bridge send on A with no paired receive on B; B half is an impossible ETH transfer.',
+    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B) → no ACK → REVERT',
     chainBDesc: 'transfer(balance + 1 ETH → self) → FAIL',
     expected: 'abort',
+    category: 'bridge',
   },
   {
     id: 'bridge-oog',
     label: 'Bridge Out-of-Gas',
-    description: 'Bridge send on A paired with an under-gassed receive on B',
-    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B)',
+    description: 'Bridge send on A paired with an under-gassed receive on B; A reverts too (no ACK).',
+    chainADesc: 'approve + bridgeERC20To(0.1 TKN → B) → no ACK → REVERT',
     chainBDesc: 'receiveTokens(gas: 300k) → OOG',
     expected: 'abort',
+    category: 'bridge',
+  },
+  {
+    id: 'eth-bridge-oog',
+    label: 'ETH Bridge Out-of-Gas',
+    description: 'bridgeEthTo on A paired with an under-gassed receiveETH on B; A reverts too (no ACK).',
+    chainADesc: 'bridgeEthTo(0.01 ETH → B) → no ACK → REVERT',
+    chainBDesc: 'receiveETH(gas: 300k) → OOG',
+    expected: 'abort',
+    category: 'eth',
   },
   {
     id: 'native-receive-no-send',
@@ -67,6 +98,7 @@ const SCENARIOS: ScenarioDef[] = [
     chainADesc: 'transfer(0.1 ETH → self)',
     chainBDesc: 'receiveTokens() → no matching send → FAIL',
     expected: 'abort',
+    category: 'native',
   },
   {
     id: 'native-overdraft',
@@ -75,6 +107,7 @@ const SCENARIOS: ScenarioDef[] = [
     chainADesc: 'transfer(balance / 2 → self)',
     chainBDesc: 'transfer(balance + 1 ETH → self) → FAIL',
     expected: 'abort',
+    category: 'native',
   },
 ]
 
@@ -88,6 +121,8 @@ export default function ScenariosForm() {
   const [states, setStates] = useState<Record<ScenarioId, ScenarioState>>(
     () => Object.fromEntries(SCENARIOS.map(s => [s.id, { running: false }])) as Record<ScenarioId, ScenarioState>
   )
+  const [category, setCategory] = useState<CategoryId | 'all'>('all')
+  const [running, setRunning] = useState(false)
 
   const { addTransaction, updateTransaction } = useTransactionStore()
 
@@ -142,6 +177,14 @@ export default function ScenariosForm() {
           transactions[CHAIN_B_ID] = [txBBytes]
           break
         }
+        case 'eth-bridge-oog': {
+          const value = ethers.parseEther('0.01')
+          txABytes = await buildBridgeEthToTx(bridgeA, CHAIN_B_ID, senderB, sessionId, value, signerA, CHAIN_A_ID, nonceA)
+          txBBytes = await buildBridgeReceiveEthTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB, 300000n)
+          transactions[CHAIN_A_ID] = [txABytes]
+          transactions[CHAIN_B_ID] = [txBBytes]
+          break
+        }
         case 'native-receive-no-send': {
           txABytes = await buildNativeTransferTx(senderA, ethers.parseEther('0.1'), signerA, CHAIN_A_ID, nonceA)
           txBBytes = await buildBridgeReceiveTokensTx(bridgeB, sessionId, CHAIN_A_ID, CHAIN_B_ID, bridgeA, senderB, signerB, CHAIN_B_ID, nonceB)
@@ -171,7 +214,8 @@ export default function ScenariosForm() {
       addTransaction({ instanceId: txHashA, type: 'scenario', status: 'pending', chainId: CHAIN_A_ID, createdAt: new Date() })
       addTransaction({ instanceId: txHashB, type: 'scenario', status: 'pending', chainId: CHAIN_B_ID, createdAt: new Date() })
 
-      waitForDecision(instanceId, 60000).then(async decision => {
+      try {
+        const decision = await waitForDecision(instanceId, 60000)
         if (decision) {
           try {
             const [receiptA, receiptB] = await Promise.all([
@@ -191,12 +235,11 @@ export default function ScenariosForm() {
           updateTransaction(txHashB, { status: 'aborted', decision: false, decidedAt: new Date() })
           setStates(prev => ({ ...prev, [id]: { running: false, outcome: 'aborted' } }))
         }
-      }).catch(err => {
+      } catch (err) {
         updateTransaction(txHashA, { status: 'aborted', decision: false, decidedAt: new Date() })
         updateTransaction(txHashB, { status: 'aborted', decision: false, decidedAt: new Date() })
         setStates(prev => ({ ...prev, [id]: { running: false, error: err instanceof Error ? err.message : 'timeout' } }))
-      })
-
+      }
     } catch (err) {
       setStates(prev => ({
         ...prev,
@@ -205,9 +248,80 @@ export default function ScenariosForm() {
     }
   }
 
+  const visibleScenarios = SCENARIOS.filter(s => category === 'all' || s.category === category)
+
+  const runAllVisible = async () => {
+    if (running) return
+    setRunning(true)
+    try {
+      for (const s of visibleScenarios) {
+        await runScenario(s.id)
+      }
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const visibleCounts = visibleScenarios.reduce(
+    (acc, s) => {
+      const st = states[s.id]
+      if (st.error) acc.err += 1
+      else if (st.outcome === 'committed') acc.commit += 1
+      else if (st.outcome === 'aborted') acc.abort += 1
+      else acc.pending += 1
+      return acc
+    },
+    { commit: 0, abort: 0, err: 0, pending: 0 }
+  )
+
   return (
     <div className="space-y-3">
-      {SCENARIOS.map(scenario => {
+      <div className="bg-bg-elevated border border-border px-3 py-2.5 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {CATEGORIES.map(c => {
+            const count = c.id === 'all'
+              ? SCENARIOS.length
+              : SCENARIOS.filter(s => s.category === c.id).length
+            const active = category === c.id
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`px-2 py-1 font-display text-[9px] tracking-[0.2em] uppercase border transition-colors ${
+                  active
+                    ? 'border-amber text-amber bg-amber/5'
+                    : 'border-border text-text-secondary hover:border-border-bright hover:text-text-primary'
+                }`}
+              >
+                {c.label} <span className="text-text-dim ml-0.5">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 text-[10px] font-mono">
+            {visibleCounts.commit > 0 && <span className="text-cyan">{visibleCounts.commit} commit</span>}
+            {visibleCounts.abort > 0 && <span className="text-amber">{visibleCounts.abort} abort</span>}
+            {visibleCounts.err > 0 && <span className="text-error">{visibleCounts.err} err</span>}
+            {visibleCounts.pending > 0 && <span className="text-text-dim">{visibleCounts.pending} pending</span>}
+          </div>
+          <button
+            type="button"
+            onClick={runAllVisible}
+            disabled={running}
+            className={`px-3 py-1.5 font-display text-[9px] tracking-[0.2em] uppercase border transition-all ${
+              running
+                ? 'border-border text-text-dim cursor-not-allowed'
+                : 'border-amber text-amber hover:bg-amber hover:text-bg'
+            }`}
+          >
+            {running ? 'Running…' : `Run ${visibleScenarios.length}`}
+          </button>
+        </div>
+      </div>
+
+      {visibleScenarios.map(scenario => {
         const state = states[scenario.id]
         const isCommit = scenario.expected === 'commit'
         const accentColor = isCommit ? 'cyan' : 'amber'
@@ -287,8 +401,8 @@ export default function ScenariosForm() {
                 {state.error
                   ? state.error
                   : state.outcome === 'committed'
-                  ? 'Committed — both chains executed'
-                  : 'Aborted — neither chain executed'}
+                  ? 'Committed - both chains executed'
+                  : 'Aborted - neither chain executed'}
                 {!state.error && (() => {
                   const matched = state.outcome === (scenario.expected === 'commit' ? 'committed' : 'aborted')
                   return matched

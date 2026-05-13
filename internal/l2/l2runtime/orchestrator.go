@@ -164,6 +164,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		envVars["CONTRACT_BRIDGE_ADDRESS"] = chainContracts[contracts.ContractNameComposeL2ToL2Bridge].Hex()
 		envVars["CONTRACT_TOKEN_ADDRESS"] = chainContracts[contracts.ContractNameTestToken].Hex()
 		envVars["CONTRACT_CET_FACTORY_ADDRESS"] = chainContracts[contracts.ContractNameCetFactory].Hex()
+		envVars["CONTRACT_ETH_LIQUIDITY_ADDRESS"] = chainContracts[contracts.ContractNameComposeETHLiquidity].Hex()
 
 		dockerFiles := []string{dockerPath}
 		if overlays.flashblocks != "" {

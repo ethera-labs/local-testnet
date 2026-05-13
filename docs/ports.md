@@ -10,8 +10,8 @@ All ports are bound to `localhost` unless otherwise noted.
 | op-node RPC | 19545          | 29545          | Rollup node RPC       |
 | op-batcher  | 18548          | 28548          | Batcher admin RPC     |
 | op-proposer | 18560          | 28560          | Proposer admin RPC    |
-| Publisher   | 18080 (QUIC)   | —              | Sequencer connections |
-| Publisher   | 18081 (HTTP)   | —              | Health, metrics, API  |
+| Publisher   | 18080 (QUIC)   | -              | Sequencer connections |
+| Publisher   | 18081 (HTTP)   | -              | Health, metrics, API  |
 
 ## Flashblocks (--flashblocks-enabled)
 

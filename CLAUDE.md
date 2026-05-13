@@ -16,14 +16,14 @@ Localnet Control Plane is a CLI tool for managing local L1 and L2 Ethereum test 
 
 ## Build and Run Commands
 
-- `make build` — compile the binary to `cmd/localnet/bin/localnet`.
-- `make run-l1` / `make run-l2` / `make run-observability` — bring up a single subsystem.
-- `make show-l1` / `make show-l2` / `make show-observability` — inspect running services.
-- `make stop-*` — stop a subsystem without removing its state.
-- `make clean-*` — stop and remove all generated state for a subsystem.
-- `make test` — `go test ./...`.
-- `make lint` — `golangci-lint run -v ./...`.
-- `make docker-build` — build the localnet CLI as a Docker image (see `build/DOCKER.md`).
+- `make build` - compile the binary to `cmd/localnet/bin/localnet`.
+- `make run-l1` / `make run-l2` / `make run-observability` - bring up a single subsystem.
+- `make show-l1` / `make show-l2` / `make show-observability` - inspect running services.
+- `make stop-*` - stop a subsystem without removing its state.
+- `make clean-*` - stop and remove all generated state for a subsystem.
+- `make test` - `go test ./...`.
+- `make lint` - `golangci-lint run -v ./...`.
+- `make docker-build` - build the localnet CLI as a Docker image (see `build/DOCKER.md`).
 
 ## Architecture
 
@@ -42,11 +42,11 @@ Localnet Control Plane is a CLI tool for managing local L1 and L2 Ethereum test 
 
 - `cmd.go`/`flags.go` wire CLI flags onto Viper keys under `l2.*`.
 - `service.go` runs the three deployment phases:
-    1. **L1 deployment** (`l1deployment/`) — `op-deployer` runs the OP Stack contracts on L1 (system config, dispute
+    1. **L1 deployment** (`l1deployment/`) - `op-deployer` runs the OP Stack contracts on L1 (system config, dispute
        game factory, etc.).
-    2. **L2 config generation** (`l2config/`) — produces per-chain `genesis.json`, `rollup.json`, `runtime.env`,
+    2. **L2 config generation** (`l2config/`) - produces per-chain `genesis.json`, `rollup.json`, `runtime.env`,
        `opsuccinct.env`, dispute env templates, and registry TOML files under `.localnet/networks/<chain>/`.
-    3. **L2 runtime** (`l2runtime/`) — deploys L2 contracts on each rollup (`UniversalBridgeMailbox`, `CetFactory`,
+    3. **L2 runtime** (`l2runtime/`) - deploys L2 contracts on each rollup (`UniversalBridgeMailbox`, `CetFactory`,
        `ComposeETHLiquidity`, `ComposeL2ToL2Bridge`, `MockL2ERC20`), then starts containers via docker-compose.
 - `infra/docker/` holds the canonical compose files: `docker-compose.yml` (core), `docker-compose.flashblocks.yml`,
   `docker-compose.sidecar.yml`, `docker-compose.altda.yml`, `docker-compose.opsuccinct.yml`,
@@ -64,13 +64,13 @@ Localnet Control Plane is a CLI tool for managing local L1 and L2 Ethereum test 
 
 - `configs/config.example.yaml` documents every supported field with comments.
 - `configs/config.yaml` is the user's local config (gitignored; copied to the binary directory by `make build`).
-- L2 fields are validated by `(*L2).Validate` in `configs/config.go` — adding a new YAML key without updating that
+- L2 fields are validated by `(*L2).Validate` in `configs/config.go` - adding a new YAML key without updating that
   struct silently drops it.
 
 ## Contracts
 
 L2 contracts are precompiled and embedded under `internal/l2/l2runtime/contracts/compiled/contracts.json`. Only the
-contracts listed in `internal/l2/l2runtime/contracts/contract.go` are recognised — there is no fallback for legacy
+contracts listed in `internal/l2/l2runtime/contracts/contract.go` are recognised - there is no fallback for legacy
 `Mailbox` or `PingPong` contracts. Regenerate the embedded artefact with `make run-l2-compile`.
 
 ## Implementation Notes

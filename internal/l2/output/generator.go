@@ -59,6 +59,14 @@ func (g *Generator) Generate(_ context.Context, deployedContracts map[configs.L2
 					Address: chainContracts[contracts.ContractNameTestToken],
 					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameTestToken].RawABI)),
 				},
+				strings.ToLower(contracts.ContractNameComposeETHLiquidity): {
+					Address: chainContracts[contracts.ContractNameComposeETHLiquidity],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameComposeETHLiquidity].RawABI)),
+				},
+				strings.ToLower(contracts.ContractNameCetFactory): {
+					Address: chainContracts[contracts.ContractNameCetFactory],
+					ABI:     SingleQuotedString(compactJSON(compiledContracts[contracts.ContractNameCetFactory].RawABI)),
+				},
 			},
 		},
 	}

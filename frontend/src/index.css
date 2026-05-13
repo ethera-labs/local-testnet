@@ -28,7 +28,7 @@ body {
 ::-webkit-scrollbar-thumb { background: #333340; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #FF6B00; }
 
-/* Corner bracket mixin — decorate card corners with orange L-marks */
+/* Corner bracket mixin - decorate card corners with orange L-marks */
 .cb {
   position: relative;
 }
