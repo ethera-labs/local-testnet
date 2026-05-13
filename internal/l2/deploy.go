@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
@@ -14,16 +13,10 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy [op-geth|publisher|all]",
-	Short: "Build and restart selected L2 services for rapid local development",
-	Args:  cobra.ExactArgs(1),
+	Use:   "deploy",
+	Short: "Rebuild and restart the publisher for rapid local development",
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		target := strings.ToLower(args[0])
-		allowed := map[string]bool{"op-geth": true, "publisher": true, "all": true}
-		if !allowed[target] {
-			return fmt.Errorf("invalid service '%s' (expected: op-geth|publisher|all)", target)
-		}
-
 		rootDir, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get working directory: %w", err)
@@ -43,7 +36,7 @@ var deployCmd = &cobra.Command{
 			return err
 		}
 
-		services := mapServices(target)
+		services := []string{"publisher"}
 		ctx := cmd.Context()
 		slog.With("services", services).Info("building services from local sources")
 		if err := docker.ComposeBuild(ctx, dockerPath, envVars, services...); err != nil {
@@ -58,15 +51,4 @@ var deployCmd = &cobra.Command{
 		slog.Info("deploy completed successfully")
 		return nil
 	},
-}
-
-func mapServices(target string) []string {
-	switch target {
-	case "op-geth":
-		return []string{"op-geth-a", "op-geth-b"}
-	case "publisher":
-		return []string{"publisher"}
-	default:
-		return []string{"publisher", "op-geth-a", "op-geth-b"}
-	}
 }

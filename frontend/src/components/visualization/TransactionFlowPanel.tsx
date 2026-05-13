@@ -23,11 +23,11 @@ const flowContent: Record<FlowMode, FlowContent> = {
     steps: [
       {
         title: 'Submit to builder RPC',
-        detail: 'User sends tx to op-rbuilder. The tx enters the mempool (reth transaction pool) ordered by gas price/priority.',
+        detail: 'User sends tx to op-rbuilder. The tx enters the builder transaction pool ordered by gas price/priority.',
       },
       {
         title: 'Start block build (FCU)',
-        detail: 'op-node calls engine_forkchoiceUpdated on rollup-boost, which forwards to both op-geth (proposer) and op-rbuilder (builder).',
+        detail: 'op-node calls engine_forkchoiceUpdated on rollup-boost, which forwards to both op-reth (proposer) and op-rbuilder (builder).',
         subDetails: ['op-rbuilder starts building flashblocks immediately', 'Fallback block (deposits only) is built first'],
       },
       {
@@ -37,15 +37,15 @@ const flowContent: Record<FlowMode, FlowContent> = {
       },
       {
         title: 'Assemble final payload',
-        detail: 'op-node calls engine_getPayload; rollup-boost fetches the builder payload (all flashblocks merged) and the proposer fallback payload from op-geth.',
+        detail: 'op-node calls engine_getPayload; rollup-boost fetches the builder payload (all flashblocks merged) and the proposer fallback payload from op-reth.',
       },
       {
         title: 'Validate builder payload',
-        detail: 'rollup-boost validates the builder payload by calling op-geth engine_newPayload. This ensures the payload is valid before returning it.',
+        detail: 'rollup-boost validates the builder payload by calling op-reth engine_newPayload. This ensures the payload is valid before returning it.',
       },
       {
         title: 'Fallback on invalid',
-        detail: 'If validation fails, rollup-boost returns the op-geth payload instead. The builder payload is discarded.',
+        detail: 'If validation fails, rollup-boost returns the op-reth payload instead. The builder payload is discarded.',
       },
       {
         title: 'Finalize chain head',
@@ -63,7 +63,7 @@ const flowContent: Record<FlowMode, FlowContent> = {
         '2000ms: Block finalized (state root calculated)',
       ],
     },
-    note: 'If flashblocks are disabled, normal txs go directly to op-geth mempool instead.',
+    note: 'If flashblocks are disabled, normal txs go directly to op-reth mempool instead.',
   },
   xt: {
     title: 'Cross-Chain XT Flow',

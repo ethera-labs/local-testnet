@@ -10,8 +10,6 @@ func TestNormalizeComposeBuildServicesCollapsesSharedImagePairs(t *testing.T) {
 
 	services := []string{
 		"publisher",
-		"op-geth-a",
-		"op-geth-b",
 		"op-alt-da-a",
 		"op-alt-da-b",
 		"op-succinct-a",
@@ -25,7 +23,6 @@ func TestNormalizeComposeBuildServicesCollapsesSharedImagePairs(t *testing.T) {
 	got := normalizeComposeBuildServices(services)
 	want := []string{
 		"publisher",
-		"op-geth-a",
 		"op-alt-da-a",
 		"op-succinct-a",
 		"op-rbuilder-a",
@@ -41,7 +38,6 @@ func TestNormalizeComposeBuildServicesMapsBOnlyRequestsToSharedBuilder(t *testin
 	t.Parallel()
 
 	services := []string{
-		"op-geth-b",
 		"op-alt-da-b",
 		"op-succinct-b",
 		"op-rbuilder-b",
@@ -50,7 +46,6 @@ func TestNormalizeComposeBuildServicesMapsBOnlyRequestsToSharedBuilder(t *testin
 
 	got := normalizeComposeBuildServices(services)
 	want := []string{
-		"op-geth-a",
 		"op-alt-da-a",
 		"op-succinct-a",
 		"op-rbuilder-a",
@@ -65,8 +60,8 @@ func TestNormalizeComposeBuildServicesMapsBOnlyRequestsToSharedBuilder(t *testin
 func TestComposeBuildArgsOnlyAddsParallelForMultipleUniqueTargets(t *testing.T) {
 	t.Parallel()
 
-	many := composeBuildArgs([]string{"publisher", "op-geth-a", "op-geth-b"})
-	if want := []string{"build", "--parallel", "publisher", "op-geth-a"}; !reflect.DeepEqual(many, want) {
+	many := composeBuildArgs([]string{"publisher", "op-rbuilder-a", "op-rbuilder-b"})
+	if want := []string{"build", "--parallel", "publisher", "op-rbuilder-a"}; !reflect.DeepEqual(many, want) {
 		t.Fatalf("composeBuildArgs(many) = %v, want %v", many, want)
 	}
 

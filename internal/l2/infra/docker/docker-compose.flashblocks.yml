@@ -1,5 +1,5 @@
 # Flashblocks compose override - adds op-rbuilder and rollup-boost services.
-# Architecture: op-node → rollup-boost → op-rbuilder (builder) / op-geth (fallback)
+# Architecture: op-node → rollup-boost → op-rbuilder (builder) / op-reth (fallback)
 # Build context is resolved from l2.repositories.op-rbuilder.
 
 services:
@@ -98,7 +98,7 @@ services:
       - --flashblocks.port=1111
       - --flashblocks.fixed
 
-  # Multiplexer for Chain A - routes between op-geth (fallback) and op-rbuilder (builder)
+  # Multiplexer for Chain A - routes between op-reth (fallback) and op-rbuilder (builder)
   rollup-boost-a:
     image: flashbots/rollup-boost:${ROLLUP_BOOST_IMAGE_TAG:-latest}
     container_name: rollup-boost-a
@@ -108,9 +108,9 @@ services:
       - localnet-l2
     depends_on:
       - op-rbuilder-a
-      - op-geth-a
+      - op-reth-a
     environment:
-      L2_URL: "http://op-geth-a:8551"
+      L2_URL: "http://op-reth-a:8551"
       L2_JWT_PATH: "/config/jwt.txt"
       BUILDER_URL: "http://op-rbuilder-a:8551"
       BUILDER_JWT_PATH: "/config/jwt.txt"
@@ -140,9 +140,9 @@ services:
       - localnet-l2
     depends_on:
       - op-rbuilder-b
-      - op-geth-b
+      - op-reth-b
     environment:
-      L2_URL: "http://op-geth-b:8551"
+      L2_URL: "http://op-reth-b:8551"
       L2_JWT_PATH: "/config/jwt.txt"
       BUILDER_URL: "http://op-rbuilder-b:8551"
       BUILDER_JWT_PATH: "/config/jwt.txt"

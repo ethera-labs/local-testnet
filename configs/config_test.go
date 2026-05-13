@@ -148,9 +148,6 @@ func validL2Config() L2 {
 		},
 		CoordinatorPrivateKey: "coordinator-key",
 		Repositories: map[RepositoryName]Repository{
-			RepositoryNameOpGeth: {
-				LocalPath: "../op-geth",
-			},
 			RepositoryNamePublisher: {
 				LocalPath: "../publisher",
 			},
@@ -179,6 +176,9 @@ func validL2Config() L2 {
 				Tag: "v1",
 			},
 			ImageNameOpBatcher: {
+				Tag: "v1",
+			},
+			ImageNameOpReth: {
 				Tag: "v1",
 			},
 		},

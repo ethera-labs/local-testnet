@@ -59,17 +59,11 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 	}
 	defer dockerClient.Close()
 
-	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
-	opGethPath, err := envBuilder.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOpGeth], configs.RepositoryNameOpGeth)
-	if err != nil {
-		return fmt.Errorf("failed to resolve op-geth path: %w", err)
-	}
-
 	var (
 		writer = json.NewWriter()
 
 		opDeployer    = deployer.NewDeployer(o.rootDir, o.stateDir, cfg.Images[configs.ImageNameOpDeployer].Tag, dockerClient)
-		genesisGen    = genesis.NewGenerator(opDeployer, dockerClient, writer, o.rootDir, o.localnetDir, o.servicesDir, o.networksDir, opGethPath)
+		genesisGen    = genesis.NewGenerator(opDeployer, dockerClient, writer, o.localnetDir, cfg.ImageRef(configs.ImageNameOpReth))
 		rollupGen     = rollup.NewGenerator(json.NewReader(), opDeployer, writer, o.localnetDir)
 		secretsGen    = secrets.NewGenerator(writer)
 		contractsGen  = contracts.NewGenerator(writer)
@@ -101,7 +95,6 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 			cfg.Wallet.Address,
 			sequencerAddress,
 			cfg.GenesisBalanceWei,
-			cfg.CoordinatorPrivateKey,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to generate genesis for chain %d: %w", chainConfig.ID, err)

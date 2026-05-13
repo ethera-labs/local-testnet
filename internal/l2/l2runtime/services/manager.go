@@ -74,8 +74,8 @@ func (m *Manager) WithOPSuccinct(opSuccinctDockerFilePath string) *Manager {
 func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	services := []string{
 		"publisher",
-		"op-geth-a",
-		"op-geth-b",
+		"op-reth-a",
+		"op-reth-b",
 	}
 
 	dockerFiles := []string{m.dockerFilePath}

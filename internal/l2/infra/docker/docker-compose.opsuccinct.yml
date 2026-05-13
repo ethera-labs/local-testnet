@@ -37,7 +37,7 @@ services:
     depends_on:
       op-succinct-postgres:
         condition: service_healthy
-      op-geth-a:
+      op-reth-a:
         condition: service_healthy
       op-node-a:
         condition: service_started
@@ -48,7 +48,7 @@ services:
       L1_RPC: "${L1_EL_URL}"
       L1_BEACON_RPC: "${L1_CL_URL}"
       L1_CONFIG_DIR: "/app/configs/L1"
-      L2_RPC: "http://op-geth-a:8545"
+      L2_RPC: "http://op-reth-a:8545"
       L2_NODE_RPC: "http://op-node-a:9545"
       PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"
@@ -84,7 +84,7 @@ services:
     depends_on:
       op-succinct-postgres:
         condition: service_healthy
-      op-geth-b:
+      op-reth-b:
         condition: service_healthy
       op-node-b:
         condition: service_started
@@ -95,7 +95,7 @@ services:
       L1_RPC: "${L1_EL_URL}"
       L1_BEACON_RPC: "${L1_CL_URL}"
       L1_CONFIG_DIR: "/app/configs/L1"
-      L2_RPC: "http://op-geth-b:8545"
+      L2_RPC: "http://op-reth-b:8545"
       L2_NODE_RPC: "http://op-node-b:9545"
       PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"

@@ -8,11 +8,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/pebble"
+	"regexp"
 
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/filesystem"
@@ -21,6 +17,11 @@ import (
 )
 
 const GenesisFileName = "genesis.json"
+
+var (
+	ansiRe        = regexp.MustCompile("\x1b\\[[0-9;]*[mGKHF]")
+	genesisHashRe = regexp.MustCompile(`Genesis block written.*?(0x[0-9a-fA-F]{64})`)
+)
 
 // Generator generates genesis.json files for L2 chains
 type (
@@ -32,32 +33,26 @@ type (
 		deployer    deployer
 		docker      *docker.Client
 		writer      filesystem.Writer
-		rootDir     string
 		localnetDir string
-		servicesDir string
-		networksDir string
-		opGethPath  string
+		opRethImage string
 		logger      *slog.Logger
 	}
 )
 
-// NewGenerator creates a new genesis generator
-func NewGenerator(deployer deployer, docker *docker.Client, writer filesystem.Writer, rootDir, localnetDir, servicesDir, networksDir, opGethPath string) *Generator {
+// NewGenerator creates a new genesis generator.
+func NewGenerator(deployer deployer, dockerClient *docker.Client, writer filesystem.Writer, localnetDir, opRethImage string) *Generator {
 	return &Generator{
 		deployer:    deployer,
-		docker:      docker,
+		docker:      dockerClient,
 		writer:      writer,
-		rootDir:     rootDir,
 		localnetDir: localnetDir,
-		servicesDir: servicesDir,
-		networksDir: networksDir,
-		opGethPath:  opGethPath,
+		opRethImage: opRethImage,
 		logger:      logger.Named("genesis_generator"),
 	}
 }
 
 // Generate generates genesis config for a chain
-func (g *Generator) Generate(ctx context.Context, chainID int, path string, walletAddress, sequencerAddress, genesisBalanceWei, coordinatorPrivateKey string) (string, error) {
+func (g *Generator) Generate(ctx context.Context, chainID int, path string, walletAddress, sequencerAddress, genesisBalanceWei string) (string, error) {
 	logger := g.logger.With("chain_id", chainID)
 
 	logger.Info("inspecting genesis")
@@ -111,7 +106,7 @@ func (g *Generator) Generate(ctx context.Context, chainID int, path string, wall
 	config["isthmusTime"] = 0
 
 	g.logger.Info("computing genesis hash")
-	hash, err := g.computeGenesisHash(ctx, chainID, genesis, coordinatorPrivateKey)
+	hash, err := g.computeGenesisHash(ctx, genesis)
 	if err != nil {
 		return "", fmt.Errorf("failed to compute genesis hash: %w", err)
 	}
@@ -129,11 +124,13 @@ func (g *Generator) Generate(ctx context.Context, chainID int, path string, wall
 	return hash, nil
 }
 
-// computeGenesisHash computes the genesis block hash
-func (g *Generator) computeGenesisHash(ctx context.Context, chainID int, genesis map[string]any, coordinatorPrivateKey string) (string, error) {
-	// Create temp directories under .localnet/.tmp/ to make them accessible when running in Docker
+// computeGenesisHash runs op-reth init in a one-shot container and extracts
+// the genesis hash from its "Genesis block written hash=0x..." log line.
+// Stock go-ethereum's core.Genesis cannot compute OP-Stack hashes correctly
+// past Isthmus, so we defer to the actual EL.
+func (g *Generator) computeGenesisHash(ctx context.Context, genesis map[string]any) (string, error) {
 	tmpBaseDir := filepath.Join(g.localnetDir, ".tmp")
-	if err := os.MkdirAll(tmpBaseDir, 0755); err != nil {
+	if err := os.MkdirAll(tmpBaseDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create temp base dir: %w", err)
 	}
 
@@ -143,26 +140,12 @@ func (g *Generator) computeGenesisHash(ctx context.Context, chainID int, genesis
 	}
 	defer os.RemoveAll(tmpDir)
 
-	genesisPath := filepath.Join(tmpDir, GenesisFileName)
 	genesisJSON, err := json.Marshal(genesis)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal genesis: %w", err)
 	}
-
-	if err := os.WriteFile(genesisPath, genesisJSON, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, GenesisFileName), genesisJSON, 0o644); err != nil {
 		return "", fmt.Errorf("failed to write genesis file: %w", err)
-	}
-
-	tmpDataDir, err := os.MkdirTemp(tmpBaseDir, "geth-init-*")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp datadir: %w", err)
-	}
-	defer os.RemoveAll(tmpDataDir)
-
-	const opGethImage = "local/op-geth:dev"
-
-	if err := g.ensureOpGethImage(ctx, opGethImage); err != nil {
-		return "", fmt.Errorf("failed to ensure op-geth image: %w", err)
 	}
 
 	hostTmpDir, err := path.GetHostPath(tmpDir)
@@ -170,108 +153,30 @@ func (g *Generator) computeGenesisHash(ctx context.Context, chainID int, genesis
 		return "", fmt.Errorf("failed to get host path for tmpDir: %w", err)
 	}
 
-	hostTmpDataDir, err := path.GetHostPath(tmpDataDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to get host path for tmpDataDir: %w", err)
-	}
+	g.logger.With("image", g.opRethImage).Info("running op-reth init")
 
-	g.logger.With("image", opGethImage).Info("running geth init")
-	_, err = g.docker.Run(ctx, docker.RunOptions{
-		Image: opGethImage,
+	output, err := g.docker.Run(ctx, docker.RunOptions{
+		Image: g.opRethImage,
 		Cmd: []string{
-			fmt.Sprintf("--networkid=%d", chainID),
 			"init",
-			"--state.scheme=hash",
-			"--datadir=/datadir",
-			fmt.Sprintf("/genesis/%s", GenesisFileName),
-		},
-		Env: []string{
-			fmt.Sprintf("GETH_COORDINATOR_KEY=%s", coordinatorPrivateKey),
+			"--datadir=/tmp/data",
+			"--chain=/genesis/" + GenesisFileName,
 		},
 		Volumes: map[string]string{
-			hostTmpDir:     "/genesis",
-			hostTmpDataDir: "/datadir",
+			hostTmpDir: "/genesis",
 		},
-		User:       fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		AutoRemove: true,
-		StreamLogs: false,
-		CaptureOut: false,
-	})
-
-	if err != nil {
-		slog.Error("geth init failed", "error", err)
-		return "", fmt.Errorf("failed to run geth init: %w", err)
-	}
-
-	genesisBlockPath := filepath.Join(tmpDataDir, "geth", "chaindata")
-	if _, err := os.Stat(genesisBlockPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("genesis database not created")
-	}
-
-	var kvStore ethdb.KeyValueStore
-	kvStore, err = pebble.New(genesisBlockPath, 16, 16, "", true)
-	if err != nil {
-		return "", fmt.Errorf("failed to open database: %w", err)
-	}
-	defer kvStore.Close()
-
-	db, err := rawdb.Open(kvStore, rawdb.OpenOptions{
-		Ancient:  filepath.Join(tmpDataDir, "geth", "chaindata", "ancient"),
-		ReadOnly: true,
+		CaptureOut: true,
+		CaptureErr: true,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to open database with freezer: %w", err)
-	}
-	defer db.Close()
-
-	genesisHash := rawdb.ReadCanonicalHash(db, 0)
-	if genesisHash == (common.Hash{}) {
-		return "", fmt.Errorf("genesis hash not found in database")
+		return "", fmt.Errorf("failed to run op-reth init: %w", err)
 	}
 
-	return genesisHash.Hex(), nil
-}
-
-// ensureOpGethImage checks if op-geth image exists, and builds it if not
-func (g *Generator) ensureOpGethImage(ctx context.Context, imageName string) error {
-	exists, err := g.docker.ImageExists(ctx, imageName)
-	if err != nil {
-		return fmt.Errorf("failed to check if image exists: %w", err)
+	clean := ansiRe.ReplaceAllString(output, "")
+	match := genesisHashRe.FindStringSubmatch(clean)
+	if len(match) < 2 {
+		return "", fmt.Errorf("genesis hash not found in op-reth init output:\n%s", clean)
 	}
-
-	if exists {
-		g.logger.Info("op-geth image already exists")
-		return nil
-	}
-
-	g.logger.Info("op-geth image not found, building it using docker compose")
-
-	dockerPath, err := docker.EnsureComposeFile(g.localnetDir)
-	if err != nil {
-		return fmt.Errorf("failed to ensure docker file: %w", err)
-	}
-
-	g.logger.With("docker_path", dockerPath).Info("docker file created")
-
-	// Environment variables need host paths (for docker daemon to access build contexts)
-	// but docker file path stays as container path (docker compose CLI reads it from container)
-	rootHostPath, err := path.GetHostPath(g.rootDir)
-	if err != nil {
-		return fmt.Errorf("failed to resolve host path for root dir: %w", err)
-	}
-
-	env := map[string]string{
-		"ROOT_DIR":     rootHostPath,
-		"OP_GETH_PATH": g.opGethPath,
-	}
-
-	g.logger.With("op_geth_path", g.opGethPath, "root_dir", rootHostPath, "docker_file", dockerPath).Info("building op-geth image")
-
-	if err := docker.ComposeBuild(ctx, dockerPath, env, "op-geth-a"); err != nil {
-		return fmt.Errorf("failed to build op-geth image: %w", err)
-	}
-
-	g.logger.Info("op-geth image built successfully")
-
-	return nil
+	return match[1], nil
 }

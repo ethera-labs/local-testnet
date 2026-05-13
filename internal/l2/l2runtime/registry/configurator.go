@@ -17,8 +17,8 @@ import (
 //go:embed *.tmpl
 var templatesFS embed.FS
 
-// Configurator creates the custom registry structure that prevents
-// Publisher and OP-geth from loading embedded chain definitions
+// Configurator creates the custom registry structure used by Publisher and
+// local execution clients instead of embedded chain definitions.
 type Configurator struct {
 	logger *slog.Logger
 }
@@ -115,8 +115,7 @@ func (c *Configurator) generateRollupToml(registryNetworkDir, chainName string, 
 	}
 	defer file.Close()
 
-	// Extract suffix from chain name (e.g., "rollup-a" -> "a")
-	// The sequencer host is "op-geth-a" not "op-geth-rollup-a"
+	// Extract suffix from chain name (e.g., "rollup-a" -> "a").
 	suffix := chainName
 	if len(chainName) > 7 && chainName[:7] == "rollup-" {
 		suffix = chainName[7:]
@@ -133,7 +132,7 @@ func (c *Configurator) generateRollupToml(registryNetworkDir, chainName string, 
 		ChainName:      chainName,
 		ChainID:        uint64(chainCfg.ID),
 		RPCPort:        chainCfg.RPCPort,
-		SequencerHost:  "op-geth-" + suffix,
+		SequencerHost:  "op-reth-" + suffix,
 		MailboxAddress: "0x0000000000000000000000000000000000000000", // Placeholder: contracts not deployed yet
 		L2GenesisTime:  0,                                            // Use 0 for testnet genesis time
 	}

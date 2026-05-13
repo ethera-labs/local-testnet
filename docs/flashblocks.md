@@ -13,12 +13,12 @@ and [rollup-boost](https://github.com/flashbots/rollup-boost).
                            │
                            ▼
                     ┌──────────────┐
-                    │   op-geth    │  (fallback)
+                    │   op-reth    │  (fallback)
                     └──────────────┘
 ```
 
 - **op-rbuilder**: Block builder that produces flashblocks (sub-block updates)
-- **rollup-boost**: Multiplexer that routes between op-geth (fallback) and op-rbuilder (builder)
+- **rollup-boost**: Multiplexer that routes between op-reth (fallback) and op-rbuilder (builder)
 
 ## Quick Start
 
@@ -33,6 +33,7 @@ Image tags are configured under `l2.flashblocks` in `configs/config.yaml`.
 
 `op-rbuilder` build source is configured through `l2.repositories.op-rbuilder`.
 Set either:
+
 - `local-path` for a checked-out repository
 - `url` and `branch` for a cloned repository source
 
@@ -61,7 +62,7 @@ When flashblocks is enabled, 4 additional services start:
 
 ## Transaction Submission
 
-With flashblocks enabled, send transactions to **op-rbuilder's RPC** (not op-geth):
+With flashblocks enabled, send transactions to **op-rbuilder's RPC** (not op-reth):
 
 | Chain    | RPC Endpoint             |
 |----------|--------------------------|

@@ -1,6 +1,6 @@
 import { Handle, Position, NodeProps } from 'reactflow'
 
-interface GethNodeData {
+interface OpRethNodeData {
   label: string
   port: number
   connected: boolean
@@ -8,7 +8,7 @@ interface GethNodeData {
 
 const handleStyle = { background: '#505070', border: '1px solid #707090', width: 8, height: 8 }
 
-export default function GethNode({ data }: NodeProps<GethNodeData>) {
+export default function OpRethNode({ data }: NodeProps<OpRethNodeData>) {
   const borderColor = data.connected ? '#505070' : '#FF3D5A'
   const bgColor = data.connected ? '#1A1A25' : 'rgba(255,61,90,0.07)'
 

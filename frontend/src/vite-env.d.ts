@@ -5,9 +5,9 @@ interface ImportMetaEnv {
   readonly VITE_CHAIN_B_ID: string
   readonly VITE_FLASHBLOCKS_ENABLED?: string
   readonly VITE_CHAIN_A_BUILDER_RPC?: string
-  readonly VITE_CHAIN_A_GETH_RPC?: string
+  readonly VITE_CHAIN_A_OP_RETH_RPC?: string
   readonly VITE_CHAIN_B_BUILDER_RPC?: string
-  readonly VITE_CHAIN_B_GETH_RPC?: string
+  readonly VITE_CHAIN_B_OP_RETH_RPC?: string
   readonly VITE_CHAIN_A_RPC?: string
   readonly VITE_CHAIN_B_RPC?: string
   readonly VITE_SIDECAR_A_URL: string

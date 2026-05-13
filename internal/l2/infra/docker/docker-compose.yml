@@ -43,29 +43,18 @@ services:
       timeout: 5s
       retries: 5
 
-  op-geth-a:
-    build:
-      context: ${OP_GETH_PATH}
-      dockerfile: Dockerfile
-    image: local/op-geth:dev
-    container_name: op-geth-a
+  op-reth-a:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:${OP_RETH_IMAGE_TAG}
+    container_name: op-reth-a
     labels:
       - "stack=localnet-l2"
     networks:
       - localnet-l2
     environment:
       ROLLUP_CHAIN_ID: "${ROLLUP_A_CHAIN_ID}"
-      WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
-      SEQUENCER_PRIVATE_KEY: "${SEQUENCER_PRIVATE_KEY}"
-      SSV_CIRC_TIMEOUT_MS: "${SSV_CIRC_TIMEOUT_MS:-20000}"
-      COORDINATOR_PRIVATE_KEY: "${COORDINATOR_PRIVATE_KEY}"
-      MAILBOX_A: "${MAILBOX_A:-}"
-      MAILBOX_B: "${MAILBOX_B:-}"
     volumes:
-      - rollup-a-geth:/data
+      - rollup-a-op-reth:/data
       - ${ROLLUP_A_CONFIG_PATH:-../../networks/rollup-a}:/config:ro
-      - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}:/config_b:ro
-      - ${ROOT_DIR}/.localnet/registry:/registry:ro
     ports:
       - "${ROLLUP_A_RPC_PORT}:8545"
       - "18546:8546"
@@ -78,7 +67,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8545 || exit 1"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -90,52 +79,35 @@ services:
       - |
         set -eu
 
-        COORDINATOR_KEY=$${COORDINATOR_PRIVATE_KEY:-}
-        if [ -z "$$COORDINATOR_KEY" ]; then
-          echo "[error] COORDINATOR_PRIVATE_KEY is required" >&2
-          exit 1
+        if [ ! -f /data/db/database.version ]; then
+          echo '[*] initializing op-reth datadir'
+          op-reth init --datadir=/data --chain=/config/genesis.json
         fi
 
-        # Initialize geth if needed
-        if [ ! -f /data/geth/chaindata/CURRENT ]; then
-          echo '[*] initializing op-geth datadir'
-          GETH_COORDINATOR_KEY="$$COORDINATOR_KEY" geth --networkid=$${ROLLUP_CHAIN_ID} init --state.scheme=hash --datadir /data /config/genesis.json
-          if [ ! -d /data/keystore ] || [ -z $$(ls -A /data/keystore 2>/dev/null) ]; then
-            if [ -n "$$WALLET_PRIVATE_KEY" ]; then
-              printf '%s' "$${WALLET_PRIVATE_KEY}" | sed 's/^0x//' | geth account import --datadir /data --password /config/password.txt /dev/stdin >/dev/null
-            fi
-            if [ -n "$$SEQUENCER_PRIVATE_KEY" ] && [ "$$SEQUENCER_PRIVATE_KEY" != "$$WALLET_PRIVATE_KEY" ]; then
-              printf '%s' "$${SEQUENCER_PRIVATE_KEY}" | sed 's/^0x//' | geth account import --datadir /data --password /config/password.txt /dev/stdin >/dev/null
-            fi
-          fi
-        fi
+        echo "[*] Starting op-reth"
 
-        echo "[*] Starting geth"
-
-        exec geth \
-          --verbosity=4 \
-          --datadir /data \
+        exec op-reth node \
+          --chain=/config/genesis.json \
+          --datadir=/data \
           --http \
           --http.addr=0.0.0.0 \
           --http.port=8545 \
           --http.corsdomain='*' \
-          --http.vhosts='*' \
-          --http.api=web3,debug,eth,txpool,net,engine,miner \
+          --http.api=web3,debug,eth,txpool,net,miner \
           --ws \
           --ws.addr=0.0.0.0 \
           --ws.port=8546 \
           --ws.origins='*' \
+          --ws.api=web3,debug,eth,txpool,net,miner \
           --authrpc.addr=0.0.0.0 \
           --authrpc.port=8551 \
-          --authrpc.vhosts='*' \
           --authrpc.jwtsecret=/config/jwt.txt \
-          --syncmode=full --gcmode=archive --nodiscover --maxpeers=0 \
-          --networkid=$${ROLLUP_CHAIN_ID} \
-          --miner.gasprice=0 \
-          --metrics \
-          --metrics.addr=0.0.0.0 \
-          --metrics.port=6060 \
-          --rollup.computependingblock=true
+          --disable-discovery \
+          --disable-tx-gossip \
+          --max-peers=0 \
+          --network-id=$${ROLLUP_CHAIN_ID} \
+          --metrics=0.0.0.0:9898 \
+          --rollup.compute-pending-block
 
   op-node-a:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:${OP_NODE_IMAGE_TAG}
@@ -145,13 +117,14 @@ services:
     networks:
       - localnet-l2
     depends_on:
-      op-geth-a:
+      op-reth-a:
         condition: service_healthy
     environment:
       OP_NODE_L1_ETH_RPC: "${L1_EL_URL}"
       OP_NODE_L1_BEACON: "${L1_CL_URL}"
-      OP_NODE_L2_ENGINE_RPC: "http://op-geth-a:8551"
+      OP_NODE_L2_ENGINE_RPC: "http://op-reth-a:8551"
       OP_NODE_L2_ENGINE_AUTH: "/config/jwt.txt"
+      OP_NODE_L2_ENGINE_KIND: "reth"
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
       OP_NODE_P2P_DISABLE: "true"
       OP_NODE_SEQUENCER_ENABLED: "true"
@@ -179,7 +152,7 @@ services:
       - op-node-a
     environment:
       OP_BATCHER_L1_ETH_RPC: "${L1_EL_URL}"
-      OP_BATCHER_L2_ETH_RPC: "http://op-geth-a:8545"
+      OP_BATCHER_L2_ETH_RPC: "http://op-reth-a:8545"
       OP_BATCHER_ROLLUP_RPC: "http://op-node-a:9545"
       OP_BATCHER_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       OP_BATCHER_POLL_INTERVAL: "1s"
@@ -216,29 +189,18 @@ services:
     ports:
       - "18560:8560"
 
-  op-geth-b:
-    build:
-      context: ${OP_GETH_PATH}
-      dockerfile: Dockerfile
-    image: local/op-geth:dev
-    container_name: op-geth-b
+  op-reth-b:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:${OP_RETH_IMAGE_TAG}
+    container_name: op-reth-b
     labels:
       - "stack=localnet-l2"
     networks:
       - localnet-l2
     environment:
       ROLLUP_CHAIN_ID: "${ROLLUP_B_CHAIN_ID}"
-      WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
-      SEQUENCER_PRIVATE_KEY: "${SEQUENCER_PRIVATE_KEY}"
-      SSV_CIRC_TIMEOUT_MS: "${SSV_CIRC_TIMEOUT_MS:-20000}"
-      COORDINATOR_PRIVATE_KEY: "${COORDINATOR_PRIVATE_KEY}"
-      MAILBOX_A: "${MAILBOX_A:-}"
-      MAILBOX_B: "${MAILBOX_B:-}"
     volumes:
-      - rollup-b-geth:/data
+      - rollup-b-op-reth:/data
       - ${ROLLUP_B_CONFIG_PATH:-../../networks/rollup-b}:/config:ro
-      - ${ROLLUP_A_CONFIG_PATH:-../../networks/rollup-a}:/config_a:ro
-      - ${ROOT_DIR}/.localnet/registry:/registry:ro
     ports:
       - "${ROLLUP_B_RPC_PORT}:8545"
       - "28546:8546"
@@ -251,7 +213,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8545 || exit 1"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -263,55 +225,35 @@ services:
       - |
         set -eu
 
-        COORDINATOR_KEY=$${COORDINATOR_PRIVATE_KEY:-}
-        if [ -z "$$COORDINATOR_KEY" ]; then
-          echo "[error] COORDINATOR_PRIVATE_KEY is required" >&2
-          exit 1
+        if [ ! -f /data/db/database.version ]; then
+          echo '[*] initializing op-reth datadir'
+          op-reth init --datadir=/data --chain=/config/genesis.json
         fi
 
-        # Initialize geth if needed
-        if [ ! -f /data/geth/chaindata/CURRENT ]; then
-          echo '[*] initializing op-geth datadir'
-          GETH_COORDINATOR_KEY="$$COORDINATOR_KEY" geth --networkid=$${ROLLUP_CHAIN_ID} init --state.scheme=hash --datadir /data /config/genesis.json
-          if [ ! -d /data/keystore ] || [ -z $$(ls -A /data/keystore 2>/dev/null) ]; then
-            if [ -n "$$WALLET_PRIVATE_KEY" ]; then
-              printf '%s' "$${WALLET_PRIVATE_KEY}" | sed 's/^0x//' | geth account import --datadir /data --password /config/password.txt /dev/stdin >/dev/null
-            fi
-            if [ -n "$$SEQUENCER_PRIVATE_KEY" ] && [ "$$SEQUENCER_PRIVATE_KEY" != "$$WALLET_PRIVATE_KEY" ]; then
-              printf '%s' "$${SEQUENCER_PRIVATE_KEY}" | sed 's/^0x//' | geth account import --datadir /data --password /config/password.txt /dev/stdin >/dev/null
-            fi
-          fi
-        fi
+        echo "[*] Starting op-reth"
 
-        echo "[*] Starting geth"
-
-        exec geth \
-          --verbosity=4 \
-          --datadir /data \
+        exec op-reth node \
+          --chain=/config/genesis.json \
+          --datadir=/data \
           --http \
           --http.addr=0.0.0.0 \
           --http.port=8545 \
           --http.corsdomain='*' \
-          --http.vhosts='*' \
-          --http.api=web3,debug,eth,txpool,net,engine,miner \
+          --http.api=web3,debug,eth,txpool,net,miner \
           --ws \
           --ws.addr=0.0.0.0 \
           --ws.port=8546 \
           --ws.origins='*' \
+          --ws.api=web3,debug,eth,txpool,net,miner \
           --authrpc.addr=0.0.0.0 \
           --authrpc.port=8551 \
-          --authrpc.vhosts='*' \
           --authrpc.jwtsecret=/config/jwt.txt \
-          --syncmode=full \
-          --gcmode=archive \
-          --nodiscover \
-          --maxpeers=0 \
-          --networkid=$${ROLLUP_CHAIN_ID} \
-          --miner.gasprice=0 \
-          --metrics \
-          --metrics.addr=0.0.0.0 \
-          --metrics.port=6060 \
-          --rollup.computependingblock=true
+          --disable-discovery \
+          --disable-tx-gossip \
+          --max-peers=0 \
+          --network-id=$${ROLLUP_CHAIN_ID} \
+          --metrics=0.0.0.0:9898 \
+          --rollup.compute-pending-block
 
   op-node-b:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:${OP_NODE_IMAGE_TAG}
@@ -321,13 +263,14 @@ services:
     networks:
       - localnet-l2
     depends_on:
-      op-geth-b:
+      op-reth-b:
         condition: service_healthy
     environment:
       OP_NODE_L1_ETH_RPC: "${L1_EL_URL}"
       OP_NODE_L1_BEACON: "${L1_CL_URL}"
-      OP_NODE_L2_ENGINE_RPC: "http://op-geth-b:8551"
+      OP_NODE_L2_ENGINE_RPC: "http://op-reth-b:8551"
       OP_NODE_L2_ENGINE_AUTH: "/config/jwt.txt"
+      OP_NODE_L2_ENGINE_KIND: "reth"
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
       OP_NODE_P2P_DISABLE: "true"
       OP_NODE_SEQUENCER_ENABLED: "true"
@@ -355,7 +298,7 @@ services:
       - op-node-b
     environment:
       OP_BATCHER_L1_ETH_RPC: "${L1_EL_URL}"
-      OP_BATCHER_L2_ETH_RPC: "http://op-geth-b:8545"
+      OP_BATCHER_L2_ETH_RPC: "http://op-reth-b:8545"
       OP_BATCHER_ROLLUP_RPC: "http://op-node-b:9545"
       OP_BATCHER_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       OP_BATCHER_POLL_INTERVAL: "1s"
@@ -393,8 +336,8 @@ services:
       - "28560:8560"
 
 volumes:
-  rollup-a-geth:
-  rollup-b-geth:
+  rollup-a-op-reth:
+  rollup-b-op-reth:
   rollup-a-opnode:
   rollup-b-opnode:
 

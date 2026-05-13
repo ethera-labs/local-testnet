@@ -16,7 +16,7 @@ import SidecarNode from './nodes/SidecarNode'
 import BuilderNode from './nodes/BuilderNode'
 import BoostNode from './nodes/BoostNode'
 import OpNodeNode from './nodes/OpNodeNode'
-import GethNode from './nodes/GethNode'
+import OpRethNode from './nodes/OpRethNode'
 import PublisherNode from './nodes/PublisherNode'
 import UserNode from './nodes/UserNode'
 
@@ -32,7 +32,7 @@ const nodeTypes: NodeTypes = {
   builder: BuilderNode,
   boost: BoostNode,
   opnode: OpNodeNode,
-  geth: GethNode,
+  'op-reth': OpRethNode,
   publisher: PublisherNode,
   user: UserNode,
 }
@@ -214,23 +214,23 @@ export default function SystemDiagram({
           coordinating: step === 'voting',
         },
       },
-      // Layer 5: op-geth (execution clients)
+      // Layer 5: op-reth (execution clients)
       {
-        id: 'geth-a',
-        type: 'geth',
+        id: 'op-reth-a',
+        type: 'op-reth',
         position: { x: 50, y: 530 },
         data: {
-          label: 'op-geth A',
+          label: 'op-reth A',
           port: 18545,
           connected: currentStatus.chainAConnected,
         },
       },
       {
-        id: 'geth-b',
-        type: 'geth',
+        id: 'op-reth-b',
+        type: 'op-reth',
         position: { x: 750, y: 530 },
         data: {
-          label: 'op-geth B',
+          label: 'op-reth B',
           port: 28545,
           connected: currentStatus.chainBConnected,
         },
@@ -418,11 +418,11 @@ export default function SystemDiagram({
           color: getEdgeStatus(step, 'boost-b-builder-b') === 'active' ? EDGE_MINT_ACTIVE : EDGE_IDLE,
         },
       },
-      // rollup-boost A -> op-geth A (fallback, dashed)
+      // rollup-boost A -> op-reth A (fallback, dashed)
       {
-        id: 'boost-a-geth-a',
+        id: 'boost-a-op-reth-a',
         source: 'boost-a',
-        target: 'geth-a',
+        target: 'op-reth-a',
         animated: false,
         label: 'fallback',
         labelStyle: { fontSize: 9, fontFamily: '"IBM Plex Mono", monospace', fill: '#606075' },
@@ -430,11 +430,11 @@ export default function SystemDiagram({
         style: { stroke: '#404055', strokeWidth: 1.5, strokeDasharray: '4,4' },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#404055' },
       },
-      // rollup-boost B -> op-geth B (fallback, dashed)
+      // rollup-boost B -> op-reth B (fallback, dashed)
       {
-        id: 'boost-b-geth-b',
+        id: 'boost-b-op-reth-b',
         source: 'boost-b',
-        target: 'geth-b',
+        target: 'op-reth-b',
         animated: false,
         label: 'fallback',
         labelStyle: { fontSize: 9, fontFamily: '"IBM Plex Mono", monospace', fill: '#606075' },

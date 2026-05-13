@@ -46,10 +46,9 @@ l2:
       tag: v1.10.0
     op-batcher:
       tag: v1.16.3
+    op-reth:
+      tag: v1.11.5
   repositories:
-    op-geth:
-      url: git@github.com:ethereum-optimism/op-geth.git
-      branch: v1.101603.4
     op-rbuilder:
       url: git@github.com:ethera-labs/op-rbuilder.git
       branch: stage

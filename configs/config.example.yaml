@@ -43,10 +43,10 @@ l2:
   op-succinct:
     enabled: false  # Run op-succinct validity services in local mock mode
   chain-configs:
-    rollup-a: 
+    rollup-a:
       id: 77777
       rpc-port: 18545
-    rollup-b: 
+    rollup-b:
       id: 88888
       rpc-port: 28545
   deployment-target: live  # "live" or "calldata"
@@ -59,22 +59,19 @@ l2:
   images:
     op-deployer:
       tag: v0.4.5
-    op-node: 
+    op-node:
       tag: v1.16.2
-    op-proposer: 
+    op-proposer:
       tag: v1.10.0
-    op-batcher: 
+    op-batcher:
       tag: v1.16.2
+    op-reth:
+      tag: v1.11.5
   repositories:
     # Source-built services accept exactly one source definition:
     #   local-path: use a checked-out repository on the machine running local-testnet
     #   url + branch: clone the repository into .localnet/services
     # local-path values are resolved relative to the project root unless absolute.
-    op-geth:
-      url: https://github.com/op-geth.git
-      branch: main
-      # Example:
-      # local-path: ~/projects/op-geth
     op-rbuilder:
       # Required when l2.flashblocks.enabled=true.
       url: git@github.com:ethera-labs/op-rbuilder.git
