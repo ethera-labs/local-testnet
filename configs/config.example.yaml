@@ -19,6 +19,10 @@ l2:
     rollup-boost-image-tag: "latest"
     rollup-a-rpc-port: 17545
     rollup-b-rpc-port: 27545
+    # 32-byte hex secret for op-reth's P2P identity. op-rbuilder dials op-reth
+    # as a trusted peer using the enode pubkey derived from this secret in code.
+    rollup-a-p2p-secret-key-hex: "0101010101010101010101010101010101010101010101010101010101010101"
+    rollup-b-p2p-secret-key-hex: "0202020202020202020202020202020202020202020202020202020202020202"
   sidecar:
     enabled: false  # requires flashblocks
     rollup-a-api-port: 17090

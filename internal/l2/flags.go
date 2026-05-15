@@ -46,6 +46,10 @@ var (
 		{"op-succinct-url", "l2.repositories.op-succinct.url", "", "op-succinct repository URL"},
 		{"op-succinct-branch", "l2.repositories.op-succinct.branch", "", "op-succinct repository branch"},
 
+		// Flashblocks P2P identity (deterministic enode keypair for op-reth so op-rbuilder can dial it as a trusted peer)
+		{"flashblocks-rollup-a-p2p-secret-key-hex", "l2.flashblocks.rollup-a-p2p-secret-key-hex", "0101010101010101010101010101010101010101010101010101010101010101", "Rollup A op-reth P2P secret key (32-byte hex)"},
+		{"flashblocks-rollup-b-p2p-secret-key-hex", "l2.flashblocks.rollup-b-p2p-secret-key-hex", "0202020202020202020202020202020202020202020202020202020202020202", "Rollup B op-reth P2P secret key (32-byte hex)"},
+
 		// Images
 		{"op-deployer-tag", "l2.images.op-deployer.tag", "v0.4.5", "op-deployer image tag"},
 		{"op-node-tag", "l2.images.op-node.tag", "v1.16.2", "op-node image tag"},

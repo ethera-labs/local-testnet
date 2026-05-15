@@ -102,9 +102,12 @@ services:
           --authrpc.addr=0.0.0.0 \
           --authrpc.port=8551 \
           --authrpc.jwtsecret=/config/jwt.txt \
-          --disable-discovery \
           --disable-tx-gossip \
-          --max-peers=0 \
+          --disable-discovery \
+          --max-peers=10 \
+          --port=30303 \
+          --p2p-secret-key-hex=${RETH_A_P2P_SECRET_KEY_HEX} \
+          --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
           --rollup.compute-pending-block
@@ -248,9 +251,12 @@ services:
           --authrpc.addr=0.0.0.0 \
           --authrpc.port=8551 \
           --authrpc.jwtsecret=/config/jwt.txt \
-          --disable-discovery \
           --disable-tx-gossip \
-          --max-peers=0 \
+          --disable-discovery \
+          --max-peers=10 \
+          --port=30303 \
+          --p2p-secret-key-hex=${RETH_B_P2P_SECRET_KEY_HEX} \
+          --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
           --rollup.compute-pending-block
