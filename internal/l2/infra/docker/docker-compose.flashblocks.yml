@@ -57,6 +57,12 @@ services:
       - --flashblocks.addr=0.0.0.0
       - --flashblocks.port=1111
       - --flashblocks.fixed
+      - --disable-discovery
+      - --max-peers=5
+      - --port=30303
+      - --nat=none
+      - --trusted-only
+      - --trusted-peers=enode://${RETH_A_ENODE_PUBKEY}@op-reth-a:30303
 
   # Block builder for Chain B
   op-rbuilder-b:
@@ -97,6 +103,12 @@ services:
       - --flashblocks.addr=0.0.0.0
       - --flashblocks.port=1111
       - --flashblocks.fixed
+      - --disable-discovery
+      - --max-peers=5
+      - --port=30303
+      - --nat=none
+      - --trusted-only
+      - --trusted-peers=enode://${RETH_B_ENODE_PUBKEY}@op-reth-b:30303
 
   # Multiplexer for Chain A - routes between op-reth (fallback) and op-rbuilder (builder)
   rollup-boost-a:

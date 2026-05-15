@@ -59,11 +59,13 @@ type (
 	}
 
 	FlashblocksConfig struct {
-		Enabled             bool   `mapstructure:"enabled"`
-		OpRbuilderImageTag  string `mapstructure:"op-rbuilder-image-tag"`
-		RollupBoostImageTag string `mapstructure:"rollup-boost-image-tag"`
-		RollupARPCPort      int    `mapstructure:"rollup-a-rpc-port"`
-		RollupBRPCPort      int    `mapstructure:"rollup-b-rpc-port"`
+		Enabled                bool   `mapstructure:"enabled"`
+		OpRbuilderImageTag     string `mapstructure:"op-rbuilder-image-tag"`
+		RollupBoostImageTag    string `mapstructure:"rollup-boost-image-tag"`
+		RollupARPCPort         int    `mapstructure:"rollup-a-rpc-port"`
+		RollupBRPCPort         int    `mapstructure:"rollup-b-rpc-port"`
+		RollupAP2PSecretKeyHex string `mapstructure:"rollup-a-p2p-secret-key-hex"`
+		RollupBP2PSecretKeyHex string `mapstructure:"rollup-b-p2p-secret-key-hex"`
 	}
 
 	SidecarConfig struct {

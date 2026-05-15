@@ -38,7 +38,7 @@ services:
       VITE_CHAIN_B_ETH_LIQUIDITY_ADDRESS: "${CONTRACT_ETH_LIQUIDITY_ADDRESS}"
       VITE_WALLET_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000" ]
       interval: 5s
       timeout: 3s
       retries: 10

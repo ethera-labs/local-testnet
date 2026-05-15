@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/path"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // EnvBuilder constructs environment variables for docker-compose operations.
@@ -93,6 +95,23 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 		env["OP_RBUILDER_PATH"] = opRbuilderPath
 	}
+
+	// op-reth's P2P secret + the matching enode pubkey are always populated so the
+	// `--p2p-secret-key-hex` flag in docker-compose has a value regardless of feature flags.
+	// The pubkey is derived from the secret; one source of truth.
+	rethASK, rethAEnode, err := derivePeerKeys(cfg.Flashblocks.RollupAP2PSecretKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("rollup-a flashblocks p2p key: %w", err)
+	}
+	env["RETH_A_P2P_SECRET_KEY_HEX"] = rethASK
+	env["RETH_A_ENODE_PUBKEY"] = rethAEnode
+
+	rethBSK, rethBEnode, err := derivePeerKeys(cfg.Flashblocks.RollupBP2PSecretKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("rollup-b flashblocks p2p key: %w", err)
+	}
+	env["RETH_B_P2P_SECRET_KEY_HEX"] = rethBSK
+	env["RETH_B_ENODE_PUBKEY"] = rethBEnode
 
 	if cfg.Sidecar.Enabled {
 		sidecarPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSidecar], configs.RepositoryNameSidecar)
@@ -208,6 +227,20 @@ func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2Chain
 	}
 
 	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
+}
+
+// derivePeerKeys takes a 32-byte hex-encoded secp256k1 secret and returns the
+// normalized hex secret (no 0x prefix) plus the 64-byte uncompressed enode
+// pubkey (no 0x04 prefix), as expected by `--p2p-secret-key-hex` and the enode
+// URL format respectively.
+func derivePeerKeys(secretHex string) (string, string, error) {
+	sk := strings.TrimPrefix(secretHex, "0x")
+	priv, err := crypto.HexToECDSA(sk)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid secret: %w", err)
+	}
+	pub := crypto.FromECDSAPub(&priv.PublicKey) // 65 bytes: 0x04 || X || Y
+	return sk, hex.EncodeToString(pub[1:]), nil
 }
 
 // expandUserHome expands a leading ~ to the current user's home directory.
