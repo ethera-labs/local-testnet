@@ -16,7 +16,7 @@ services:
     volumes:
       - op-succinct-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U op_succinct -d op_succinct"]
+      test: [ "CMD-SHELL", "pg_isready -U op_succinct -d op_succinct" ]
       interval: 5s
       timeout: 5s
       retries: 10

@@ -38,7 +38,7 @@ services:
       - "18080:8080"
       - "18081:8081"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/health"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8081/health" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -67,12 +67,12 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545"]
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 10s
-    entrypoint: []
+    entrypoint: [ ]
     command:
       - /bin/sh
       - -c
@@ -216,12 +216,12 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545"]
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 10s
-    entrypoint: []
+    entrypoint: [ ]
     command:
       - /bin/sh
       - -c
