@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1.7
+#
+# Build container for localnet-health, the per-stack health-probe HTTP
+# service consumed by the Ethera Labs Console.
+#
+# The image is intentionally minimal: a static binary on top of distroless,
+# no shell, no package manager. It needs only the docker socket bind-mount
+# to inspect sibling containers in the localnet-l2 compose stack.
+
+FROM --platform=$BUILDPLATFORM golang:1.26@sha256:e2ddb153f786ee6210bf8c40f7f35490b3ff7d38be70d1a0d358ba64225f6428 AS builder
+
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd ./cmd
+COPY configs ./configs
+COPY internal ./internal
+
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN go build -trimpath -ldflags="-s -w" -o /out/localnet-health ./cmd/localnet-health
+
+# Use the root variant: the container must read /var/run/docker.sock, which
+# is owned by root on every supported daemon. The nonroot variant (uid 65532)
+# would silently fail every probe with "permission denied".
+FROM gcr.io/distroless/static-debian12:latest
+
+COPY --from=builder /out/localnet-health /usr/local/bin/localnet-health
+
+EXPOSE 8090
+
+ENTRYPOINT ["/usr/local/bin/localnet-health"]
+
+LABEL org.opencontainers.image.source="https://github.com/ethera-labs/local-testnet"
+LABEL org.opencontainers.image.description="Localnet health-probe HTTP service"
+LABEL org.opencontainers.image.licenses="GPL-3.0"

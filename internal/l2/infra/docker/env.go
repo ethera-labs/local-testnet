@@ -151,7 +151,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	}
 	env["FRONTEND_PATH"] = frontendPath
 
-	if cfg.Frontend.Enabled && cfg.Frontend.Port > 0 {
+	if cfg.Frontend.Active() && cfg.Frontend.Port > 0 {
 		env["CONSOLE_PORT"] = fmt.Sprintf("%d", cfg.Frontend.Port)
 	}
 

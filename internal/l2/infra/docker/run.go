@@ -33,6 +33,10 @@ type RunOptions struct {
 func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 	capturing := opts.CaptureOut || opts.CaptureErr || opts.StreamLogs
 
+	if err := c.ensureImage(ctx, opts.Image); err != nil {
+		return "", err
+	}
+
 	hostConfig := &container.HostConfig{
 		// Suppress AutoRemove while capturing so ContainerLogs can drain first.
 		AutoRemove: opts.AutoRemove && !capturing,
@@ -120,4 +124,23 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) (string, error) {
 	}
 
 	return "", nil
+}
+
+// ensureImage pulls the image on demand. ContainerCreate does not auto-pull
+// (unlike `docker run`), so missing images would otherwise fail at create.
+func (c *Client) ensureImage(ctx context.Context, image string) error {
+	if image == "" {
+		return fmt.Errorf("image is required")
+	}
+	exists, err := c.ImageExists(ctx, image)
+	if err != nil {
+		return fmt.Errorf("failed to check image %q: %w", image, err)
+	}
+	if exists {
+		return nil
+	}
+	if err := c.PullImage(ctx, image); err != nil {
+		return fmt.Errorf("failed to pull image %q: %w", image, err)
+	}
+	return nil
 }

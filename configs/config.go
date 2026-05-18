@@ -52,6 +52,9 @@ type (
 	FrontendConfig struct {
 		Enabled bool `mapstructure:"enabled"`
 		Port    int  `mapstructure:"port"`
+		// DevEnabled mounts frontend/ source into the container and runs the
+		// Vite dev server so edits hot-reload without rebuilding the image.
+		DevEnabled bool `mapstructure:"dev-enabled"`
 	}
 
 	BlockscoutConfig struct {
@@ -190,6 +193,13 @@ func (c AltDAConfig) ResolveWindow() uint64 {
 		return c.DAResolveWindow
 	}
 	return altDADefaultResolveWindow
+}
+
+// Active reports whether the Ethera Labs Console should be started in any
+// mode. Either flag alone is sufficient; dev mode does not require the
+// production flag to also be set.
+func (c FrontendConfig) Active() bool {
+	return c.Enabled || c.DevEnabled
 }
 
 // BondSize returns the challenge bond size, applying the default when zero.
@@ -344,8 +354,8 @@ func (c *L2) Validate() error {
 	if c.Sidecar.Enabled && !c.Flashblocks.Enabled {
 		errs = append(errs, errors.New("l2.sidecar.enabled requires l2.flashblocks.enabled"))
 	}
-	if c.Frontend.Enabled && (!c.Flashblocks.Enabled || !c.Sidecar.Enabled) {
-		errs = append(errs, errors.New("l2.frontend.enabled requires l2.flashblocks.enabled and l2.sidecar.enabled"))
+	if c.Frontend.Active() && (!c.Flashblocks.Enabled || !c.Sidecar.Enabled) {
+		errs = append(errs, errors.New("l2.frontend requires l2.flashblocks.enabled and l2.sidecar.enabled"))
 	}
 
 	if len(errs) > 0 {

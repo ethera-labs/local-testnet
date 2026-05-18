@@ -1,10 +1,13 @@
 import { Handle, Position, NodeProps } from 'reactflow'
+import type { ServiceStatus } from '../../../api/health'
+import StatusDot from './StatusDot'
 
 interface SidecarNodeData {
   label: string
   port: number
   active: boolean
   processing?: boolean
+  status?: ServiceStatus
 }
 
 const handleStyle = { background: '#505070', border: '1px solid #707090', width: 8, height: 8 }
@@ -22,8 +25,10 @@ export default function SidecarNode({ data }: NodeProps<SidecarNodeData>) {
         minWidth: 110,
         padding: '8px 12px',
         transition: 'all 0.2s',
+        position: 'relative',
       }}
     >
+      <StatusDot status={data.status} />
       <Handle type="target" position={Position.Left} style={handleStyle} />
       <Handle type="source" position={Position.Right} style={handleStyle} />
       <Handle type="source" position={Position.Bottom} style={handleStyle} />

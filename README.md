@@ -76,6 +76,7 @@ make run
 make run-l1              # Start L1 network
 make run-l2              # Start L2 networks
 make run-l2 L2_ARGS="--alt-da-enabled"  # Start L2 with per-rollup AltDA servers
+make run-l2 L2_ARGS="--op-succinct-enabled"  # Start L2 with mock-mode op-succinct validity proposers
 make run-l2-compile      # Compile L2 contracts from publisher repo
 make run-observability   # Start observability stack
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enabled --frontend-enabled"  # Full stack with Ethera Labs Console
@@ -101,7 +102,8 @@ make clean-observability # Clean observability stack
 ```
 
 Configuration is managed via `configs/config.yaml`. Use `configs/config.example.yaml` or
-`configs/config.sepolia.yaml` as a starting point. AltDA-specific settings live under `l2.alt-da`.
+`configs/config.sepolia.yaml` as a starting point. AltDA-specific settings live under `l2.alt-da`;
+op-succinct settings live under `l2.op-succinct`.
 
 ## 📜 Viewing Logs
 

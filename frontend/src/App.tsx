@@ -1,22 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import SystemDiagram from './components/visualization/SystemDiagram'
 import TransactionFlowPanel, {
   FlowMode,
 } from './components/visualization/TransactionFlowPanel'
 import TransactionPanel from './components/transactions/TransactionPanel'
-import { useTransactionStore } from './stores/transactionStore'
-import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, checkChainConnectivity, getProvider } from './api/rollup'
-import { checkHealth } from './api/sidecar'
-import { FLASHBLOCKS_ENABLED, SIDECAR_A_URL, SIDECAR_B_URL } from './config/chains'
+import { statusOf, useTransactionStore } from './stores/transactionStore'
+import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, getProvider } from './api/rollup'
+import { fetchServices, indexById, type ServiceStatus } from './api/health'
+import { FLASHBLOCKS_ENABLED } from './config/chains'
 
-function StatusDot({ active, label }: { active?: boolean; label: string }) {
+function StatusChip({ status, label }: { status: ServiceStatus; label: string }) {
+  const palette: Record<ServiceStatus, { dot: string; pulse: boolean }> = {
+    up: { dot: 'bg-cyan', pulse: true },
+    starting: { dot: 'bg-yellow-400', pulse: true },
+    down: { dot: 'bg-error', pulse: false },
+    missing: { dot: 'bg-border-bright', pulse: false },
+  }
+  const { dot, pulse } = palette[status]
   return (
-    <div className="flex items-center gap-1.5">
-      <span
-        className={`w-1.5 h-1.5 rounded-full ${
-          active ? 'bg-cyan indicator-active' : 'bg-border-bright'
-        }`}
-      />
+    <div className="flex items-center gap-1.5" title={`${label}: ${status}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot} ${pulse ? 'indicator-active' : ''}`} />
       <span className="text-text-secondary text-[10px] font-display tracking-widest uppercase">
         {label}
       </span>
@@ -29,29 +32,58 @@ type LogFilter = 'all' | 'pending' | 'committed' | 'aborted'
 function App() {
   const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
   const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
-  const { transactions, currentStatus, setCurrentStatus, clearTransactions } = useTransactionStore()
+  const [diagramResetSignal, setDiagramResetSignal] = useState(0)
+  const { transactions, currentStatus, setServices, clearTransactions } = useTransactionStore()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [logFilter, setLogFilter] = useState<LogFilter>('all')
 
   useEffect(() => {
+    const controller = new AbortController()
+    let cancelled = false
+
     const poll = async () => {
-      const [sidecarA, sidecarB, chainA, chainB] = await Promise.all([
-        checkHealth(SIDECAR_A_URL),
-        checkHealth(SIDECAR_B_URL),
-        checkChainConnectivity('A'),
-        checkChainConnectivity('B'),
-      ])
-      setCurrentStatus({
-        chainAConnected: chainA,
-        chainBConnected: chainB,
-        sidecarAActive: sidecarA,
-        sidecarBActive: sidecarB,
-      })
+      try {
+        const services = await fetchServices(controller.signal)
+        if (!cancelled) {
+          setServices(indexById(services))
+        }
+      } catch (err) {
+        if ((err as { name?: string }).name === 'AbortError') return
+        // Reset rather than retain stale statuses: a health-api outage
+        // must not mask sibling failures.
+        if (!cancelled) {
+          setServices({})
+        }
+      }
     }
+
     poll()
     const interval = setInterval(poll, 5000)
-    return () => clearInterval(interval)
-  }, [setCurrentStatus])
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearInterval(interval)
+    }
+  }, [setServices])
+
+  const services = currentStatus.services
+  const headerStatuses = useMemo(
+    () => ({
+      chainA: statusOf(services, 'op-reth-a'),
+      chainB: statusOf(services, 'op-reth-b'),
+      sidecarA: statusOf(services, 'sidecar-a'),
+      sidecarB: statusOf(services, 'sidecar-b'),
+      altDaA: statusOf(services, 'op-alt-da-a'),
+      altDaB: statusOf(services, 'op-alt-da-b'),
+      opSuccinctA: statusOf(services, 'op-succinct-a'),
+      opSuccinctB: statusOf(services, 'op-succinct-b'),
+    }),
+    [services],
+  )
+
+  const altDaEnabled = headerStatuses.altDaA !== 'missing' || headerStatuses.altDaB !== 'missing'
+  const opSuccinctEnabled =
+    headerStatuses.opSuccinctA !== 'missing' || headerStatuses.opSuccinctB !== 'missing'
 
   const { updateTransaction } = useTransactionStore()
   useEffect(() => {
@@ -137,11 +169,23 @@ function App() {
           </div>
 
           {/* Right: live status */}
-          <div className="flex items-center gap-4">
-            <StatusDot active={currentStatus.chainAConnected} label="Chain A" />
-            <StatusDot active={currentStatus.chainBConnected} label="Chain B" />
-            <StatusDot active={currentStatus.sidecarAActive} label="Sidecar A" />
-            <StatusDot active={currentStatus.sidecarBActive} label="Sidecar B" />
+          <div className="flex items-center gap-4 flex-wrap justify-end">
+            <StatusChip status={headerStatuses.chainA} label="Chain A" />
+            <StatusChip status={headerStatuses.chainB} label="Chain B" />
+            <StatusChip status={headerStatuses.sidecarA} label="Sidecar A" />
+            <StatusChip status={headerStatuses.sidecarB} label="Sidecar B" />
+            {altDaEnabled && (
+              <>
+                <StatusChip status={headerStatuses.altDaA} label="AltDA A" />
+                <StatusChip status={headerStatuses.altDaB} label="AltDA B" />
+              </>
+            )}
+            {opSuccinctEnabled && (
+              <>
+                <StatusChip status={headerStatuses.opSuccinctA} label="op-succinct A" />
+                <StatusChip status={headerStatuses.opSuccinctB} label="op-succinct B" />
+              </>
+            )}
             {FLASHBLOCKS_ENABLED && (
               <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber indicator-active" />
@@ -171,35 +215,12 @@ function App() {
                   {currentStatus.step.replace(/_/g, ' ')}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setFlowMode(null)}
-                  disabled={!flowMode}
-                  className="text-[10px] font-display tracking-widest uppercase transition-colors disabled:text-text-dim disabled:cursor-not-allowed text-text-secondary hover:text-amber"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={() => setFlowMode('normal')}
-                  className={`px-2 py-0.5 text-[10px] font-display tracking-widest uppercase border transition-colors ${
-                    flowMode === 'normal'
-                      ? 'border-cyan text-cyan bg-cyan/5'
-                      : 'border-border text-text-secondary hover:border-border-bright hover:text-text-primary'
-                  }`}
-                >
-                  Normal TX
-                </button>
-                <button
-                  onClick={() => setFlowMode('xt')}
-                  className={`px-2 py-0.5 text-[10px] font-display tracking-widest uppercase border transition-colors ${
-                    flowMode === 'xt'
-                      ? 'border-amber text-amber bg-amber/5'
-                      : 'border-border text-text-secondary hover:border-border-bright hover:text-text-primary'
-                  }`}
-                >
-                  Submit XT
-                </button>
-              </div>
+              <button
+                onClick={() => setDiagramResetSignal((n) => n + 1)}
+                className="text-[10px] font-display tracking-widest uppercase transition-colors text-text-secondary hover:text-amber"
+              >
+                Reset
+              </button>
             </div>
 
             <div className="flex-1 relative">
@@ -207,6 +228,7 @@ function App() {
                 currentStatus={currentStatus}
                 onSelectFlow={setFlowMode}
                 selectedFlow={flowMode}
+                resetSignal={diagramResetSignal}
               />
             </div>
           </div>
@@ -223,8 +245,7 @@ function App() {
 
         {/* Right column: Controls + Log */}
         <div className="flex flex-col gap-6 min-w-0">
-          {/* Tab selector */}
-          <div className="cb bg-bg-card border border-border flex flex-col h-[560px]">
+          <div className="cb bg-bg-card border border-border flex flex-col h-[580px]">
             <div className="border-b border-border flex-none">
               <div className="flex">
                 <button
