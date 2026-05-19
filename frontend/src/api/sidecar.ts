@@ -80,11 +80,3 @@ export async function waitForDecision(
   throw new Error('Timeout waiting for decision')
 }
 
-export async function checkHealth(url: string = SIDECAR_A_URL): Promise<boolean> {
-  try {
-    const response = await fetch(`${url}/health`)
-    return response.ok
-  } catch {
-    return false
-  }
-}

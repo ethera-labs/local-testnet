@@ -48,9 +48,12 @@ Localnet Control Plane is a CLI tool for managing local L1 and L2 Ethereum test 
        `opsuccinct.env`, dispute env templates, and registry TOML files under `.localnet/networks/<chain>/`.
     3. **L2 runtime** (`l2runtime/`) - deploys L2 contracts on each rollup (`UniversalBridgeMailbox`, `CetFactory`,
        `ComposeETHLiquidity`, `ComposeL2ToL2Bridge`, `MockL2ERC20`), then starts containers via docker-compose.
-- `infra/docker/` holds the canonical compose files: `docker-compose.yml` (core), `docker-compose.flashblocks.yml`,
-  `docker-compose.sidecar.yml`, `docker-compose.altda.yml`, `docker-compose.opsuccinct.yml`,
-  `docker-compose.frontend.yml` (+ dev override).
+- `infra/docker/` holds the canonical compose files: `docker-compose.yml` (core, includes the always-on
+  `localnet-health` container that exposes `GET /api/services` to the Ethera Labs Console),
+  `docker-compose.flashblocks.yml`, `docker-compose.sidecar.yml`, `docker-compose.altda.yml`,
+  `docker-compose.opsuccinct.yml`, `docker-compose.frontend.yml` (+ dev override).
+- `cmd/localnet-health/` is the Go binary that backs the health container. It mounts the docker socket
+  read-only and reports container status (`up`/`starting`/`down`/`missing`) for every catalogued service.
 - `infra/git/` clones source-built repositories into `.localnet/services/<name>` when `repositories.<name>.url` is set.
 
 ### Observability (`internal/observability`)

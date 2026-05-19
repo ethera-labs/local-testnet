@@ -54,6 +54,7 @@ type overlayPaths struct {
 	flashblocks string
 	sidecar     string
 	frontend    string
+	frontendDev string
 }
 
 // Execute runs Phase 3: Build images, start services, deploy contracts
@@ -112,8 +113,12 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		serviceManager.WithSidecar(overlays.sidecar)
 	}
 	if overlays.frontend != "" {
-		o.logger.Info("frontend enabled, configuring Ethera Labs Console")
-		serviceManager.WithFrontend(overlays.frontend)
+		if overlays.frontendDev != "" {
+			o.logger.Info("frontend dev mode enabled, configuring Ethera Labs Console with Vite hot-reload")
+		} else {
+			o.logger.Info("frontend enabled, configuring Ethera Labs Console")
+		}
+		serviceManager.WithFrontend(overlays.frontend, overlays.frontendDev)
 	}
 
 	if err := o.waitForNetworkFiles(); err != nil {
@@ -225,13 +230,19 @@ func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error)
 		}
 	}
 
-	if cfg.Frontend.Enabled {
+	if cfg.Frontend.Active() {
 		if !cfg.Flashblocks.Enabled || !cfg.Sidecar.Enabled {
 			return overlayPaths{}, fmt.Errorf("frontend requires flashblocks and sidecar to be enabled")
 		}
 		paths.frontend, err = docker.EnsureFrontendComposeFile(o.localnetDir)
 		if err != nil {
 			return overlayPaths{}, fmt.Errorf("failed to prepare frontend docker file: %w", err)
+		}
+		if cfg.Frontend.DevEnabled {
+			paths.frontendDev, err = docker.EnsureFrontendDevComposeFile(o.localnetDir)
+			if err != nil {
+				return overlayPaths{}, fmt.Errorf("failed to prepare frontend dev docker file: %w", err)
+			}
 		}
 	}
 
@@ -342,6 +353,7 @@ func mailboxAddresses(deployedContracts map[configs.L2ChainName]map[contracts.Co
 func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath string, env map[string]string, overlays overlayPaths) error {
 	services := []string{
 		"publisher",
+		"localnet-health",
 	}
 
 	dockerFiles := []string{dockerFilePath}

@@ -105,7 +105,7 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.flashblocks.yml ]; then docker compose -f .localnet/docker-compose.flashblocks.yml down -v 2>/dev/null || true; fi
 	-if [ -f .localnet/docker-compose.sidecar.yml ]; then docker compose -f .localnet/docker-compose.sidecar.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
-	-docker rm -f publisher op-reth-a op-reth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b op-succinct-a op-succinct-b op-succinct-postgres op-alt-da-a op-alt-da-b ethera-console 2>/dev/null || true
+	-docker rm -f publisher op-reth-a op-reth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b op-succinct-a op-succinct-b op-succinct-postgres op-alt-da-a op-alt-da-b ethera-console localnet-health 2>/dev/null || true
 	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct|op-alt-da)" | xargs -r docker volume rm
 	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.opsuccinct.yml ./.localnet/docker-compose.altda.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
@@ -117,6 +117,7 @@ clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images
 	docker images -q "local/op-succinct" | xargs -r docker rmi -f
 	docker images -q "local/op-alt-da" | xargs -r docker rmi -f
 	docker images -q "local/sidecar" | xargs -r docker rmi -f
+	docker images -q "local/localnet-health" | xargs -r docker rmi -f
 	docker images -q "local/ethera-console" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node" | xargs -r docker rmi -f
 	docker images -q "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher" | xargs -r docker rmi -f

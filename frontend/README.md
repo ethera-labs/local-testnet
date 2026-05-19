@@ -12,7 +12,21 @@ make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled --sidecar-enable
 
 Open http://localhost:3000
 
-## Running Locally (Development)
+## Hot-Reload in Docker
+
+`--frontend-dev-enabled` builds the console against the Vite dev server and
+mounts `frontend/src`, `index.html`, the Tailwind/PostCSS/TypeScript config,
+and `vite.config.ts` into the container. Edits to those files reload live
+in the browser, no container rebuild required.
+
+```bash
+make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled --frontend-dev-enabled"
+```
+
+The flag is mutually exclusive in spirit with `--frontend-enabled` (use one or
+the other) and still requires flashblocks and sidecar.
+
+## Running Locally (Outside Docker)
 
 1. Start L2 with flashblocks and sidecar:
    ```bash
@@ -37,8 +51,16 @@ The bridge UI reads native token balances from `VITE_CHAIN_A_TOKEN_ADDRESS` and
 `VITE_CET_FACTORY_ADDRESS`, so that value must be set when running the frontend
 outside the local-testnet orchestrator.
 
-| Service     | Chain A | Chain B |
-|-------------|---------|---------|
-| Builder RPC | 17545   | 27545   |
-| Sidecar API | 17090   | 27090   |
-| Blockscout  | 19000   | 29000   |
+The System Architecture diagram and the header status indicators are driven by
+the `localnet-health` HTTP service, which inspects every container in the L2
+stack and reports its status. Point the UI at it with `VITE_HEALTH_API_URL`
+(defaults to `http://localhost:8090`); when the URL is unreachable every node
+falls back to a "missing" indicator and optional services (AltDA, op-succinct,
+sidecar, flashblocks) are hidden from the diagram.
+
+| Service         | Chain A | Chain B |
+|-----------------|---------|---------|
+| Builder RPC     | 17545   | 27545   |
+| Sidecar API     | 17090   | 27090   |
+| Blockscout      | 19000   | 29000   |
+| localnet-health | 8090    | -       |

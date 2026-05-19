@@ -1,9 +1,12 @@
 import { Handle, Position, NodeProps } from 'reactflow'
+import type { ServiceStatus } from '../../../api/health'
+import StatusDot from './StatusDot'
 
 interface BoostNodeData {
   label: string
   port: number
   active: boolean
+  status?: ServiceStatus
 }
 
 const handleStyle = { background: '#505070', border: '1px solid #707090', width: 8, height: 8 }
@@ -17,8 +20,10 @@ export default function BoostNode({ data }: NodeProps<BoostNodeData>) {
         border: '1.5px solid #505070',
         minWidth: 130,
         padding: '8px 12px',
+        position: 'relative',
       }}
     >
+      <StatusDot status={data.status} />
       <Handle id="from-rollup" type="target" position={Position.Top} style={handleStyle} />
       <Handle id="to-builder" type="source" position={Position.Bottom} style={handleStyle} />
 

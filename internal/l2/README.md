@@ -40,15 +40,18 @@ Starts L2 services using Docker:
 - **op-batcher**: Batches transactions to L1
 - **op-proposer**: Proposes output roots to L1
 - **Publisher**: Publishes superblocks to L1
+- **localnet-health**: Per-stack container status API consumed by the Ethera Labs Console (always on)
 
 **Optional services / modes** (enabled via CLI flags):
 
 - **AltDA**: Alternative data availability mode with per-rollup DA servers (`--alt-da-enabled`)
+- **op-succinct**: Mock-mode validity proposers plus a shared Postgres state store (`--op-succinct-enabled`)
 - **op-rbuilder**: External block builder for flashblocks (`--flashblocks-enabled`)
 - **rollup-boost**: Engine API multiplexer for flashblocks (`--flashblocks-enabled`)
 - **blockscout**: Block explorer UI (`--blockscout-enabled`)
 - **sidecar**: Cross-chain coordination (`--sidecar-enabled`, requires flashblocks)
-- **Ethera Labs Console**: Web UI for XT testing (`--frontend-enabled`, requires flashblocks and sidecar)
+- **Ethera Labs Console**: Web UI for XT testing (`--frontend-enabled` for the production image, or
+  `--frontend-dev-enabled` for the Vite hot-reload image; both require flashblocks and sidecar)
 
 Deploys Ethera Labs contracts to each L2 rollup:
 
@@ -89,6 +92,7 @@ make run-l2
 
 # With optional features
 make run-l2 L2_ARGS="--alt-da-enabled"                   # Route batches through AltDA servers
+make run-l2 L2_ARGS="--op-succinct-enabled"              # Run mock-mode op-succinct validity proposers
 make run-l2 L2_ARGS="--flashblocks-enabled"              # Enable flashblocks
 make run-l2 L2_ARGS="--blockscout-enabled"               # Enable block explorer
 make run-l2 L2_ARGS="--flashblocks-enabled --blockscout-enabled"  # Both
@@ -245,9 +249,26 @@ docker logs op-rbuilder-b -f
 docker logs rollup-boost-a -f
 docker logs rollup-boost-b -f
 
+# Sidecar services (when --sidecar-enabled)
+docker logs sidecar-a -f
+docker logs sidecar-b -f
+
+# AltDA servers (when --alt-da-enabled)
+docker logs op-alt-da-a -f
+docker logs op-alt-da-b -f
+
+# op-succinct services (when --op-succinct-enabled)
+docker logs op-succinct-a -f
+docker logs op-succinct-b -f
+docker logs op-succinct-postgres -f
+
 # Blockscout services (when --blockscout-enabled)
 docker logs blockscout-a -f
 docker logs blockscout-b -f
+
+# Ethera Labs Console + health probe (when --frontend-enabled)
+docker logs ethera-console -f
+docker logs localnet-health -f
 
 # View last N lines
 docker logs op-reth-a --tail 100
@@ -264,13 +285,18 @@ docker compose -f .localnet/docker-compose.yml logs -f publisher op-reth-a op-re
 
 ## Service Ports
 
-| Service         | Chain A | Chain B | Description                 |
-|-----------------|---------|---------|-----------------------------|
-| op-reth RPC     | 18545   | 28545   | Execution RPC               |
-| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC             |
-| sidecar         | 17090   | 27090   | Sidecar API                 |
-| Blockscout      | 19000   | 29000   | Block explorer UI           |
-| Ethera Console  | 3000    | -       | Web UI (--frontend-enabled) |
+| Service         | Chain A | Chain B | Description                              |
+|-----------------|---------|---------|------------------------------------------|
+| op-reth RPC     | 18545   | 28545   | Execution RPC                            |
+| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC                          |
+| sidecar         | 17090   | 27090   | Sidecar API                              |
+| op-alt-da       | 3100    | 3101    | AltDA server (--alt-da-enabled)          |
+| op-succinct     | 18082   | 28082   | Validity proposer metrics                |
+| Blockscout      | 19000   | 29000   | Block explorer UI                        |
+| Ethera Console  | 3000    | -       | Web UI (--frontend-enabled)              |
+| localnet-health | 8090    | -       | Container status API (always on)         |
+
+See [docs/ports.md](../../docs/ports.md) for the full per-feature port reference.
 
 ## Sidecar Mode
 

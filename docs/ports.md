@@ -4,14 +4,15 @@ All ports are bound to `localhost` unless otherwise noted.
 
 ## Core Services
 
-| Service     | Port (Chain A) | Port (Chain B) | Description           |
-|-------------|----------------|----------------|-----------------------|
-| op-reth RPC | 18545          | 28545          | Execution layer RPC   |
-| op-node RPC | 19545          | 29545          | Rollup node RPC       |
-| op-batcher  | 18548          | 28548          | Batcher admin RPC     |
-| op-proposer | 18560          | 28560          | Proposer admin RPC    |
-| Publisher   | 18080 (QUIC)   | -              | Sequencer connections |
-| Publisher   | 18081 (HTTP)   | -              | Health, metrics, API  |
+| Service         | Port (Chain A) | Port (Chain B) | Description                             |
+|-----------------|----------------|----------------|-----------------------------------------|
+| op-reth RPC     | 18545          | 28545          | Execution layer RPC                     |
+| op-node RPC     | 19545          | 29545          | Rollup node RPC                         |
+| op-batcher      | 18548          | 28548          | Batcher admin RPC                       |
+| op-proposer     | 18560          | 28560          | Proposer admin RPC                      |
+| Publisher       | 18080 (QUIC)   | -              | Sequencer connections                   |
+| Publisher       | 18081 (HTTP)   | -              | Health, metrics, API                    |
+| localnet-health | 8090           | -              | Container status API consumed by the UI |
 
 ## Flashblocks (--flashblocks-enabled)
 
@@ -28,6 +29,19 @@ All ports are bound to `localhost` unless otherwise noted.
 | Service | Port (Chain A) | Port (Chain B) | Description    |
 |---------|----------------|----------------|----------------|
 | Sidecar | 17090          | 27090          | XT API, health |
+
+## AltDA (--alt-da-enabled)
+
+| Service   | Port (Chain A) | Port (Chain B) | Description                             |
+|-----------|----------------|----------------|-----------------------------------------|
+| op-alt-da | 3100           | 3101           | Per-rollup DA server backing op-batcher |
+
+## op-succinct (--op-succinct-enabled)
+
+| Service              | Port (Chain A) | Port (Chain B) | Description                                |
+|----------------------|----------------|----------------|--------------------------------------------|
+| op-succinct          | 18082          | 28082          | Mock validity proposer metrics endpoint    |
+| op-succinct-postgres | -              | -              | Shared state store, container-network only |
 
 ## Blockscout (--blockscout-enabled)
 
@@ -46,7 +60,7 @@ All ports are bound to `localhost` unless otherwise noted.
 ```bash
 # Minimal (no optional services)
 make run-l2
-# Ports: 18545, 28545, 19545, 29545, 18080, 18081, ...
+# Ports: 18545, 28545, 19545, 29545, 18548, 28548, 18560, 28560, 18080, 18081, 8090, ...
 
 # With flashblocks
 make run-l2 L2_ARGS="--flashblocks-enabled"
@@ -55,6 +69,14 @@ make run-l2 L2_ARGS="--flashblocks-enabled"
 # With sidecar (requires flashblocks)
 make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 # + 17090, 27090
+
+# With AltDA
+make run-l2 L2_ARGS="--alt-da-enabled"
+# + 3100, 3101
+
+# With op-succinct
+make run-l2 L2_ARGS="--op-succinct-enabled"
+# + 18082, 28082
 
 # With Blockscout
 make run-l2 L2_ARGS="--blockscout-enabled"

@@ -341,6 +341,30 @@ services:
     ports:
       - "28560:8560"
 
+  # Per-stack health probe. Reports the status of every other container in
+  # the localnet-l2 stack to the Ethera Labs Console so the architecture
+  # diagram can render live indicators for optional services.
+  # The docker socket is bind-mounted read-only because the probe needs to
+  # call `docker inspect` against sibling containers; no other docker
+  # mutations are performed.
+  localnet-health:
+    build:
+      context: ${ROOT_DIR}
+      dockerfile: build/Dockerfile.health
+    image: local/localnet-health:dev
+    container_name: localnet-health
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      HEALTH_API_PORT: "8090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "${HEALTH_API_PORT:-8090}:8090"
+    restart: unless-stopped
+
 volumes:
   rollup-a-op-reth:
   rollup-b-op-reth:

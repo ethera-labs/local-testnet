@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Service, ServiceStatus } from '../api/health'
 
 export type TransactionStatus =
   | 'pending'
@@ -38,12 +39,13 @@ export interface Transaction {
   decision?: boolean
 }
 
+// services map is keyed by service id from cmd/localnet-health. An absent
+// key means the first poll has not landed yet; status === "missing" means
+// the catalogue entry exists but the container does not (optional feature
+// disabled).
 export interface CurrentStatus {
   step: FlowStep
-  chainAConnected: boolean
-  chainBConnected: boolean
-  sidecarAActive: boolean
-  sidecarBActive: boolean
+  services: Record<string, Service>
 }
 
 interface TransactionStore {
@@ -53,17 +55,14 @@ interface TransactionStore {
   addTransaction: (tx: Transaction) => void
   updateTransaction: (instanceId: string, updates: Partial<Transaction>) => void
   clearTransactions: () => void
-  setCurrentStatus: (status: Partial<CurrentStatus>) => void
+  setServices: (services: Record<string, Service>) => void
   setFlowStep: (step: FlowStep) => void
   reset: () => void
 }
 
 const initialStatus: CurrentStatus = {
   step: 'idle',
-  chainAConnected: true,
-  chainBConnected: true,
-  sidecarAActive: true,
-  sidecarBActive: true,
+  services: {},
 }
 
 export const useTransactionStore = create<TransactionStore>((set) => ({
@@ -72,21 +71,21 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
 
   addTransaction: (tx) =>
     set((state) => ({
-      transactions: [tx, ...state.transactions].slice(0, 50), // Keep last 50
+      transactions: [tx, ...state.transactions].slice(0, 50),
     })),
 
   updateTransaction: (instanceId, updates) =>
     set((state) => ({
       transactions: state.transactions.map((tx) =>
-        tx.instanceId === instanceId ? { ...tx, ...updates } : tx
+        tx.instanceId === instanceId ? { ...tx, ...updates } : tx,
       ),
     })),
 
   clearTransactions: () => set({ transactions: [] }),
 
-  setCurrentStatus: (status) =>
+  setServices: (services) =>
     set((state) => ({
-      currentStatus: { ...state.currentStatus, ...status },
+      currentStatus: { ...state.currentStatus, services },
     })),
 
   setFlowStep: (step) =>
@@ -100,3 +99,10 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       currentStatus: initialStatus,
     }),
 }))
+
+export function statusOf(
+  services: Record<string, Service>,
+  id: string,
+): ServiceStatus {
+  return services[id]?.status ?? 'missing'
+}

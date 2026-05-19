@@ -16,6 +16,7 @@ type Manager struct {
 	flashblocksDockerFilePath string
 	sidecarDockerFilePath     string
 	frontendDockerFilePath    string
+	frontendDevDockerFilePath string
 	altDADockerFilePath       string
 	opSuccinctDockerFilePath  string
 	flashblocksEnabled        bool
@@ -49,9 +50,12 @@ func (m *Manager) WithSidecar(sidecarDockerFilePath string) *Manager {
 	return m
 }
 
-// WithFrontend enables Ethera Labs Console with the specified docker file
-func (m *Manager) WithFrontend(frontendDockerFilePath string) *Manager {
+// WithFrontend enables the Ethera Labs Console. A non-empty
+// frontendDevDockerFilePath layers the dev override on top of the base
+// frontend compose file so source edits hot-reload via Vite.
+func (m *Manager) WithFrontend(frontendDockerFilePath, frontendDevDockerFilePath string) *Manager {
 	m.frontendDockerFilePath = frontendDockerFilePath
+	m.frontendDevDockerFilePath = frontendDevDockerFilePath
 	m.frontendEnabled = true
 	return m
 }
@@ -73,6 +77,7 @@ func (m *Manager) WithOPSuccinct(opSuccinctDockerFilePath string) *Manager {
 // StartAll starts all L2 services
 func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	services := []string{
+		"localnet-health",
 		"publisher",
 		"op-reth-a",
 		"op-reth-b",
@@ -175,7 +180,12 @@ func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env m
 	}
 
 	allFiles := append(dockerFiles, m.frontendDockerFilePath)
-	m.logger.Info("building and starting Ethera Labs Console")
+	if m.frontendDevDockerFilePath != "" {
+		allFiles = append(allFiles, m.frontendDevDockerFilePath)
+		m.logger.Info("building and starting Ethera Labs Console (dev mode)")
+	} else {
+		m.logger.Info("building and starting Ethera Labs Console")
+	}
 
 	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "ethera-console"); err != nil {
 		return fmt.Errorf("failed to build ethera-console: %w", err)

@@ -53,15 +53,6 @@ export function getProvider(chain: 'A' | 'B'): ethers.JsonRpcProvider {
   return provider
 }
 
-export async function checkChainConnectivity(chain: 'A' | 'B'): Promise<boolean> {
-  try {
-    await getProvider(chain).getBlockNumber()
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function getChainId(chain: 'A' | 'B'): number {
   return chain === 'A' ? CHAIN_A_ID : CHAIN_B_ID
 }
