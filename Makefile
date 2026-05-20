@@ -134,7 +134,7 @@ run-frontend: ## Start Ethera Labs Console (cd frontend && bun run dev)
 	@cd frontend && bun run dev
 
 .PHONY: run-frontend-stage
-run-frontend-stage: ## Start Ethera Labs Console against stage via frontend/.env.stage
+run-frontend-stage: ## Start Ethera Labs Console against stage using frontend/.env.stage.local overrides
 	@cd frontend && bun run dev:stage
 
 .PHONY: frontend-install
