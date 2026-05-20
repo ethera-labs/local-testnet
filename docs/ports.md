@@ -30,6 +30,12 @@ All ports are bound to `localhost` unless otherwise noted.
 |---------|----------------|----------------|----------------|
 | Sidecar | 17090          | 27090          | XT API, health |
 
+## Bundler (--bundler-enabled, requires flashblocks)
+
+| Service        | Port (Chain A) | Port (Chain B) | Description                    |
+|----------------|----------------|----------------|--------------------------------|
+| ethera-bundler | 17082          | 27082          | ERC-4337 v0.7 bundler JSON-RPC |
+
 ## AltDA (--alt-da-enabled)
 
 | Service   | Port (Chain A) | Port (Chain B) | Description                             |
@@ -69,6 +75,10 @@ make run-l2 L2_ARGS="--flashblocks-enabled"
 # With sidecar (requires flashblocks)
 make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 # + 17090, 27090
+
+# With bundler (requires flashblocks)
+make run-l2 L2_ARGS="--flashblocks-enabled --bundler-enabled"
+# + 17082, 27082
 
 # With AltDA
 make run-l2 L2_ARGS="--alt-da-enabled"

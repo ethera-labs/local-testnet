@@ -43,6 +43,10 @@ var (
 		{"sidecar-branch", "l2.repositories.sidecar.branch", "", "sidecar repository branch"},
 		{"ethera-contracts-url", "l2.repositories.ethera-contracts.url", "", "ethera-contracts repository URL"},
 		{"ethera-contracts-branch", "l2.repositories.ethera-contracts.branch", "", "ethera-contracts repository branch"},
+		{"bundler-url", "l2.repositories.bundler.url", "", "ethera-bundler repository URL"},
+		{"bundler-branch", "l2.repositories.bundler.branch", "", "ethera-bundler repository branch"},
+		{"account-abstraction-url", "l2.repositories.account-abstraction.url", "https://github.com/eth-infinitism/account-abstraction.git", "eth-infinitism/account-abstraction repository URL"},
+		{"account-abstraction-branch", "l2.repositories.account-abstraction.branch", "releases/v0.7", "eth-infinitism/account-abstraction repository branch"},
 		{"op-succinct-url", "l2.repositories.op-succinct.url", "", "op-succinct repository URL"},
 		{"op-succinct-branch", "l2.repositories.op-succinct.branch", "", "op-succinct repository branch"},
 
@@ -87,6 +91,10 @@ var (
 		{"sidecar-rollup-a-api-port", "l2.sidecar.rollup-a-api-port", 17090, "Rollup A sidecar API port"},
 		{"sidecar-rollup-b-api-port", "l2.sidecar.rollup-b-api-port", 27090, "Rollup B sidecar API port"},
 
+		// Bundler
+		{"bundler-rollup-a-api-port", "l2.bundler.rollup-a-api-port", 17082, "Rollup A ethera-bundler API port"},
+		{"bundler-rollup-b-api-port", "l2.bundler.rollup-b-api-port", 27082, "Rollup B ethera-bundler API port"},
+
 		// Frontend (Ethera Labs Console)
 		{"frontend-port", "l2.frontend.port", 3000, "Ethera Labs Console port"},
 
@@ -99,6 +107,7 @@ var (
 		{"blockscout-enabled", "l2.blockscout.enabled", false, "Enable Blockscout block explorer"},
 		{"flashblocks-enabled", "l2.flashblocks.enabled", false, "Enable flashblocks support (op-rbuilder and rollup-boost)"},
 		{"sidecar-enabled", "l2.sidecar.enabled", false, "Enable sidecar for cross-chain coordination (requires flashblocks)"},
+		{"bundler-enabled", "l2.bundler.enabled", false, "Enable the ERC-4337 v0.7 ethera-bundler service (requires flashblocks)"},
 		{"frontend-enabled", "l2.frontend.enabled", false, "Enable Ethera Labs Console (requires flashblocks and sidecar)"},
 		{"frontend-dev-enabled", "l2.frontend.dev-enabled", false, "Run the Ethera Labs Console with Vite hot-reload, mounting frontend/ source into the container (requires flashblocks and sidecar)"},
 		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},

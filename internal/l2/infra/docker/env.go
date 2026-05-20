@@ -120,6 +120,13 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 		env["SIDECAR_PATH"] = sidecarPath
 	}
+	if cfg.Bundler.Enabled {
+		bundlerPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameBundler], configs.RepositoryNameBundler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve bundler path: %w", err)
+		}
+		env["BUNDLER_PATH"] = bundlerPath
+	}
 	if cfg.AltDA.Enabled {
 		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
 		if err != nil {
@@ -145,6 +152,9 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["SIDECAR_ROLLUP_A_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupAAPIPort)
 	env["SIDECAR_ROLLUP_B_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupBAPIPort)
 
+	env["BUNDLER_ROLLUP_A_API_PORT"] = fmt.Sprintf("%d", cfg.Bundler.RollupAAPIPort)
+	env["BUNDLER_ROLLUP_B_API_PORT"] = fmt.Sprintf("%d", cfg.Bundler.RollupBAPIPort)
+
 	frontendPath, err := path.GetHostPath(filepath.Join(b.rootDir, "frontend"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve frontend path: %w", err)
@@ -167,6 +177,15 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	}
 	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
 		env["MAILBOX_B"] = mb
+	}
+
+	if epA, runtimeA := b.readEntryPointArtefacts(configs.L2ChainNameRollupA); epA != "" {
+		env["ENTRYPOINT_A"] = epA
+		env["ENTRYPOINT_SIMULATIONS_CODE_A"] = runtimeA
+	}
+	if epB, runtimeB := b.readEntryPointArtefacts(configs.L2ChainNameRollupB); epB != "" {
+		env["ENTRYPOINT_B"] = epB
+		env["ENTRYPOINT_SIMULATIONS_CODE_B"] = runtimeB
 	}
 
 	return env, nil
@@ -227,6 +246,32 @@ func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2Chain
 	}
 
 	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
+}
+
+// readEntryPointArtefacts reads the deployed EntryPoint address and the
+// EntryPointSimulations runtime bytecode from the chain's contracts.json.
+// Returns ("", "") when either field is missing (e.g. before deployment, or
+// when the EntryPoint artefact is not vendored).
+func (b *EnvBuilder) readEntryPointArtefacts(chainName configs.L2ChainName) (string, string) {
+	data, err := os.ReadFile(filepath.Join(b.networksDir, string(chainName), "contracts.json"))
+	if err != nil {
+		return "", ""
+	}
+
+	var cf struct {
+		Addresses                    map[string]string `json:"addresses"`
+		EntryPointSimulationsRuntime string            `json:"entryPointSimulationsRuntime"`
+	}
+	if err := json.Unmarshal(data, &cf); err != nil {
+		return "", ""
+	}
+
+	address := strings.TrimSpace(cf.Addresses["EntryPoint"])
+	runtime := strings.TrimSpace(cf.EntryPointSimulationsRuntime)
+	if address == "" || runtime == "" {
+		return "", ""
+	}
+	return address, runtime
 }
 
 // derivePeerKeys takes a 32-byte hex-encoded secp256k1 secret and returns the

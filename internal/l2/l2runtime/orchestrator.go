@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ type overlayPaths struct {
 	opSuccinct  string
 	flashblocks string
 	sidecar     string
+	bundler     string
 	frontend    string
 	frontendDev string
 }
@@ -111,6 +113,10 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	if overlays.sidecar != "" {
 		o.logger.Info("sidecar enabled, configuring sidecar services")
 		serviceManager.WithSidecar(overlays.sidecar)
+	}
+	if overlays.bundler != "" {
+		o.logger.Info("bundler enabled, configuring ERC-4337 v0.7 ethera-bundler services")
+		serviceManager.WithBundler(overlays.bundler)
 	}
 	if overlays.frontend != "" {
 		if overlays.frontendDev != "" {
@@ -227,6 +233,16 @@ func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error)
 		paths.sidecar, err = docker.EnsureSidecarComposeFile(o.localnetDir)
 		if err != nil {
 			return overlayPaths{}, fmt.Errorf("failed to prepare sidecar docker file: %w", err)
+		}
+	}
+
+	if cfg.Bundler.Enabled {
+		if !cfg.Flashblocks.Enabled {
+			return overlayPaths{}, fmt.Errorf("bundler requires flashblocks to be enabled")
+		}
+		paths.bundler, err = docker.EnsureBundlerComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare bundler docker file: %w", err)
 		}
 	}
 
@@ -375,6 +391,15 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 		}
 		dockerFiles = append(dockerFiles, overlays.sidecar)
 		services = append(services, "op-rbuilder-a", "op-rbuilder-b", "sidecar-a", "sidecar-b")
+	}
+
+	// Bundler also requires flashblocks, so reuse the same overlay ordering.
+	if overlays.bundler != "" {
+		if overlays.flashblocks != "" && !slices.Contains(dockerFiles, overlays.flashblocks) {
+			dockerFiles = append(dockerFiles, overlays.flashblocks)
+		}
+		dockerFiles = append(dockerFiles, overlays.bundler)
+		services = append(services, "bundler-a", "bundler-b")
 	}
 
 	if len(dockerFiles) > 1 {

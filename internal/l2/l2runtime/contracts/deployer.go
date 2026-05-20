@@ -64,6 +64,17 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 
 	d.logger.With("len", len(compiledContracts)).Info("precompiled contracts loaded")
 
+	entryPointContracts, err := LoadCompiledEntryPoint()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load compiled EntryPoint contracts: %w", err)
+	}
+	deployEntryPoint := len(entryPointContracts) > 0
+	if deployEntryPoint {
+		d.logger.With("len", len(entryPointContracts)).Info("EntryPoint artefacts loaded")
+	} else {
+		d.logger.Info("EntryPoint artefacts not present; skipping ERC-4337 deployment")
+	}
+
 	deployments := make(map[configs.L2ChainName]map[ContractName]common.Address)
 	for chainName, chainConfig := range chainConfigs {
 		// When running in Docker, use host.docker.internal to access host services
@@ -89,6 +100,15 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 			return nil, fmt.Errorf("failed to deploy to %s: %w", chainName, err)
 		}
 
+		if deployEntryPoint {
+			d.logger.With("chain_name", chainName).Info("deploying EntryPoint")
+			entryPointAddr, err := d.deployEntryPoint(ctx, url, coordinatorPK, entryPointContracts[ContractNameEntryPoint])
+			if err != nil {
+				return nil, fmt.Errorf("failed to deploy EntryPoint to %s: %w", chainName, err)
+			}
+			addressStrings[ContractNameEntryPoint] = entryPointAddr.Hex()
+		}
+
 		// Convert string addresses to common.Address
 		addressMap := make(map[ContractName]common.Address)
 		for contractName, addrStr := range addressStrings {
@@ -108,7 +128,11 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 		}
 
 		directory := filepath.Join(d.networksDir, string(chainName))
-		if err := writeContractJSON(filepath.Join(directory, contractsFileName), addressStrings, uint64(chainConfigs[chainName].ID)); err != nil {
+		extras := map[string]any{}
+		if deployEntryPoint {
+			extras["entryPointSimulationsRuntime"] = "0x" + common.Bytes2Hex(entryPointContracts[ContractNameEntryPointSimulations].DeployedBytecode)
+		}
+		if err := writeContractJSON(filepath.Join(directory, contractsFileName), addressStrings, uint64(chainConfigs[chainName].ID), extras); err != nil {
 			return nil, fmt.Errorf("failed to write %s for %s: %w", contractsFileName, chainName, err)
 		}
 	}
@@ -116,6 +140,36 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 	d.logger.Info("contracts deployed successfully")
 
 	return deployments, nil
+}
+
+// deployEntryPoint deploys the ERC-4337 v0.7 EntryPoint contract using the
+// coordinator key. EntryPoint has no constructor arguments. We do not deploy
+// EntryPointSimulations: its runtime bytecode is read from the compiled
+// artefact and exported via contracts.json so the bundler can apply it as a
+// state override at simulation time.
+func (d *Deployer) deployEntryPoint(ctx context.Context, rpcURL, coordinatorPrivateKey string, contract CompiledContract) (common.Address, error) {
+	client, err := ethclient.DialContext(ctx, rpcURL)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to dial %s: %w", rpcURL, err)
+	}
+	defer client.Close()
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(coordinatorPrivateKey, "0x"))
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	addr, err := d.deployContract(ctx, client, privateKey, chainID, contract)
+	if err != nil {
+		return common.Address{}, err
+	}
+	d.logger.Info("deployed", "contract", ContractNameEntryPoint, "address", addr.Hex())
+	return addr, nil
 }
 
 func waitForRPC(ctx context.Context, url string) error {
@@ -336,12 +390,15 @@ func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client,
 	return address, nil
 }
 
-func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64) error {
+func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64, extras map[string]any) error {
 	payload := map[string]any{
 		"chainInfo": map[string]any{
 			"chainId": chainID,
 		},
 		"addresses": addresses,
+	}
+	for k, v := range extras {
+		payload[k] = v
 	}
 
 	if err := writeJSON(path, payload); err != nil {
