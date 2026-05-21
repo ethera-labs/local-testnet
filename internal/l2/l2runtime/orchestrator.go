@@ -150,19 +150,26 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, fmt.Errorf("failed to deploy contracts: %w", err)
 	}
 
-	// envVars was built before contract deployment, so MAILBOX_A/B aren't in it
-	// yet. Inject them now so dependent services pick them up on restart.
-	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
-	if err != nil {
+	// envVars was built before contract deployment; refresh the entries that
+	// depend on .localnet/networks/<chain>/contracts.json so downstream
+	// services (sidecar, bundler, frontend) see the freshly deployed
+	// addresses on restart / first build.
+	if _, _, err := mailboxAddresses(deployedContracts); err != nil {
 		return nil, fmt.Errorf("failed to resolve mailbox addresses: %w", err)
 	}
-	envVars["MAILBOX_A"] = mailboxA.Hex()
-	envVars["MAILBOX_B"] = mailboxB.Hex()
+	envBuilder.MergePostDeployEnv(envVars)
 
 	if overlays.sidecar != "" {
 		o.logger.Info("restarting sidecar services to apply mailbox configuration")
 		if err := o.restartSidecar(ctx, dockerPath, overlays.flashblocks, overlays.sidecar, envVars); err != nil {
 			return nil, fmt.Errorf("failed to restart sidecar services after contract deployment: %w", err)
+		}
+	}
+
+	if overlays.bundler != "" {
+		o.logger.Info("restarting bundler services to apply EntryPoint configuration")
+		if err := o.restartBundler(ctx, dockerPath, overlays.flashblocks, overlays.bundler, envVars); err != nil {
+			return nil, fmt.Errorf("failed to restart bundler services after contract deployment: %w", err)
 		}
 	}
 
@@ -351,6 +358,28 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 	services := []string{"sidecar-a", "sidecar-b"}
 	if err := docker.ComposeRestartNoDepsMultiFile(ctx, dockerFiles, env, services...); err != nil {
 		return fmt.Errorf("failed to restart sidecar: %w", err)
+	}
+
+	return nil
+}
+
+// restartBundler restarts the ethera-bundler containers with the post-deployment
+// env so they pick up the deployed EntryPoint address and the
+// EntryPointSimulations runtime bytecode.
+func (o *Orchestrator) restartBundler(ctx context.Context, dockerFilePath, flashblocksDockerPath, bundlerDockerPath string, env map[string]string) error {
+	if bundlerDockerPath == "" {
+		return fmt.Errorf("bundler docker file path is empty")
+	}
+
+	dockerFiles := []string{dockerFilePath}
+	if flashblocksDockerPath != "" {
+		dockerFiles = append(dockerFiles, flashblocksDockerPath)
+	}
+	dockerFiles = append(dockerFiles, bundlerDockerPath)
+
+	services := []string{"bundler-a", "bundler-b"}
+	if err := docker.ComposeRestartNoDepsMultiFile(ctx, dockerFiles, env, services...); err != nil {
+		return fmt.Errorf("failed to restart bundler: %w", err)
 	}
 
 	return nil

@@ -17,20 +17,24 @@ for cross-chain composability.
 
 ## Contracts
 
-| Name                     | Source repository                     | Purpose                                                                  |
-|--------------------------|---------------------------------------|--------------------------------------------------------------------------|
-| `UniversalBridgeMailbox` | `l2.repositories.ethera-contracts`    | Cross-rollup message inbox/outbox                                        |
-| `CetFactory`             | `l2.repositories.ethera-contracts`    | Composable ERC-20 token factory                                          |
-| `ComposeETHLiquidity`    | `l2.repositories.ethera-contracts`    | ETH liquidity helper used by the L2-to-L2 bridge                         |
-| `ComposeL2ToL2Bridge`    | `l2.repositories.ethera-contracts`    | L2-to-L2 bridge composing the contracts above                            |
-| `MockL2ERC20`            | `l2.repositories.ethera-contracts`    | ERC-20 token used by integration tests                                   |
-| `EntryPoint`             | `l2.repositories.account-abstraction` | ERC-4337 v0.7 EntryPoint                                                 |
-| `EntryPointSimulations`  | `l2.repositories.account-abstraction` | ERC-4337 v0.7 simulations contract (runtime bytecode only; not deployed) |
+| Name                     | Source repository                     | Purpose                                                                   |
+|--------------------------|---------------------------------------|---------------------------------------------------------------------------|
+| `UniversalBridgeMailbox` | `l2.repositories.ethera-contracts`    | Cross-rollup message inbox/outbox                                         |
+| `CetFactory`             | `l2.repositories.ethera-contracts`    | Composable ERC-20 token factory                                           |
+| `ComposeETHLiquidity`    | `l2.repositories.ethera-contracts`    | ETH liquidity helper used by the L2-to-L2 bridge                          |
+| `ComposeL2ToL2Bridge`    | `l2.repositories.ethera-contracts`    | L2-to-L2 bridge composing the contracts above                             |
+| `MockL2ERC20`            | `l2.repositories.ethera-contracts`    | ERC-20 token used by integration tests                                    |
+| `EntryPoint`             | `l2.repositories.account-abstraction` | ERC-4337 v0.7 EntryPoint                                                  |
+| `SimpleAccount`          | `l2.repositories.account-abstraction` | Reference ERC-4337 v0.7 smart account (deployed on demand by the factory) |
+| `SimpleAccountFactory`   | `l2.repositories.account-abstraction` | Deterministic factory for `SimpleAccount`; constructor takes EntryPoint   |
 
-`EntryPointSimulations` is never deployed on-chain. Its `deployedBytecode` is
-recorded in `<networks-dir>/<chain>/contracts.json` under
-`entryPointSimulationsRuntime` and applied by the bundler as an `eth_call`
-state override during per-op validation.
+`EntryPointSimulations` is intentionally absent from the deployment list. Its
+runtime bytecode is embedded directly in the bundler binary (see
+[`crates/bundler/assets/entrypoint_simulations_v07.bin`][asset] in the bundler
+repo) and applied as an `eth_call` state override during per-op validation
+nothing needs to be written on-chain or recorded in `contracts.json`.
+
+[asset]: https://github.com/ethera-labs/ethera-bundler/tree/main/crates/bundler/assets
 
 ## Regenerating the embedded artefacts
 
@@ -61,5 +65,4 @@ cp .localnet/compiled-contracts/entrypoint.json internal/l2/l2runtime/contracts/
 3. Bridges are authorised against `UniversalBridgeMailbox`, `CetFactory`, and
    `ComposeETHLiquidity` so `ComposeL2ToL2Bridge` can move state.
 4. Deployed addresses are validated to match across rollups (CREATE2-style
-   determinism is required) and written to `contracts.json` per chain,
-   alongside `entryPointSimulationsRuntime` when applicable.
+   determinism is required) and written to `contracts.json` per chain.

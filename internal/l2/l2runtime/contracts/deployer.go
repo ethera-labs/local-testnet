@@ -107,6 +107,13 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 				return nil, fmt.Errorf("failed to deploy EntryPoint to %s: %w", chainName, err)
 			}
 			addressStrings[ContractNameEntryPoint] = entryPointAddr.Hex()
+
+			d.logger.With("chain_name", chainName).Info("deploying SimpleAccountFactory")
+			factoryAddr, err := d.deploySimpleAccountFactory(ctx, url, coordinatorPK, entryPointContracts[ContractNameSimpleAccountFactory], entryPointAddr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to deploy SimpleAccountFactory to %s: %w", chainName, err)
+			}
+			addressStrings[ContractNameSimpleAccountFactory] = factoryAddr.Hex()
 		}
 
 		// Convert string addresses to common.Address
@@ -128,11 +135,7 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 		}
 
 		directory := filepath.Join(d.networksDir, string(chainName))
-		extras := map[string]any{}
-		if deployEntryPoint {
-			extras["entryPointSimulationsRuntime"] = "0x" + common.Bytes2Hex(entryPointContracts[ContractNameEntryPointSimulations].DeployedBytecode)
-		}
-		if err := writeContractJSON(filepath.Join(directory, contractsFileName), addressStrings, uint64(chainConfigs[chainName].ID), extras); err != nil {
+		if err := writeContractJSON(filepath.Join(directory, contractsFileName), addressStrings, uint64(chainConfigs[chainName].ID)); err != nil {
 			return nil, fmt.Errorf("failed to write %s for %s: %w", contractsFileName, chainName, err)
 		}
 	}
@@ -140,6 +143,35 @@ func (d *Deployer) deployContracts(ctx context.Context, chainConfigs map[configs
 	d.logger.Info("contracts deployed successfully")
 
 	return deployments, nil
+}
+
+// deploySimpleAccountFactory deploys the canonical ERC-4337 v0.7
+// SimpleAccountFactory pinned to the EntryPoint just deployed on this chain.
+// The factory's createAccount(owner, salt) is what the bundler-test flow uses
+// to derive SimpleAccount addresses on demand.
+func (d *Deployer) deploySimpleAccountFactory(ctx context.Context, rpcURL, coordinatorPrivateKey string, contract CompiledContract, entryPointAddr common.Address) (common.Address, error) {
+	client, err := ethclient.DialContext(ctx, rpcURL)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to dial %s: %w", rpcURL, err)
+	}
+	defer client.Close()
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(coordinatorPrivateKey, "0x"))
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	addr, err := d.deployContract(ctx, client, privateKey, chainID, contract, entryPointAddr)
+	if err != nil {
+		return common.Address{}, err
+	}
+	d.logger.Info("deployed", "contract", ContractNameSimpleAccountFactory, "address", addr.Hex())
+	return addr, nil
 }
 
 // deployEntryPoint deploys the ERC-4337 v0.7 EntryPoint contract using the
@@ -390,15 +422,12 @@ func (d *Deployer) deployContract(ctx context.Context, client *ethclient.Client,
 	return address, nil
 }
 
-func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64, extras map[string]any) error {
+func writeContractJSON(path string, addresses map[ContractName]string, chainID uint64) error {
 	payload := map[string]any{
 		"chainInfo": map[string]any{
 			"chainId": chainID,
 		},
 		"addresses": addresses,
-	}
-	for k, v := range extras {
-		payload[k] = v
 	}
 
 	if err := writeJSON(path, payload); err != nil {

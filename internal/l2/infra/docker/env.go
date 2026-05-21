@@ -172,21 +172,11 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
 	env["OP_RETH_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpReth].Tag
 
-	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
-		env["MAILBOX_A"] = ma
-	}
-	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
-		env["MAILBOX_B"] = mb
-	}
-
-	if epA, runtimeA := b.readEntryPointArtefacts(configs.L2ChainNameRollupA); epA != "" {
-		env["ENTRYPOINT_A"] = epA
-		env["ENTRYPOINT_SIMULATIONS_CODE_A"] = runtimeA
-	}
-	if epB, runtimeB := b.readEntryPointArtefacts(configs.L2ChainNameRollupB); epB != "" {
-		env["ENTRYPOINT_B"] = epB
-		env["ENTRYPOINT_SIMULATIONS_CODE_B"] = runtimeB
-	}
+	// Contract-derived values (MAILBOX, ENTRYPOINT, SIMPLE_ACCOUNT_FACTORY) are
+	// populated via MergePostDeployEnv. Called here so the first env snapshot
+	// reflects any contracts.json that already exists on disk from a previous
+	// run; the orchestrator calls MergePostDeployEnv again after Phase 3.
+	b.MergePostDeployEnv(env)
 
 	return env, nil
 }
@@ -227,6 +217,31 @@ func (b *EnvBuilder) ResolveRepoPath(repo configs.Repository, name configs.Repos
 	return "", fmt.Errorf("repository %s has neither URL nor local-path set", name)
 }
 
+// MergePostDeployEnv re-reads the per-chain contracts.json files and injects
+// the resulting addresses into the env map. Idempotent: safe to call before
+// deployment (no-op when contracts.json is missing) and again after
+// deployment to pick up the freshly-written values.
+func (b *EnvBuilder) MergePostDeployEnv(env map[string]string) {
+	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
+		env["MAILBOX_A"] = ma
+	}
+	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
+		env["MAILBOX_B"] = mb
+	}
+	if ep := b.readContractAddress(configs.L2ChainNameRollupA, "EntryPoint"); ep != "" {
+		env["ENTRYPOINT_A"] = ep
+	}
+	if ep := b.readContractAddress(configs.L2ChainNameRollupB, "EntryPoint"); ep != "" {
+		env["ENTRYPOINT_B"] = ep
+	}
+	if f := b.readContractAddress(configs.L2ChainNameRollupA, "SimpleAccountFactory"); f != "" {
+		env["SIMPLE_ACCOUNT_FACTORY_A"] = f
+	}
+	if f := b.readContractAddress(configs.L2ChainNameRollupB, "SimpleAccountFactory"); f != "" {
+		env["SIMPLE_ACCOUNT_FACTORY_B"] = f
+	}
+}
+
 // readUniversalBridgeMailboxAddress reads the deployed UniversalBridgeMailbox
 // address from the chain's contracts.json. Returns an empty string before the
 // file is written or if the address is missing.
@@ -248,30 +263,21 @@ func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2Chain
 	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
 }
 
-// readEntryPointArtefacts reads the deployed EntryPoint address and the
-// EntryPointSimulations runtime bytecode from the chain's contracts.json.
-// Returns ("", "") when either field is missing (e.g. before deployment, or
-// when the EntryPoint artefact is not vendored).
-func (b *EnvBuilder) readEntryPointArtefacts(chainName configs.L2ChainName) (string, string) {
+// readContractAddress reads a named contract address from the chain's
+// contracts.json. Returns "" when the file or entry is missing so callers can
+// treat the address as optional.
+func (b *EnvBuilder) readContractAddress(chainName configs.L2ChainName, contractName string) string {
 	data, err := os.ReadFile(filepath.Join(b.networksDir, string(chainName), "contracts.json"))
 	if err != nil {
-		return "", ""
+		return ""
 	}
-
 	var cf struct {
-		Addresses                    map[string]string `json:"addresses"`
-		EntryPointSimulationsRuntime string            `json:"entryPointSimulationsRuntime"`
+		Addresses map[string]string `json:"addresses"`
 	}
 	if err := json.Unmarshal(data, &cf); err != nil {
-		return "", ""
+		return ""
 	}
-
-	address := strings.TrimSpace(cf.Addresses["EntryPoint"])
-	runtime := strings.TrimSpace(cf.EntryPointSimulationsRuntime)
-	if address == "" || runtime == "" {
-		return "", ""
-	}
-	return address, runtime
+	return strings.TrimSpace(cf.Addresses[contractName])
 }
 
 // derivePeerKeys takes a 32-byte hex-encoded secp256k1 secret and returns the

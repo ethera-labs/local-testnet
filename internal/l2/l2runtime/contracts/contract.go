@@ -28,6 +28,10 @@ const (
 	// vendored separately in compiled/entrypoint.json.
 	ContractNameEntryPoint            ContractName = "EntryPoint"
 	ContractNameEntryPointSimulations ContractName = "EntryPointSimulations"
+	// SimpleAccount + SimpleAccountFactory are the canonical ERC-4337 reference
+	// implementation used by the localnet console for bundler tests.
+	ContractNameSimpleAccount        ContractName = "SimpleAccount"
+	ContractNameSimpleAccountFactory ContractName = "SimpleAccountFactory"
 )
 
 var Contracts = map[ContractName]struct{}{
@@ -43,4 +47,6 @@ var Contracts = map[ContractName]struct{}{
 var EntryPointContracts = map[ContractName]struct{}{
 	ContractNameEntryPoint:            {},
 	ContractNameEntryPointSimulations: {},
+	ContractNameSimpleAccount:         {},
+	ContractNameSimpleAccountFactory:  {},
 }

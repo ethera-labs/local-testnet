@@ -323,18 +323,18 @@ docker logs sidecar-b -f
 the ERC-4337 v0.7 JSON-RPC surface on ports `17082` and `27082`. Requires
 `--flashblocks-enabled`.
 
-Phase 3 deploys ERC-4337 v0.7 [`EntryPoint`][aa-src] to each rollup with the
-coordinator key and records two artefacts in
-`.localnet/networks/<chain>/contracts.json`:
+Phase 3 deploys ERC-4337 v0.7 [`EntryPoint`][aa-src] and `SimpleAccountFactory`
+to each rollup with the coordinator key, and records both addresses under
+`addresses.EntryPoint` / `addresses.SimpleAccountFactory` in
+`.localnet/networks/<chain>/contracts.json`.
 
-- `addresses.EntryPoint`- deployed contract address
-- `entryPointSimulationsRuntime`- runtime bytecode of
-  `EntryPointSimulations`, applied by the bundler as an `eth_call` state
-  override when running per-op validation
+`EntryPointSimulations` is **not** deployed on-chain  its runtime bytecode is
+embedded in the bundler binary and applied as an `eth_call` state override
+during per-op validation.
 
-Each bundler reads both values at startup, points its execution-layer RPC at
-the matching `op-rbuilder` instance, and signs the outer `handleOps`
-transaction with `l2.wallet.private-key`.
+Each bundler reads the EntryPoint address at startup, points its
+execution-layer RPC at the matching `op-rbuilder` instance, and signs the
+outer `handleOps` transaction with `l2.wallet.private-key`.
 
 ```bash
 make run-l2 L2_ARGS="--flashblocks-enabled --bundler-enabled"
