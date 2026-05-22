@@ -120,6 +120,13 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 		env["SIDECAR_PATH"] = sidecarPath
 	}
+	if cfg.Bundler.Enabled {
+		bundlerPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameBundler], configs.RepositoryNameBundler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve bundler path: %w", err)
+		}
+		env["BUNDLER_PATH"] = bundlerPath
+	}
 	if cfg.AltDA.Enabled {
 		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
 		if err != nil {
@@ -145,6 +152,9 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["SIDECAR_ROLLUP_A_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupAAPIPort)
 	env["SIDECAR_ROLLUP_B_API_PORT"] = fmt.Sprintf("%d", cfg.Sidecar.RollupBAPIPort)
 
+	env["BUNDLER_ROLLUP_A_API_PORT"] = fmt.Sprintf("%d", cfg.Bundler.RollupAAPIPort)
+	env["BUNDLER_ROLLUP_B_API_PORT"] = fmt.Sprintf("%d", cfg.Bundler.RollupBAPIPort)
+
 	frontendPath, err := path.GetHostPath(filepath.Join(b.rootDir, "frontend"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve frontend path: %w", err)
@@ -162,12 +172,11 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["OP_PROPOSER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpProposer].Tag
 	env["OP_RETH_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpReth].Tag
 
-	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
-		env["MAILBOX_A"] = ma
-	}
-	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
-		env["MAILBOX_B"] = mb
-	}
+	// Contract-derived values (MAILBOX, ENTRYPOINT, SIMPLE_ACCOUNT_FACTORY) are
+	// populated via MergePostDeployEnv. Called here so the first env snapshot
+	// reflects any contracts.json that already exists on disk from a previous
+	// run; the orchestrator calls MergePostDeployEnv again after Phase 3.
+	b.MergePostDeployEnv(env)
 
 	return env, nil
 }
@@ -208,6 +217,31 @@ func (b *EnvBuilder) ResolveRepoPath(repo configs.Repository, name configs.Repos
 	return "", fmt.Errorf("repository %s has neither URL nor local-path set", name)
 }
 
+// MergePostDeployEnv re-reads the per-chain contracts.json files and injects
+// the resulting addresses into the env map. Idempotent: safe to call before
+// deployment (no-op when contracts.json is missing) and again after
+// deployment to pick up the freshly-written values.
+func (b *EnvBuilder) MergePostDeployEnv(env map[string]string) {
+	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
+		env["MAILBOX_A"] = ma
+	}
+	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
+		env["MAILBOX_B"] = mb
+	}
+	if ep := b.readContractAddress(configs.L2ChainNameRollupA, "EntryPoint"); ep != "" {
+		env["ENTRYPOINT_A"] = ep
+	}
+	if ep := b.readContractAddress(configs.L2ChainNameRollupB, "EntryPoint"); ep != "" {
+		env["ENTRYPOINT_B"] = ep
+	}
+	if f := b.readContractAddress(configs.L2ChainNameRollupA, "SimpleAccountFactory"); f != "" {
+		env["SIMPLE_ACCOUNT_FACTORY_A"] = f
+	}
+	if f := b.readContractAddress(configs.L2ChainNameRollupB, "SimpleAccountFactory"); f != "" {
+		env["SIMPLE_ACCOUNT_FACTORY_B"] = f
+	}
+}
+
 // readUniversalBridgeMailboxAddress reads the deployed UniversalBridgeMailbox
 // address from the chain's contracts.json. Returns an empty string before the
 // file is written or if the address is missing.
@@ -227,6 +261,23 @@ func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2Chain
 	}
 
 	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
+}
+
+// readContractAddress reads a named contract address from the chain's
+// contracts.json. Returns "" when the file or entry is missing so callers can
+// treat the address as optional.
+func (b *EnvBuilder) readContractAddress(chainName configs.L2ChainName, contractName string) string {
+	data, err := os.ReadFile(filepath.Join(b.networksDir, string(chainName), "contracts.json"))
+	if err != nil {
+		return ""
+	}
+	var cf struct {
+		Addresses map[string]string `json:"addresses"`
+	}
+	if err := json.Unmarshal(data, &cf); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cf.Addresses[contractName])
 }
 
 // derivePeerKeys takes a 32-byte hex-encoded secp256k1 secret and returns the

@@ -30,10 +30,24 @@ func NewCompiler(contractsRootDir, outputDir string) *Compiler {
 	}
 }
 
-// Compile compiles Solidity contracts and persists the output
+// Compile compiles Solidity contracts and persists the output to contracts.json.
 func (c *Compiler) Compile(ctx context.Context, contractNames []string) error {
+	return c.compileTo(ctx, contractNames, contractsFileName, false)
+}
+
+// CompileEntryPoint compiles ERC-4337 v0.7 EntryPoint + EntryPointSimulations
+// from the configured account-abstraction source tree and writes the result to
+// entrypoint.json. The output includes deployedBytecode for every compiled
+// contract because the bundler needs the runtime bytecode for state-override
+// eth_call simulation.
+func (c *Compiler) CompileEntryPoint(ctx context.Context, contractNames []string) error {
+	return c.compileTo(ctx, contractNames, entryPointFileName, true)
+}
+
+func (c *Compiler) compileTo(ctx context.Context, contractNames []string, outputFile string, includeDeployedBytecode bool) error {
 	c.logger.
 		With("contracts_dir", c.contractsRootDir).
+		With("output", outputFile).
 		Info("starting contract compilation")
 
 	c.logger.Info("installing forge dependencies")
@@ -50,17 +64,27 @@ func (c *Compiler) Compile(ctx context.Context, contractNames []string) error {
 			return fmt.Errorf("failed to compile %s: %w", name, err)
 		}
 
-		jsonContracts[string(name)] = map[string]any{
+		entry := map[string]any{
 			"abi":      json.RawMessage(abiJSON),
 			"bytecode": bytecodeHex,
 		}
+
+		if includeDeployedBytecode {
+			deployedHex, err := c.inspectDeployedBytecode(ctx, name)
+			if err != nil {
+				return fmt.Errorf("failed to inspect deployedBytecode for %s: %w", name, err)
+			}
+			entry["deployedBytecode"] = deployedHex
+		}
+
+		jsonContracts[name] = entry
 	}
 
-	if err := c.writeContractsJSON(jsonContracts); err != nil {
-		return fmt.Errorf("failed to write %s: %w", contractsFileName, err)
+	if err := c.writeJSON(jsonContracts, outputFile); err != nil {
+		return fmt.Errorf("failed to write %s: %w", outputFile, err)
 	}
 
-	c.logger.Info("contracts compiled successfully")
+	c.logger.With("output", outputFile).Info("contracts compiled successfully")
 
 	return nil
 }
@@ -108,12 +132,25 @@ func (c *Compiler) compileContractRaw(ctx context.Context, contractName string) 
 	return abiOutput, bytecodeStr, nil
 }
 
-func (c *Compiler) writeContractsJSON(contracts map[string]map[string]any) error {
+// inspectDeployedBytecode returns the runtime (deployed) bytecode for a contract.
+func (c *Compiler) inspectDeployedBytecode(ctx context.Context, contractName string) (string, error) {
+	cmd := exec.CommandContext(ctx, "forge", "inspect", contractName, "deployedBytecode")
+	cmd.Dir = c.contractsRootDir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get deployedBytecode for %s: %w", contractName, err)
+	}
+
+	return strings.TrimSpace(string(out)), nil
+}
+
+func (c *Compiler) writeJSON(contracts map[string]map[string]any, outputFile string) error {
 	if err := os.MkdirAll(c.outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	outputPath := filepath.Join(c.outputDir, contractsFileName)
+	outputPath := filepath.Join(c.outputDir, outputFile)
 
 	data, err := json.MarshalIndent(contracts, "", "  ")
 	if err != nil {
@@ -121,7 +158,7 @@ func (c *Compiler) writeContractsJSON(contracts map[string]map[string]any) error
 	}
 
 	if err := os.WriteFile(outputPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", contractsFileName, err)
+		return fmt.Errorf("failed to write %s: %w", outputFile, err)
 	}
 
 	return nil

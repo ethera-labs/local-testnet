@@ -50,6 +50,9 @@ Starts L2 services using Docker:
 - **rollup-boost**: Engine API multiplexer for flashblocks (`--flashblocks-enabled`)
 - **blockscout**: Block explorer UI (`--blockscout-enabled`)
 - **sidecar**: Cross-chain coordination (`--sidecar-enabled`, requires flashblocks)
+- **ethera-bundler**: ERC-4337 v0.7 bundler, one container per rollup
+  (`--bundler-enabled`, requires flashblocks). `EntryPoint` v0.7 is deployed
+  to each rollup during Phase 3.
 - **Ethera Labs Console**: Web UI for XT testing (`--frontend-enabled` for the production image, or
   `--frontend-dev-enabled` for the Vite hot-reload image; both require flashblocks and sidecar)
 
@@ -285,16 +288,17 @@ docker compose -f .localnet/docker-compose.yml logs -f publisher op-reth-a op-re
 
 ## Service Ports
 
-| Service         | Chain A | Chain B | Description                              |
-|-----------------|---------|---------|------------------------------------------|
-| op-reth RPC     | 18545   | 28545   | Execution RPC                            |
-| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC                          |
-| sidecar         | 17090   | 27090   | Sidecar API                              |
-| op-alt-da       | 3100    | 3101    | AltDA server (--alt-da-enabled)          |
-| op-succinct     | 18082   | 28082   | Validity proposer metrics                |
-| Blockscout      | 19000   | 29000   | Block explorer UI                        |
-| Ethera Console  | 3000    | -       | Web UI (--frontend-enabled)              |
-| localnet-health | 8090    | -       | Container status API (always on)         |
+| Service         | Chain A | Chain B | Description                      |
+|-----------------|---------|---------|----------------------------------|
+| op-reth RPC     | 18545   | 28545   | Execution RPC                    |
+| op-rbuilder RPC | 17545   | 27545   | Flashblocks RPC                  |
+| sidecar         | 17090   | 27090   | Sidecar API                      |
+| ethera-bundler  | 17082   | 27082   | ERC-4337 v0.7 bundler JSON-RPC   |
+| op-alt-da       | 3100    | 3101    | AltDA server (--alt-da-enabled)  |
+| op-succinct     | 18082   | 28082   | Validity proposer metrics        |
+| Blockscout      | 19000   | 29000   | Block explorer UI                |
+| Ethera Console  | 3000    | -       | Web UI (--frontend-enabled)      |
+| localnet-health | 8090    | -       | Container status API (always on) |
 
 See [docs/ports.md](../../docs/ports.md) for the full per-feature port reference.
 
@@ -312,6 +316,34 @@ make run-l2 L2_ARGS="--flashblocks-enabled --sidecar-enabled"
 docker logs sidecar-a -f
 docker logs sidecar-b -f
 ```
+
+## Bundler Mode
+
+`--bundler-enabled` starts one `ethera-bundler` container per rollup, exposing
+the ERC-4337 v0.7 JSON-RPC surface on ports `17082` and `27082`. Requires
+`--flashblocks-enabled`.
+
+Phase 3 deploys ERC-4337 v0.7 [`EntryPoint`][aa-src] and `SimpleAccountFactory`
+to each rollup with the coordinator key, and records both addresses under
+`addresses.EntryPoint` / `addresses.SimpleAccountFactory` in
+`.localnet/networks/<chain>/contracts.json`.
+
+`EntryPointSimulations` is **not** deployed on-chain  its runtime bytecode is
+embedded in the bundler binary and applied as an `eth_call` state override
+during per-op validation.
+
+Each bundler reads the EntryPoint address at startup, points its
+execution-layer RPC at the matching `op-rbuilder` instance, and signs the
+outer `handleOps` transaction with `l2.wallet.private-key`.
+
+```bash
+make run-l2 L2_ARGS="--flashblocks-enabled --bundler-enabled"
+
+docker logs bundler-a -f
+docker logs bundler-b -f
+```
+
+[aa-src]: https://github.com/eth-infinitism/account-abstraction/tree/releases/v0.7
 
 ### Configuration
 

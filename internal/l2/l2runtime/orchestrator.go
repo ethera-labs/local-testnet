@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ type overlayPaths struct {
 	opSuccinct  string
 	flashblocks string
 	sidecar     string
+	bundler     string
 	frontend    string
 	frontendDev string
 }
@@ -112,6 +114,10 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		o.logger.Info("sidecar enabled, configuring sidecar services")
 		serviceManager.WithSidecar(overlays.sidecar)
 	}
+	if overlays.bundler != "" {
+		o.logger.Info("bundler enabled, configuring ERC-4337 v0.7 ethera-bundler services")
+		serviceManager.WithBundler(overlays.bundler)
+	}
 	if overlays.frontend != "" {
 		if overlays.frontendDev != "" {
 			o.logger.Info("frontend dev mode enabled, configuring Ethera Labs Console with Vite hot-reload")
@@ -144,19 +150,26 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		return nil, fmt.Errorf("failed to deploy contracts: %w", err)
 	}
 
-	// envVars was built before contract deployment, so MAILBOX_A/B aren't in it
-	// yet. Inject them now so dependent services pick them up on restart.
-	mailboxA, mailboxB, err := mailboxAddresses(deployedContracts)
-	if err != nil {
+	// envVars was built before contract deployment; refresh the entries that
+	// depend on .localnet/networks/<chain>/contracts.json so downstream
+	// services (sidecar, bundler, frontend) see the freshly deployed
+	// addresses on restart / first build.
+	if _, _, err := mailboxAddresses(deployedContracts); err != nil {
 		return nil, fmt.Errorf("failed to resolve mailbox addresses: %w", err)
 	}
-	envVars["MAILBOX_A"] = mailboxA.Hex()
-	envVars["MAILBOX_B"] = mailboxB.Hex()
+	envBuilder.MergePostDeployEnv(envVars)
 
 	if overlays.sidecar != "" {
 		o.logger.Info("restarting sidecar services to apply mailbox configuration")
 		if err := o.restartSidecar(ctx, dockerPath, overlays.flashblocks, overlays.sidecar, envVars); err != nil {
 			return nil, fmt.Errorf("failed to restart sidecar services after contract deployment: %w", err)
+		}
+	}
+
+	if overlays.bundler != "" {
+		o.logger.Info("restarting bundler services to apply EntryPoint configuration")
+		if err := o.restartBundler(ctx, dockerPath, overlays.flashblocks, overlays.bundler, envVars); err != nil {
+			return nil, fmt.Errorf("failed to restart bundler services after contract deployment: %w", err)
 		}
 	}
 
@@ -227,6 +240,16 @@ func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error)
 		paths.sidecar, err = docker.EnsureSidecarComposeFile(o.localnetDir)
 		if err != nil {
 			return overlayPaths{}, fmt.Errorf("failed to prepare sidecar docker file: %w", err)
+		}
+	}
+
+	if cfg.Bundler.Enabled {
+		if !cfg.Flashblocks.Enabled {
+			return overlayPaths{}, fmt.Errorf("bundler requires flashblocks to be enabled")
+		}
+		paths.bundler, err = docker.EnsureBundlerComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare bundler docker file: %w", err)
 		}
 	}
 
@@ -340,6 +363,28 @@ func (o *Orchestrator) restartSidecar(ctx context.Context, dockerFilePath, flash
 	return nil
 }
 
+// restartBundler restarts the ethera-bundler containers with the post-deployment
+// env so they pick up the deployed EntryPoint address and the
+// EntryPointSimulations runtime bytecode.
+func (o *Orchestrator) restartBundler(ctx context.Context, dockerFilePath, flashblocksDockerPath, bundlerDockerPath string, env map[string]string) error {
+	if bundlerDockerPath == "" {
+		return fmt.Errorf("bundler docker file path is empty")
+	}
+
+	dockerFiles := []string{dockerFilePath}
+	if flashblocksDockerPath != "" {
+		dockerFiles = append(dockerFiles, flashblocksDockerPath)
+	}
+	dockerFiles = append(dockerFiles, bundlerDockerPath)
+
+	services := []string{"bundler-a", "bundler-b"}
+	if err := docker.ComposeRestartNoDepsMultiFile(ctx, dockerFiles, env, services...); err != nil {
+		return fmt.Errorf("failed to restart bundler: %w", err)
+	}
+
+	return nil
+}
+
 func mailboxAddresses(deployedContracts map[configs.L2ChainName]map[contracts.ContractName]common.Address) (common.Address, common.Address, error) {
 	mailboxA := deployedContracts[configs.L2ChainNameRollupA][contracts.ContractNameUniversalBridgeMailbox]
 	mailboxB := deployedContracts[configs.L2ChainNameRollupB][contracts.ContractNameUniversalBridgeMailbox]
@@ -375,6 +420,15 @@ func (o *Orchestrator) buildComposeServices(ctx context.Context, dockerFilePath 
 		}
 		dockerFiles = append(dockerFiles, overlays.sidecar)
 		services = append(services, "op-rbuilder-a", "op-rbuilder-b", "sidecar-a", "sidecar-b")
+	}
+
+	// Bundler also requires flashblocks, so reuse the same overlay ordering.
+	if overlays.bundler != "" {
+		if overlays.flashblocks != "" && !slices.Contains(dockerFiles, overlays.flashblocks) {
+			dockerFiles = append(dockerFiles, overlays.flashblocks)
+		}
+		dockerFiles = append(dockerFiles, overlays.bundler)
+		services = append(services, "bundler-a", "bundler-b")
 	}
 
 	if len(dockerFiles) > 1 {

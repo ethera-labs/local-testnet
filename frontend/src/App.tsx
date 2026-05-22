@@ -3,11 +3,13 @@ import SystemDiagram from './components/visualization/SystemDiagram'
 import TransactionFlowPanel, {
   FlowMode,
 } from './components/visualization/TransactionFlowPanel'
-import TransactionPanel from './components/transactions/TransactionPanel'
+import TransactionPanel, {
+  type TransactionPanelMode,
+} from './components/transactions/TransactionPanel'
 import { statusOf, useTransactionStore } from './stores/transactionStore'
 import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, getProvider } from './api/rollup'
 import { fetchServices, indexById, type ServiceStatus } from './api/health'
-import { FLASHBLOCKS_ENABLED } from './config/chains'
+import { BUNDLER_TEST_AVAILABLE, FLASHBLOCKS_ENABLED } from './config/chains'
 
 function StatusChip({ status, label }: { status: ServiceStatus; label: string }) {
   const palette: Record<ServiceStatus, { dot: string; pulse: boolean }> = {
@@ -30,7 +32,7 @@ function StatusChip({ status, label }: { status: ServiceStatus; label: string })
 type LogFilter = 'all' | 'pending' | 'committed' | 'aborted'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'mint' | 'bridge' | 'atomicity' | 'stress'>('mint')
+  const [activeTab, setActiveTab] = useState<TransactionPanelMode>('mint')
   const [flowMode, setFlowMode] = useState<FlowMode | null>(null)
   const [diagramResetSignal, setDiagramResetSignal] = useState(0)
   const { transactions, currentStatus, setServices, clearTransactions } = useTransactionStore()
@@ -280,6 +282,18 @@ function App() {
                 >
                   Stress
                 </button>
+                {BUNDLER_TEST_AVAILABLE && (
+                  <button
+                    onClick={() => setActiveTab('bundler')}
+                    className={`flex-1 px-3 py-3 font-display text-[10px] tracking-[0.2em] uppercase transition-all border-b-2 ${
+                      activeTab === 'bundler'
+                        ? 'border-cyan text-cyan bg-cyan/5'
+                        : 'border-transparent text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    Bundler
+                  </button>
+                )}
               </div>
             </div>
             <div className="p-5 flex-1 min-h-0 overflow-y-auto">

@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 )
 
-//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.frontend.yml docker-compose.frontend.dev.yml docker-compose.altda.yml docker-compose.opsuccinct.yml
+//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.bundler.yml docker-compose.frontend.yml docker-compose.frontend.dev.yml docker-compose.altda.yml docker-compose.opsuccinct.yml
 var embeddedComposeFS embed.FS
 
 const (
 	dockerFileName             = "docker-compose.yml"
 	composeFlashblocksFileName = "docker-compose.flashblocks.yml"
 	composeSidecarFileName     = "docker-compose.sidecar.yml"
+	composeBundlerFileName     = "docker-compose.bundler.yml"
 	composeFrontendFileName    = "docker-compose.frontend.yml"
 	composeFrontendDevFileName = "docker-compose.frontend.dev.yml"
 	composeAltDAFileName       = "docker-compose.altda.yml"
@@ -52,6 +53,11 @@ func EnsureFlashblocksComposeFile(localnetDir string) (string, error) {
 // EnsureSidecarComposeFile writes the embedded docker-compose.sidecar.yml to localnetDir and returns its path.
 func EnsureSidecarComposeFile(localnetDir string) (string, error) {
 	return ensureEmbeddedFile(localnetDir, composeSidecarFileName)
+}
+
+// EnsureBundlerComposeFile writes the embedded docker-compose.bundler.yml to localnetDir and returns its path.
+func EnsureBundlerComposeFile(localnetDir string) (string, error) {
+	return ensureEmbeddedFile(localnetDir, composeBundlerFileName)
 }
 
 // EnsureFrontendComposeFile writes the embedded docker-compose.frontend.yml to localnetDir and returns its path.

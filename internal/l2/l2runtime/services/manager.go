@@ -15,12 +15,14 @@ type Manager struct {
 	dockerFilePath            string
 	flashblocksDockerFilePath string
 	sidecarDockerFilePath     string
+	bundlerDockerFilePath     string
 	frontendDockerFilePath    string
 	frontendDevDockerFilePath string
 	altDADockerFilePath       string
 	opSuccinctDockerFilePath  string
 	flashblocksEnabled        bool
 	sidecarEnabled            bool
+	bundlerEnabled            bool
 	frontendEnabled           bool
 	altDAEnabled              bool
 	opSuccinctEnabled         bool
@@ -47,6 +49,13 @@ func (m *Manager) WithFlashblocks(flashblocksDockerFilePath string) *Manager {
 func (m *Manager) WithSidecar(sidecarDockerFilePath string) *Manager {
 	m.sidecarDockerFilePath = sidecarDockerFilePath
 	m.sidecarEnabled = true
+	return m
+}
+
+// WithBundler enables the ERC-4337 v0.7 ethera-bundler service with the specified docker file
+func (m *Manager) WithBundler(bundlerDockerFilePath string) *Manager {
+	m.bundlerDockerFilePath = bundlerDockerFilePath
+	m.bundlerEnabled = true
 	return m
 }
 
@@ -129,10 +138,18 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		)
 	}
 
+	if m.bundlerEnabled && m.bundlerDockerFilePath != "" {
+		dockerFiles = append(dockerFiles, m.bundlerDockerFilePath)
+		services = append(services,
+			"bundler-a",
+			"bundler-b",
+		)
+	}
+
 	// Frontend (ethera-console) is started separately after contract deployment
 
 	if len(dockerFiles) > 1 {
-		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
+		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "bundler", m.bundlerEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
 
 		if err := docker.ComposeUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
