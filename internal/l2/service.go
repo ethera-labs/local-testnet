@@ -178,6 +178,10 @@ func (s *Service) cloneRepositories(ctx context.Context, cfg configs.L2) error {
 			s.logger.With("name", name).Info("ignoring op-succinct repository config because op-succinct mode is disabled")
 			continue
 		}
+		if (name == configs.RepositoryNameBundler || name == configs.RepositoryNameAccountAbstraction) && !cfg.Bundler.Enabled {
+			s.logger.With("name", name).Info("ignoring bundler repository config because bundler mode is disabled")
+			continue
+		}
 
 		if repo.URL != "" {
 			repos = append(repos, git.Repository{

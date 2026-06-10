@@ -56,6 +56,9 @@ services:
       ENABLE_AGGREGATION: "true"
       RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
       SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
+      # op-node here runs without SafeDB enabled; let op-succinct fall back to the
+      # (more expensive) on-demand safe-head lookup instead of erroring out.
+      SAFE_DB_FALLBACK: "true"
       LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
       SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
       ALTDA_SERVER_URL: "${OP_SUCCINCT_ALTDA_SERVER_A:-}"
@@ -103,6 +106,9 @@ services:
       ENABLE_AGGREGATION: "true"
       RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
       SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
+      # op-node here runs without SafeDB enabled; let op-succinct fall back to the
+      # (more expensive) on-demand safe-head lookup instead of erroring out.
+      SAFE_DB_FALLBACK: "true"
       LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
       SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
       ALTDA_SERVER_URL: "${OP_SUCCINCT_ALTDA_SERVER_B:-}"

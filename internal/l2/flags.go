@@ -112,6 +112,7 @@ var (
 		{"frontend-dev-enabled", "l2.frontend.dev-enabled", false, "Run the Ethera Labs Console with Vite hot-reload, mounting frontend/ source into the container (requires flashblocks and sidecar)"},
 		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},
 		{"op-succinct-enabled", "l2.op-succinct.enabled", false, "Enable op-succinct mock-mode validity services in localnet"},
+		{"op-besu-enabled", "l2.op-besu.enabled", false, "Use op-besu (Java OP EL) as the rollup-boost validator EL instead of op-reth; runs the full Isthmus schedule (requires flashblocks; needs a local local/op-besu:dev image)"},
 	}
 )
 
