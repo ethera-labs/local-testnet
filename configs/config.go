@@ -42,22 +42,16 @@ type (
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 		OPSuccinct            OPSuccinctConfig              `mapstructure:"op-succinct"`
-		OpBesu                OpBesuConfig                  `mapstructure:"op-besu"`
+		// ValidatorEL selects the rollup-boost validator execution client (L2_URL):
+		// "op-reth" (default) or "op-besu". op-besu requires flashblocks and a local
+		// local/op-besu:dev image (see op-besu/Dockerfile.local); it runs the full Isthmus
+		// schedule (Prague EVM, final EIP-7685, EIP-2935), matching stage.
+		ValidatorEL string `mapstructure:"validator-el"`
 	}
 
 	// OPSuccinctConfig controls whether localnet runs the op-succinct mock-mode
 	// validity services for the configured rollups.
 	OPSuccinctConfig struct {
-		Enabled bool `mapstructure:"enabled"`
-	}
-
-	// OpBesuConfig swaps the rollup-boost validator execution client (L2_URL) from op-reth to
-	// op-besu — a Java OP Stack execution client (github.com/ethera-labs/op-besu-ssv). Requires
-	// flashblocks (op-besu validates op-rbuilder's payloads; op-rbuilder stays the builder).
-	// op-besu runs the full Isthmus schedule (Prague EVM, final EIP-7685 requests commitment,
-	// EIP-2935 history), matching stage. Requires a locally-built image tagged local/op-besu:dev
-	// (see op-besu/Dockerfile.local).
-	OpBesuConfig struct {
 		Enabled bool `mapstructure:"enabled"`
 	}
 
@@ -162,6 +156,10 @@ type (
 )
 
 const (
+	// Validator execution client choices for l2.validator-el (rollup-boost L2_URL).
+	ValidatorELOpReth = "op-reth"
+	ValidatorELOpBesu = "op-besu"
+
 	RepositoryNameOpRbuilder         RepositoryName = "op-rbuilder"
 	RepositoryNamePublisher          RepositoryName = "publisher"
 	RepositoryNameSidecar            RepositoryName = "sidecar"
@@ -390,8 +388,15 @@ func (c *L2) Validate() error {
 	if c.Frontend.Active() && (!c.Flashblocks.Enabled || !c.Sidecar.Enabled) {
 		errs = append(errs, errors.New("l2.frontend requires l2.flashblocks.enabled and l2.sidecar.enabled"))
 	}
-	if c.OpBesu.Enabled && !c.Flashblocks.Enabled {
-		errs = append(errs, errors.New("l2.op-besu.enabled requires l2.flashblocks.enabled (op-besu is the rollup-boost L2_URL validator)"))
+	switch c.ValidatorEL {
+	case "", ValidatorELOpReth:
+		// op-reth is the default; no extra requirements.
+	case ValidatorELOpBesu:
+		if !c.Flashblocks.Enabled {
+			errs = append(errs, errors.New("l2.validator-el=op-besu requires l2.flashblocks.enabled (op-besu is the rollup-boost L2_URL validator)"))
+		}
+	default:
+		errs = append(errs, fmt.Errorf("l2.validator-el must be %q or %q, got %q", ValidatorELOpReth, ValidatorELOpBesu, c.ValidatorEL))
 	}
 
 	if len(errs) > 0 {

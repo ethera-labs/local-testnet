@@ -97,14 +97,14 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 	services := []string{
 		"localnet-health",
 		"publisher",
-		"op-reth-a",
-		"op-reth-b",
+		"validator-el-a",
+		"validator-el-b",
 	}
 
 	dockerFiles := []string{m.dockerFilePath}
 
 	// op-besu override must come right after the base file so it replaces the
-	// op-reth-a/op-reth-b service definitions (no other overlay touches them).
+	// validator-el-a/validator-el-b service definitions (no other overlay touches them).
 	if m.opBesuEnabled && m.opBesuDockerFilePath != "" {
 		dockerFiles = append(dockerFiles, m.opBesuDockerFilePath)
 	}

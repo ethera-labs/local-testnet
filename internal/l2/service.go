@@ -136,9 +136,9 @@ func generateBlockscoutConfig(cfg configs.L2, deploymentState l1deployment.Deplo
 		var hostName string
 		switch chainName {
 		case configs.L2ChainNameRollupA:
-			hostName = "op-reth-a"
+			hostName = "validator-el-a"
 		case configs.L2ChainNameRollupB:
-			hostName = "op-reth-b"
+			hostName = "validator-el-b"
 		default:
 			return nil, fmt.Errorf("unknown chain name: %s", chainName)
 		}

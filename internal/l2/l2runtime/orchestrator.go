@@ -220,9 +220,9 @@ func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error)
 	var paths overlayPaths
 	var err error
 
-	// op-besu: swap the op-reth validator EL (rollup-boost L2_URL) for op-besu (Holocene-capped).
-	if cfg.OpBesu.Enabled {
-		o.logger.Info("op-besu enabled: replacing op-reth validator EL with op-besu (Holocene-capped)")
+	// validator-el=op-besu: swap the op-reth validator EL (rollup-boost L2_URL) for op-besu.
+	if cfg.ValidatorEL == configs.ValidatorELOpBesu {
+		o.logger.Info("validator-el=op-besu: replacing op-reth validator EL with op-besu")
 		paths.opBesu, err = docker.EnsureOpBesuComposeFile(o.localnetDir)
 		if err != nil {
 			return overlayPaths{}, fmt.Errorf("failed to prepare op-besu docker file: %w", err)

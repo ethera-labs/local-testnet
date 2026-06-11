@@ -1,16 +1,15 @@
-# Overlay: replace the op-reth validator EL (rollup-boost L2_URL) with op-besu.
-# Keeps the op-reth-a/op-reth-b container names, ports, volumes and /config mount so
-# rollup-boost (L2_URL=http://op-reth-a:8551) and the rest of the stack are unchanged.
-# Applied when l2.op-besu.enabled=true (--op-besu-enabled), which also caps the chain at
-# Holocene (op-besu has full genesis/state parity with op-reth at Holocene and its V3
-# Engine API suffices there).
+# Overlay: run the validator EL (rollup-boost L2_URL) as op-besu instead of op-reth.
+# Overrides the validator-el-a/validator-el-b services in place — same ports, volumes and
+# /config mount — so the validator-el-a/validator-el-b network aliases (rollup-boost
+# L2_URL=http://validator-el-a:8551, op-node, batcher, op-succinct) all still resolve.
+# Applied when l2.validator-el=op-besu (--validator-el op-besu). op-besu runs the full
+# Isthmus schedule (Prague EVM, final EIP-7685, EIP-2935), matching stage.
 # Requires a locally-built image tagged ${OP_BESU_IMAGE:-local/op-besu:dev}.
 
 services:
-  op-reth-a:
-    # Rename the container so `docker ps` / `make show-l2` show op-besu, while the
-    # compose service key stays op-reth-a — Docker keeps the service name as a
-    # network alias, so rollup-boost's L2_URL=http://op-reth-a:8551 still resolves.
+  validator-el-a:
+    # Container is named op-besu-a so `docker ps` / `make show-l2` show the real client,
+    # while the validator-el-a service/alias stays stable for everything that targets it.
     container_name: op-besu-a
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
     entrypoint: ["besu"]
@@ -53,7 +52,7 @@ services:
     environment:
       OP_BATCHER_THROTTLE_UNSAFE_DA_BYTES_LOWER_THRESHOLD: "0"
 
-  op-reth-b:
+  validator-el-b:
     container_name: op-besu-b
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
     entrypoint: ["besu"]
