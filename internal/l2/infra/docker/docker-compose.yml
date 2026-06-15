@@ -43,7 +43,7 @@ services:
       timeout: 5s
       retries: 5
 
-  op-reth-a:
+  validator-el-a:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:${OP_RETH_IMAGE_TAG}
     container_name: op-reth-a
     labels:
@@ -106,7 +106,7 @@ services:
           --disable-discovery \
           --max-peers=10 \
           --port=30303 \
-          --p2p-secret-key-hex=${RETH_A_P2P_SECRET_KEY_HEX} \
+          --p2p-secret-key-hex=${VALIDATOR_EL_A_P2P_SECRET_KEY_HEX} \
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
@@ -120,12 +120,12 @@ services:
     networks:
       - localnet-l2
     depends_on:
-      op-reth-a:
+      validator-el-a:
         condition: service_healthy
     environment:
       OP_NODE_L1_ETH_RPC: "${L1_EL_URL}"
       OP_NODE_L1_BEACON: "${L1_CL_URL}"
-      OP_NODE_L2_ENGINE_RPC: "http://op-reth-a:8551"
+      OP_NODE_L2_ENGINE_RPC: "http://validator-el-a:8551"
       OP_NODE_L2_ENGINE_AUTH: "/config/jwt.txt"
       OP_NODE_L2_ENGINE_KIND: "reth"
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
@@ -155,7 +155,7 @@ services:
       - op-node-a
     environment:
       OP_BATCHER_L1_ETH_RPC: "${L1_EL_URL}"
-      OP_BATCHER_L2_ETH_RPC: "http://op-reth-a:8545"
+      OP_BATCHER_L2_ETH_RPC: "http://validator-el-a:8545"
       OP_BATCHER_ROLLUP_RPC: "http://op-node-a:9545"
       OP_BATCHER_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       OP_BATCHER_POLL_INTERVAL: "1s"
@@ -192,7 +192,7 @@ services:
     ports:
       - "18560:8560"
 
-  op-reth-b:
+  validator-el-b:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:${OP_RETH_IMAGE_TAG}
     container_name: op-reth-b
     labels:
@@ -255,7 +255,7 @@ services:
           --disable-discovery \
           --max-peers=10 \
           --port=30303 \
-          --p2p-secret-key-hex=${RETH_B_P2P_SECRET_KEY_HEX} \
+          --p2p-secret-key-hex=${VALIDATOR_EL_B_P2P_SECRET_KEY_HEX} \
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
@@ -269,12 +269,12 @@ services:
     networks:
       - localnet-l2
     depends_on:
-      op-reth-b:
+      validator-el-b:
         condition: service_healthy
     environment:
       OP_NODE_L1_ETH_RPC: "${L1_EL_URL}"
       OP_NODE_L1_BEACON: "${L1_CL_URL}"
-      OP_NODE_L2_ENGINE_RPC: "http://op-reth-b:8551"
+      OP_NODE_L2_ENGINE_RPC: "http://validator-el-b:8551"
       OP_NODE_L2_ENGINE_AUTH: "/config/jwt.txt"
       OP_NODE_L2_ENGINE_KIND: "reth"
       OP_NODE_ROLLUP_CONFIG: "/config/rollup.json"
@@ -304,7 +304,7 @@ services:
       - op-node-b
     environment:
       OP_BATCHER_L1_ETH_RPC: "${L1_EL_URL}"
-      OP_BATCHER_L2_ETH_RPC: "http://op-reth-b:8545"
+      OP_BATCHER_L2_ETH_RPC: "http://validator-el-b:8545"
       OP_BATCHER_ROLLUP_RPC: "http://op-node-b:9545"
       OP_BATCHER_PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       OP_BATCHER_POLL_INTERVAL: "1s"

@@ -104,10 +104,11 @@ clean-l2: ## Clean L2 Docker containers and volumes
 	-if [ -f .localnet/docker-compose.altda.yml ]; then docker compose -f .localnet/docker-compose.altda.yml down -v 2>/dev/null || true; fi
 	-if [ -f .localnet/docker-compose.flashblocks.yml ]; then docker compose -f .localnet/docker-compose.flashblocks.yml down -v 2>/dev/null || true; fi
 	-if [ -f .localnet/docker-compose.sidecar.yml ]; then docker compose -f .localnet/docker-compose.sidecar.yml down -v 2>/dev/null || true; fi
+	-if [ -f .localnet/docker-compose.opbesu.yml ]; then docker compose -f .localnet/docker-compose.opbesu.yml down -v 2>/dev/null || true; fi
 	-docker ps -aq --filter "label=${L2_LABEL}" | xargs -r docker rm -f
-	-docker rm -f publisher op-reth-a op-reth-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b op-succinct-a op-succinct-b op-succinct-postgres op-alt-da-a op-alt-da-b ethera-console localnet-health 2>/dev/null || true
-	docker volume ls -q | grep -E "(rollup-a|rollup-b|blockscout|op-rbuilder|op-succinct|op-alt-da)" | xargs -r docker volume rm
-	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.opsuccinct.yml ./.localnet/docker-compose.altda.yml ./.localnet/docker-compose.frontend.yml ./.localnet/.tmp ./.localnet/registry ./.cache
+	-docker rm -f publisher op-reth-a op-reth-b op-besu-a op-besu-b op-node-a op-node-b op-batcher-a op-batcher-b op-rbuilder-a op-rbuilder-b rollup-boost-a rollup-boost-b sidecar-a sidecar-b op-succinct-a op-succinct-b op-succinct-postgres op-alt-da-a op-alt-da-b ethera-console localnet-health 2>/dev/null || true
+	-docker volume ls -q | grep -E "^localnet_" | xargs -r docker volume rm 2>/dev/null || true
+	rm -rf ./.localnet/state ./.localnet/networks ./.localnet/compiled-contracts ./.localnet/docker-compose.yml ./.localnet/docker-compose.blockscout.yml ./.localnet/docker-compose.flashblocks.yml ./.localnet/docker-compose.sidecar.yml ./.localnet/docker-compose.opsuccinct.yml ./.localnet/docker-compose.altda.yml ./.localnet/docker-compose.frontend.yml ./.localnet/docker-compose.opbesu.yml ./.localnet/.tmp ./.localnet/registry ./.cache
 
 .PHONY: clean-l2-full
 clean-l2-full: clean-l2 ## Full L2 cleanup including Docker images

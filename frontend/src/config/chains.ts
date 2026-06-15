@@ -33,6 +33,10 @@ export const CHAIN_B_ID = requireNumber('VITE_CHAIN_B_ID')
 
 export const FLASHBLOCKS_ENABLED = env.VITE_FLASHBLOCKS_ENABLED === 'true'
 
+// Display label for the validator execution client (op-reth by default, op-besu
+// when the stack runs with --validator-el op-besu). Used only for diagram labels.
+export const EL_CLIENT_LABEL = env.VITE_EL_CLIENT_LABEL?.trim() || 'op-reth'
+
 export const CHAIN_A_BUILDER_RPC = requireEnv('VITE_CHAIN_A_BUILDER_RPC')
 export const CHAIN_A_OP_RETH_RPC = requireEnv('VITE_CHAIN_A_OP_RETH_RPC')
 

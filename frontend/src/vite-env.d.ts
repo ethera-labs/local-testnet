@@ -23,6 +23,7 @@ interface ImportMetaEnv {
   readonly VITE_CHAIN_A_PRIVATE_KEY?: string
   readonly VITE_CHAIN_B_PRIVATE_KEY?: string
   readonly VITE_WALLET_PRIVATE_KEY?: string
+  readonly VITE_EL_CLIENT_LABEL?: string
 }
 
 interface ImportMeta {
