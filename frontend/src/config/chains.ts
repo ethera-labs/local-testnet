@@ -49,8 +49,10 @@ export const CHAIN_B_RPC = FLASHBLOCKS_ENABLED ? CHAIN_B_BUILDER_RPC : CHAIN_B_O
 export const SIDECAR_A_URL = requireEnv('VITE_SIDECAR_A_URL')
 export const SIDECAR_B_URL = requireEnv('VITE_SIDECAR_B_URL')
 
+const healthApiUrl = env.VITE_HEALTH_API_URL
 export const HEALTH_API_URL =
-  env.VITE_HEALTH_API_URL?.trim() || 'http://localhost:8090'
+  healthApiUrl === undefined ? 'http://localhost:8090' : healthApiUrl.trim()
+export const HEALTH_API_ENABLED = HEALTH_API_URL.length > 0
 
 export const CHAIN_A_BLOCKSCOUT = env.VITE_CHAIN_A_BLOCKSCOUT_URL?.trim() || 'http://localhost:19000'
 export const CHAIN_B_BLOCKSCOUT = env.VITE_CHAIN_B_BLOCKSCOUT_URL?.trim() || 'http://localhost:29000'
