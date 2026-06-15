@@ -70,3 +70,16 @@ export const CHAIN_A_PRIVATE_KEY = normalizePrivateKey(
 export const CHAIN_B_PRIVATE_KEY = normalizePrivateKey(
   env.VITE_CHAIN_B_PRIVATE_KEY || env.VITE_WALLET_PRIVATE_KEY
 )
+
+// Bundler (ERC-4337 v0.7). Empty strings disable the Bundler Test tab.
+export const BUNDLER_A_URL = env.VITE_BUNDLER_A_URL?.trim() || ''
+export const BUNDLER_B_URL = env.VITE_BUNDLER_B_URL?.trim() || ''
+
+export const ENTRYPOINT_A = env.VITE_ENTRYPOINT_A?.trim() || ''
+export const ENTRYPOINT_B = env.VITE_ENTRYPOINT_B?.trim() || ''
+
+export const SIMPLE_ACCOUNT_FACTORY_A = env.VITE_SIMPLE_ACCOUNT_FACTORY_A?.trim() || ''
+export const SIMPLE_ACCOUNT_FACTORY_B = env.VITE_SIMPLE_ACCOUNT_FACTORY_B?.trim() || ''
+
+export const BUNDLER_TEST_AVAILABLE =
+  !!BUNDLER_A_URL && !!ENTRYPOINT_A && !!SIMPLE_ACCOUNT_FACTORY_A

@@ -38,6 +38,7 @@ type (
 		Blockscout            BlockscoutConfig              `mapstructure:"blockscout"`
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
+		Bundler               BundlerConfig                 `mapstructure:"bundler"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 		OPSuccinct            OPSuccinctConfig              `mapstructure:"op-succinct"`
@@ -72,6 +73,16 @@ type (
 	}
 
 	SidecarConfig struct {
+		Enabled        bool `mapstructure:"enabled"`
+		RollupAAPIPort int  `mapstructure:"rollup-a-api-port"`
+		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
+	}
+
+	// BundlerConfig controls the ERC-4337 v0.7 bundler service. When enabled,
+	// localnet starts one bundler container per rollup, each signing handleOps
+	// transactions with `l2.wallet.private-key` and pointed at the matching
+	// op-rbuilder RPC.
+	BundlerConfig struct {
 		Enabled        bool `mapstructure:"enabled"`
 		RollupAAPIPort int  `mapstructure:"rollup-a-api-port"`
 		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
@@ -140,11 +151,13 @@ type (
 )
 
 const (
-	RepositoryNameOpRbuilder      RepositoryName = "op-rbuilder"
-	RepositoryNamePublisher       RepositoryName = "publisher"
-	RepositoryNameSidecar         RepositoryName = "sidecar"
-	RepositoryNameEtheraContracts RepositoryName = "ethera-contracts"
-	RepositoryNameOPSuccinct      RepositoryName = "op-succinct"
+	RepositoryNameOpRbuilder         RepositoryName = "op-rbuilder"
+	RepositoryNamePublisher          RepositoryName = "publisher"
+	RepositoryNameSidecar            RepositoryName = "sidecar"
+	RepositoryNameEtheraContracts    RepositoryName = "ethera-contracts"
+	RepositoryNameAccountAbstraction RepositoryName = "account-abstraction"
+	RepositoryNameBundler            RepositoryName = "bundler"
+	RepositoryNameOPSuccinct         RepositoryName = "op-succinct"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -244,6 +257,15 @@ func (c *L2) Validate() error {
 	}
 	if c.Sidecar.Enabled {
 		requiredRepos = append(requiredRepos, RepositoryNameSidecar)
+	}
+	if c.Bundler.Enabled {
+		if !c.Flashblocks.Enabled {
+			errs = append(errs, errors.New("l2.bundler.enabled requires l2.flashblocks.enabled"))
+		}
+		requiredRepos = append(requiredRepos,
+			RepositoryNameBundler,
+			RepositoryNameAccountAbstraction,
+		)
 	}
 
 	for _, name := range requiredRepos {

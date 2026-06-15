@@ -23,6 +23,10 @@ l2:
     enabled: true  # requires flashblocks
     rollup-a-api-port: 17090
     rollup-b-api-port: 27090
+  bundler:
+    enabled: false  # requires flashblocks
+    rollup-a-api-port: 17082
+    rollup-b-api-port: 27082
   chain-configs:
     rollup-a:
       id: 177777
@@ -61,6 +65,12 @@ l2:
     ethera-contracts:
       url: git@github.com:ethera-labs/contracts.git
       branch: develop
+    bundler:
+      url: https://github.com/ethera-labs/ethera-bundler
+      branch: main
+    account-abstraction:
+      url: https://github.com/eth-infinitism/account-abstraction.git
+      branch: releases/v0.7
   dispute:
     network-name: sepolia
     explorer-url: https://sepolia.etherscan.io/

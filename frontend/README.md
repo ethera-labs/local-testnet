@@ -62,5 +62,28 @@ sidecar, flashblocks) are hidden from the diagram.
 |-----------------|---------|---------|
 | Builder RPC     | 17545   | 27545   |
 | Sidecar API     | 17090   | 27090   |
+| Bundler         | 17082   | 27082   |
 | Blockscout      | 19000   | 29000   |
 | localnet-health | 8090    | -       |
+
+## Bundler Test Tab
+
+When the L2 stack is started with `--bundler-enabled` (which requires
+`--flashblocks-enabled`), Phase 3 deploys `EntryPoint` v0.7 and
+`SimpleAccountFactory` to each rollup and the docker-compose overlay forwards
+the resulting addresses to the console as:
+
+- `VITE_BUNDLER_A_URL`, `VITE_BUNDLER_B_URL`
+- `VITE_ENTRYPOINT_A`, `VITE_ENTRYPOINT_B`
+- `VITE_SIMPLE_ACCOUNT_FACTORY_A`, `VITE_SIMPLE_ACCOUNT_FACTORY_B`
+
+With those set, the console renders an extra **Bundler** tab that derives a
+`SimpleAccount` address from your `VITE_WALLET_PRIVATE_KEY`, tops up its
+`EntryPoint` deposit if empty, builds + signs a no-op `UserOperation`, asks
+the bundler for the sequencer-signed `handleOps` transaction
+(`ethera_buildSignedUserOpsTx`), broadcasts it to op-rbuilder, and decodes the
+`UserOperationEvent` from the receipt.
+
+When running the frontend outside Docker, copy those values into `.env` from
+`.localnet/networks/<chain>/contracts.json` after `make run-l2 L2_ARGS="--flashblocks-enabled --bundler-enabled"`
+brings the stack up.

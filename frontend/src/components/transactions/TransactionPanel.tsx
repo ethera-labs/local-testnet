@@ -4,10 +4,18 @@ import MintForm from './MintForm'
 import BridgeForm from './BridgeForm'
 import ScenariosForm from './ScenariosForm'
 import StressForm from './StressForm'
+import BundlerTestForm from './BundlerTestForm'
 import TransactionStatus from './TransactionStatus'
 
+export type TransactionPanelMode =
+  | 'mint'
+  | 'bridge'
+  | 'atomicity'
+  | 'stress'
+  | 'bundler'
+
 interface TransactionPanelProps {
-  mode: 'mint' | 'bridge' | 'atomicity' | 'stress'
+  mode: TransactionPanelMode
   onSelectFlow?: (mode: FlowMode) => void
 }
 
@@ -29,6 +37,8 @@ export default function TransactionPanel({
         <BridgeForm onSubmit={setActiveInstanceId} onSelectFlow={onSelectFlow} />
       ) : mode === 'atomicity' ? (
         <ScenariosForm />
+      ) : mode === 'bundler' ? (
+        <BundlerTestForm />
       ) : (
         <StressForm />
       )}
