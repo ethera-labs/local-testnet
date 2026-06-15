@@ -12,6 +12,14 @@
 # (--trusted-peers=enode://${VALIDATOR_EL_A_ENODE_PUBKEY}@validator-el-a:30303). Discovery stays off
 # (op-rbuilder dials in directly), mirroring op-reth's --disable-discovery. Without this
 # op-rbuilder sits at 0 peers; canonical blocks still arrive over the Engine API either way.
+#
+# Engine JWT: op-reth/op-geth (and stage) enforce engine JWT (--authrpc.jwtsecret=/config/jwt.txt)
+# and rollup-boost presents it (L2_JWT_PATH=/config/jwt.txt). op-besu is left with
+# --engine-jwt-disabled because Besu REJECTS rollup-boost's engine tokens with HTTP 401 even given
+# the same secret — Besu's engine-JWT validation is stricter than op-geth/op-reth, so block
+# production stalls at block 0. The engine port is internal to the localnet-l2 network (never
+# published), so disabling JWT is safe here. This is the one parameter that does NOT mirror stage
+# and MUST be resolved before a rollup-boost + op-besu deployment that enforces JWT (e.g. stage-hoodi).
 
 services:
   validator-el-a:
@@ -47,6 +55,14 @@ services:
           --engine-rpc-port=8551 \
           --engine-jwt-disabled \
           --engine-host-allowlist='*' \
+          --rpc-ws-enabled \
+          --rpc-ws-host=0.0.0.0 \
+          --rpc-ws-port=8546 \
+          --rpc-ws-api=ETH,NET,WEB3,DEBUG,TXPOOL \
+          --metrics-enabled \
+          --metrics-host=0.0.0.0 \
+          --metrics-port=9898 \
+          --nat-method=NONE \
           --p2p-enabled=true \
           --p2p-host=0.0.0.0 \
           --p2p-port=30303 \
@@ -96,6 +112,14 @@ services:
           --engine-rpc-port=8551 \
           --engine-jwt-disabled \
           --engine-host-allowlist='*' \
+          --rpc-ws-enabled \
+          --rpc-ws-host=0.0.0.0 \
+          --rpc-ws-port=8546 \
+          --rpc-ws-api=ETH,NET,WEB3,DEBUG,TXPOOL \
+          --metrics-enabled \
+          --metrics-host=0.0.0.0 \
+          --metrics-port=9898 \
+          --nat-method=NONE \
           --p2p-enabled=true \
           --p2p-host=0.0.0.0 \
           --p2p-port=30303 \
