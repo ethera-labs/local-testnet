@@ -96,22 +96,24 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		env["OP_RBUILDER_PATH"] = opRbuilderPath
 	}
 
-	// op-reth's P2P secret + the matching enode pubkey are always populated so the
-	// `--p2p-secret-key-hex` flag in docker-compose has a value regardless of feature flags.
-	// The pubkey is derived from the secret; one source of truth.
+	// The validator EL's P2P secret + matching enode pubkey are always populated so the
+	// flashblocks trusted-peer wiring has a value regardless of feature flags. Both op-reth
+	// (--p2p-secret-key-hex) and op-besu (--node-private-key-file) boot with this same key, so
+	// the enode op-rbuilder dials is stable across either client. Derived from the secret; one
+	// source of truth.
 	rethASK, rethAEnode, err := derivePeerKeys(cfg.Flashblocks.RollupAP2PSecretKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("rollup-a flashblocks p2p key: %w", err)
 	}
-	env["RETH_A_P2P_SECRET_KEY_HEX"] = rethASK
-	env["RETH_A_ENODE_PUBKEY"] = rethAEnode
+	env["VALIDATOR_EL_A_P2P_SECRET_KEY_HEX"] = rethASK
+	env["VALIDATOR_EL_A_ENODE_PUBKEY"] = rethAEnode
 
 	rethBSK, rethBEnode, err := derivePeerKeys(cfg.Flashblocks.RollupBP2PSecretKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("rollup-b flashblocks p2p key: %w", err)
 	}
-	env["RETH_B_P2P_SECRET_KEY_HEX"] = rethBSK
-	env["RETH_B_ENODE_PUBKEY"] = rethBEnode
+	env["VALIDATOR_EL_B_P2P_SECRET_KEY_HEX"] = rethBSK
+	env["VALIDATOR_EL_B_ENODE_PUBKEY"] = rethBEnode
 
 	if cfg.Sidecar.Enabled {
 		sidecarPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameSidecar], configs.RepositoryNameSidecar)

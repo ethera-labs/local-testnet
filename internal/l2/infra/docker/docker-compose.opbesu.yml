@@ -7,9 +7,9 @@
 # Requires a locally-built image tagged ${OP_BESU_IMAGE:-local/op-besu:dev}.
 #
 # P2P: op-besu joins the flashblocks trusted-peer mesh the same way op-reth does. It boots
-# with the SAME deterministic node key as op-reth would (RETH_{A,B}_P2P_SECRET_KEY_HEX), so
-# its enode id equals RETH_{A,B}_ENODE_PUBKEY — exactly the peer op-rbuilder dials
-# (--trusted-peers=enode://${RETH_A_ENODE_PUBKEY}@validator-el-a:30303). Discovery stays off
+# with the SAME deterministic node key as op-reth would (VALIDATOR_EL_{A,B}_P2P_SECRET_KEY_HEX),
+# so its enode id equals VALIDATOR_EL_{A,B}_ENODE_PUBKEY — exactly the peer op-rbuilder dials
+# (--trusted-peers=enode://${VALIDATOR_EL_A_ENODE_PUBKEY}@validator-el-a:30303). Discovery stays off
 # (op-rbuilder dials in directly), mirroring op-reth's --disable-discovery. Without this
 # op-rbuilder sits at 0 peers; canonical blocks still arrive over the Engine API either way.
 
@@ -20,9 +20,9 @@ services:
     container_name: op-besu-a
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
     environment:
-      # Deterministic node key → op-besu enode id == RETH_A_ENODE_PUBKEY (the peer
+      # Deterministic node key → op-besu enode id == VALIDATOR_EL_A_ENODE_PUBKEY (the peer
       # op-rbuilder dials). Written to a key file at boot; never used elsewhere.
-      OP_BESU_NODE_KEY: "${RETH_A_P2P_SECRET_KEY_HEX}"
+      OP_BESU_NODE_KEY: "${VALIDATOR_EL_A_P2P_SECRET_KEY_HEX}"
     entrypoint: [ ]
     command:
       - /bin/sh
@@ -71,7 +71,7 @@ services:
     container_name: op-besu-b
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
     environment:
-      OP_BESU_NODE_KEY: "${RETH_B_P2P_SECRET_KEY_HEX}"
+      OP_BESU_NODE_KEY: "${VALIDATOR_EL_B_P2P_SECRET_KEY_HEX}"
     entrypoint: [ ]
     command:
       - /bin/sh

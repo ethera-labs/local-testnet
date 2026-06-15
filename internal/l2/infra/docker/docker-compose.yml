@@ -106,7 +106,7 @@ services:
           --disable-discovery \
           --max-peers=10 \
           --port=30303 \
-          --p2p-secret-key-hex=${RETH_A_P2P_SECRET_KEY_HEX} \
+          --p2p-secret-key-hex=${VALIDATOR_EL_A_P2P_SECRET_KEY_HEX} \
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
@@ -255,7 +255,7 @@ services:
           --disable-discovery \
           --max-peers=10 \
           --port=30303 \
-          --p2p-secret-key-hex=${RETH_B_P2P_SECRET_KEY_HEX} \
+          --p2p-secret-key-hex=${VALIDATOR_EL_B_P2P_SECRET_KEY_HEX} \
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
