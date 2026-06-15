@@ -5,6 +5,13 @@
 # Applied when l2.validator-el=op-besu (--validator-el op-besu). op-besu runs the full
 # Isthmus schedule (Prague EVM, final EIP-7685, EIP-2935), matching stage.
 # Requires a locally-built image tagged ${OP_BESU_IMAGE:-local/op-besu:dev}.
+#
+# P2P: op-besu joins the flashblocks trusted-peer mesh the same way op-reth does. It boots
+# with the SAME deterministic node key as op-reth would (RETH_{A,B}_P2P_SECRET_KEY_HEX), so
+# its enode id equals RETH_{A,B}_ENODE_PUBKEY — exactly the peer op-rbuilder dials
+# (--trusted-peers=enode://${RETH_A_ENODE_PUBKEY}@validator-el-a:30303). Discovery stays off
+# (op-rbuilder dials in directly), mirroring op-reth's --disable-discovery. Without this
+# op-rbuilder sits at 0 peers; canonical blocks still arrive over the Engine API either way.
 
 services:
   validator-el-a:
@@ -12,32 +19,40 @@ services:
     # while the validator-el-a service/alias stays stable for everything that targets it.
     container_name: op-besu-a
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
-    entrypoint: ["besu"]
+    environment:
+      # Deterministic node key → op-besu enode id == RETH_A_ENODE_PUBKEY (the peer
+      # op-rbuilder dials). Written to a key file at boot; never used elsewhere.
+      OP_BESU_NODE_KEY: "${RETH_A_P2P_SECRET_KEY_HEX}"
+    entrypoint: [ ]
     command:
-      - --genesis-file=/config/genesis.json
-      - --data-path=/opt/besu/data
-      # op-succinct witnessgen requests historical state back to genesis; Bonsai's
-      # default 512-block window makes those eth_getProof/state queries fail and the
-      # proposer loop errors ("connection closed before message completed"). Widen it.
-      - --bonsai-historical-block-limit=100000
-      # Besu requires the trie-logs pruning window to exceed the historical-block-limit.
-      - --bonsai-trie-logs-pruning-window-size=120000
-      - --network-id=${ROLLUP_A_CHAIN_ID}
-      - --rpc-http-enabled
-      - --rpc-http-host=0.0.0.0
-      - --rpc-http-port=8545
-      - --rpc-http-api=ETH,NET,WEB3,DEBUG,TXPOOL,ADMIN
-      # op-succinct witnessgen fires ~100+ concurrent RPC requests; Besu's default
-      # max-active-connections=80 rejects the excess ("connection closed before
-      # message completed"), which rolls back the proposer's range requests.
-      - --rpc-http-max-active-connections=2000
-      - --rpc-http-cors-origins=*
-      - --host-allowlist=*
-      - --engine-rpc-enabled
-      - --engine-rpc-port=8551
-      - --engine-jwt-disabled
-      - --engine-host-allowlist=*
-      - --p2p-enabled=false
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        printf '0x%s' "$$OP_BESU_NODE_KEY" > /tmp/op-besu-nodekey
+        exec besu \
+          --genesis-file=/config/genesis.json \
+          --data-path=/opt/besu/data \
+          --bonsai-historical-block-limit=100000 \
+          --bonsai-trie-logs-pruning-window-size=120000 \
+          --network-id=${ROLLUP_A_CHAIN_ID} \
+          --rpc-http-enabled \
+          --rpc-http-host=0.0.0.0 \
+          --rpc-http-port=8545 \
+          --rpc-http-api=ETH,NET,WEB3,DEBUG,TXPOOL,ADMIN \
+          --rpc-http-max-active-connections=2000 \
+          --rpc-http-cors-origins='*' \
+          --host-allowlist='*' \
+          --engine-rpc-enabled \
+          --engine-rpc-port=8551 \
+          --engine-jwt-disabled \
+          --engine-host-allowlist='*' \
+          --p2p-enabled=true \
+          --p2p-host=0.0.0.0 \
+          --p2p-port=30303 \
+          --discovery-enabled=false \
+          --max-peers=10 \
+          --node-private-key-file=/tmp/op-besu-nodekey
 
   # op-besu doesn't implement the reth/op-geth `miner_setMaxDASize` RPC that the
   # op-batcher's DA-throttling loop probes at startup; without it the batcher
@@ -55,26 +70,35 @@ services:
   validator-el-b:
     container_name: op-besu-b
     image: ${OP_BESU_IMAGE:-local/op-besu:dev}
-    entrypoint: ["besu"]
+    environment:
+      OP_BESU_NODE_KEY: "${RETH_B_P2P_SECRET_KEY_HEX}"
+    entrypoint: [ ]
     command:
-      - --genesis-file=/config/genesis.json
-      - --data-path=/opt/besu/data
-      - --bonsai-historical-block-limit=100000
-      # Besu requires the trie-logs pruning window to exceed the historical-block-limit.
-      - --bonsai-trie-logs-pruning-window-size=120000
-      - --network-id=${ROLLUP_B_CHAIN_ID}
-      - --rpc-http-enabled
-      - --rpc-http-host=0.0.0.0
-      - --rpc-http-port=8545
-      - --rpc-http-api=ETH,NET,WEB3,DEBUG,TXPOOL,ADMIN
-      # op-succinct witnessgen fires ~100+ concurrent RPC requests; Besu's default
-      # max-active-connections=80 rejects the excess ("connection closed before
-      # message completed"), which rolls back the proposer's range requests.
-      - --rpc-http-max-active-connections=2000
-      - --rpc-http-cors-origins=*
-      - --host-allowlist=*
-      - --engine-rpc-enabled
-      - --engine-rpc-port=8551
-      - --engine-jwt-disabled
-      - --engine-host-allowlist=*
-      - --p2p-enabled=false
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        printf '0x%s' "$$OP_BESU_NODE_KEY" > /tmp/op-besu-nodekey
+        exec besu \
+          --genesis-file=/config/genesis.json \
+          --data-path=/opt/besu/data \
+          --bonsai-historical-block-limit=100000 \
+          --bonsai-trie-logs-pruning-window-size=120000 \
+          --network-id=${ROLLUP_B_CHAIN_ID} \
+          --rpc-http-enabled \
+          --rpc-http-host=0.0.0.0 \
+          --rpc-http-port=8545 \
+          --rpc-http-api=ETH,NET,WEB3,DEBUG,TXPOOL,ADMIN \
+          --rpc-http-max-active-connections=2000 \
+          --rpc-http-cors-origins='*' \
+          --host-allowlist='*' \
+          --engine-rpc-enabled \
+          --engine-rpc-port=8551 \
+          --engine-jwt-disabled \
+          --engine-host-allowlist='*' \
+          --p2p-enabled=true \
+          --p2p-host=0.0.0.0 \
+          --p2p-port=30303 \
+          --discovery-enabled=false \
+          --max-peers=10 \
+          --node-private-key-file=/tmp/op-besu-nodekey
