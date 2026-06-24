@@ -110,6 +110,7 @@ services:
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
+          --rpc.eth-proof-window=1000000 \
           --rollup.compute-pending-block
 
   op-node-a:
@@ -259,6 +260,7 @@ services:
           --nat=none \
           --network-id=$${ROLLUP_CHAIN_ID} \
           --metrics=0.0.0.0:9898 \
+          --rpc.eth-proof-window=1000000 \
           --rollup.compute-pending-block
 
   op-node-b:
