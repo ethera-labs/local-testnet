@@ -53,14 +53,12 @@ services:
       PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"
       OP_SUCCINCT_MOCK: "${OP_SUCCINCT_MOCK:-true}"
-      # Real-proof knobs — default to mock-safe values. For SP1 network proving set
-      # OP_SUCCINCT_MOCK=false + OP_SUCCINCT_SP1_PROVER=network + OP_SUCCINCT_NETWORK_RPC_URL +
-      # OP_SUCCINCT_{RANGE,AGG}_PROOF_STRATEGY=auction + the gas/cycle limits + a funded
-      # OP_SUCCINCT_NETWORK_PRIVATE_KEY (values per gitops-production sepolia/ethera-altda).
+      # Defaults target mock proving. For SP1 network proving, set OP_SUCCINCT_MOCK=false,
+      # OP_SUCCINCT_SP1_PROVER=network, a network RPC URL, the gas/cycle limits, and a funded
+      # network signing key, then add RANGE_PROOF_STRATEGY/AGG_PROOF_STRATEGY (e.g. auction).
+      # Mock leaves the strategies unset, so the binary's "reserved" default applies.
       SP1_PROVER: "${OP_SUCCINCT_SP1_PROVER:-mock}"
       NETWORK_RPC_URL: "${OP_SUCCINCT_NETWORK_RPC_URL:-}"
-      RANGE_PROOF_STRATEGY: "${OP_SUCCINCT_RANGE_PROOF_STRATEGY:-}"
-      AGG_PROOF_STRATEGY: "${OP_SUCCINCT_AGG_PROOF_STRATEGY:-}"
       RANGE_CYCLE_LIMIT: "${OP_SUCCINCT_RANGE_CYCLE_LIMIT:-1000000000000}"
       RANGE_GAS_LIMIT: "${OP_SUCCINCT_RANGE_GAS_LIMIT:-1000000000000}"
       AGG_GAS_LIMIT: "${OP_SUCCINCT_AGG_GAS_LIMIT:-1000000000000}"
@@ -116,14 +114,12 @@ services:
       PRIVATE_KEY: "${WALLET_PRIVATE_KEY}"
       NETWORK_PRIVATE_KEY: "${OP_SUCCINCT_NETWORK_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}"
       OP_SUCCINCT_MOCK: "${OP_SUCCINCT_MOCK:-true}"
-      # Real-proof knobs — default to mock-safe values. For SP1 network proving set
-      # OP_SUCCINCT_MOCK=false + OP_SUCCINCT_SP1_PROVER=network + OP_SUCCINCT_NETWORK_RPC_URL +
-      # OP_SUCCINCT_{RANGE,AGG}_PROOF_STRATEGY=auction + the gas/cycle limits + a funded
-      # OP_SUCCINCT_NETWORK_PRIVATE_KEY (values per gitops-production sepolia/ethera-altda).
+      # Defaults target mock proving. For SP1 network proving, set OP_SUCCINCT_MOCK=false,
+      # OP_SUCCINCT_SP1_PROVER=network, a network RPC URL, the gas/cycle limits, and a funded
+      # network signing key, then add RANGE_PROOF_STRATEGY/AGG_PROOF_STRATEGY (e.g. auction).
+      # Mock leaves the strategies unset, so the binary's "reserved" default applies.
       SP1_PROVER: "${OP_SUCCINCT_SP1_PROVER:-mock}"
       NETWORK_RPC_URL: "${OP_SUCCINCT_NETWORK_RPC_URL:-}"
-      RANGE_PROOF_STRATEGY: "${OP_SUCCINCT_RANGE_PROOF_STRATEGY:-}"
-      AGG_PROOF_STRATEGY: "${OP_SUCCINCT_AGG_PROOF_STRATEGY:-}"
       RANGE_CYCLE_LIMIT: "${OP_SUCCINCT_RANGE_CYCLE_LIMIT:-1000000000000}"
       RANGE_GAS_LIMIT: "${OP_SUCCINCT_RANGE_GAS_LIMIT:-1000000000000}"
       AGG_GAS_LIMIT: "${OP_SUCCINCT_AGG_GAS_LIMIT:-1000000000000}"
