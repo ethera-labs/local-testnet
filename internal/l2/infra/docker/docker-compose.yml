@@ -67,7 +67,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
+      test: [ "CMD", "/bin/sh", "-c", "/usr/bin/busybox netstat -ln | /usr/bin/busybox grep -q ':8545'" ]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -217,7 +217,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
+      test: [ "CMD", "/bin/sh", "-c", "/usr/bin/busybox netstat -ln | /usr/bin/busybox grep -q ':8545'" ]
       interval: 5s
       timeout: 3s
       retries: 12
