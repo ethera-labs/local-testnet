@@ -72,13 +72,13 @@ l2:
     op-deployer:
       tag: v0.4.5
     op-node:
-      tag: v1.16.2
+      tag: v1.19.1
     op-proposer:
       tag: v1.10.0
     op-batcher:
-      tag: v1.16.2
+      tag: v1.16.10
     op-reth:
-      tag: v1.11.5
+      tag: v2.3.3
   repositories:
     # Source-built services accept exactly one source definition:
     #   local-path: use a checked-out repository on the machine running local-testnet
