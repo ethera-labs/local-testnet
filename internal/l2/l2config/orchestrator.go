@@ -126,7 +126,6 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, deploymentSt
 
 		if cfg.OPSuccinct.Enabled {
 			if err := opSuccinctGen.Generate(
-				deploymentState.ComposeL2OutputOracleAddress,
 				deploymentState.DisputeGameFactoryAddress,
 				configPath,
 			); err != nil {

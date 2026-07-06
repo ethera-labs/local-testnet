@@ -50,6 +50,8 @@ var (
 		{"account-abstraction-branch", "l2.repositories.account-abstraction.branch", "releases/v0.7", "eth-infinitism/account-abstraction repository branch"},
 		{"op-succinct-url", "l2.repositories.op-succinct.url", "", "op-succinct repository URL"},
 		{"op-succinct-branch", "l2.repositories.op-succinct.branch", "", "op-succinct repository branch"},
+		{"cross-scout-url", "l2.repositories.cross-scout.url", "", "CrossScout repository URL"},
+		{"cross-scout-branch", "l2.repositories.cross-scout.branch", "", "CrossScout repository branch"},
 
 		// Flashblocks P2P identity (deterministic enode keypair for op-reth so op-rbuilder can dial it as a trusted peer)
 		{"flashblocks-rollup-a-p2p-secret-key-hex", "l2.flashblocks.rollup-a-p2p-secret-key-hex", "0101010101010101010101010101010101010101010101010101010101010101", "Rollup A op-reth P2P secret key (32-byte hex)"},
@@ -63,10 +65,6 @@ var (
 		{"op-reth-tag", "l2.images.op-reth.tag", "v1.11.5", "op-reth image tag"},
 
 		// Dispute config
-		{"dispute-network-name", "l2.dispute.network-name", "", "Dispute network name"},
-		{"dispute-explorer-url", "l2.dispute.explorer-url", "", "Dispute explorer URL"},
-		{"dispute-explorer-api-url", "l2.dispute.explorer-api-url", "", "Dispute explorer API URL"},
-		{"dispute-verifier-address", "l2.dispute.verifier-address", "", "Verifier contract address"},
 		{"dispute-owner-address", "l2.dispute.owner-address", "", "Owner address"},
 		{"dispute-proposer-address", "l2.dispute.proposer-address", "", "Proposer address"},
 		{"dispute-aggregation-vkey", "l2.dispute.aggregation-vkey", "", "Aggregation verification key"},
@@ -99,6 +97,12 @@ var (
 		// Frontend (Ethera Labs Console)
 		{"frontend-port", "l2.frontend.port", 3000, "Ethera Labs Console port"},
 
+		// CrossScout
+		{"cross-scout-api-port", "l2.cross-scout.api-port", 3001, "CrossScout API host port"},
+		{"cross-scout-explorer-port", "l2.cross-scout.explorer-port", 3002, "CrossScout explorer host port"},
+		{"cross-scout-postgres-port", "l2.cross-scout.postgres-port", 15432, "CrossScout Postgres host port"},
+		{"cross-scout-redis-port", "l2.cross-scout.redis-port", 16379, "CrossScout Redis host port"},
+
 		// Dispute config
 		{"dispute-proof-maturity-delay-seconds", "l2.dispute.proof-maturity-delay-seconds", 604800, "Proof maturity delay in seconds (default: 7 days)"},
 		{"dispute-game-finality-delay-seconds", "l2.dispute.dispute-game-finality-delay-seconds", 302400, "Dispute game finality delay in seconds (default: 3.5 days)"},
@@ -113,6 +117,7 @@ var (
 		{"frontend-dev-enabled", "l2.frontend.dev-enabled", false, "Run the Ethera Labs Console with Vite hot-reload, mounting frontend/ source into the container (requires flashblocks and sidecar)"},
 		{"alt-da-enabled", "l2.alt-da.enabled", false, "Enable AltDA mode: post transaction batches to a local DA server instead of L1"},
 		{"op-succinct-enabled", "l2.op-succinct.enabled", false, "Enable op-succinct mock-mode validity services in localnet"},
+		{"cross-scout-enabled", "l2.cross-scout.enabled", false, "Enable CrossScout explorer and indexers"},
 	}
 )
 

@@ -83,6 +83,11 @@ var catalogue = []serviceSpec{
 	{ID: "op-succinct-b", Name: "op-succinct B", Kind: "op-succinct", HostPort: 28082, ContainerName: "op-succinct-b"},
 	{ID: "op-succinct-postgres", Name: "op-succinct Postgres", Kind: "op-succinct-postgres", ContainerName: "op-succinct-postgres"},
 
+	{ID: "cross-scout-indexer-a", Name: "CrossScout Indexer A", Kind: "cross-scout", ContainerName: "cross-scout-indexer-a"},
+	{ID: "cross-scout-indexer-b", Name: "CrossScout Indexer B", Kind: "cross-scout", ContainerName: "cross-scout-indexer-b"},
+	{ID: "cross-scout-api", Name: "CrossScout API", Kind: "cross-scout", HostPort: 3001, ContainerName: "cross-scout-api"},
+	{ID: "cross-scout-explorer", Name: "CrossScout Explorer", Kind: "cross-scout", HostPort: 3002, ContainerName: "cross-scout-explorer"},
+
 	{ID: "ethera-console", Name: "Ethera Console", Kind: "frontend", HostPort: 3000, ContainerName: "ethera-console"},
 }
 

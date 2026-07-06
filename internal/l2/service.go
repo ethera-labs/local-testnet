@@ -28,7 +28,7 @@ type (
 		Execute(ctx context.Context, cfg configs.L2, state l1deployment.DeploymentState) error
 	}
 	l2RuntimeOrchestrator interface {
-		Execute(ctx context.Context, cfg configs.L2, disputeGameFactory common.Address, composeL2OOAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error)
+		Execute(ctx context.Context, cfg configs.L2, disputeGameFactory common.Address, anchorStateRegistry common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error)
 	}
 	blockscoutService interface {
 		Run(ctx context.Context, rollupConfigs []blockscout.RollupConfig, l1RPCURL string, l1BeaconURL string) error
@@ -90,7 +90,7 @@ func (s *Service) Deploy(ctx context.Context, cfg configs.L2) error {
 	}
 
 	s.logger.Info("running phase 3 - L2 launch")
-	deployedContracts, err := s.l2RuntimeOrchestrator.Execute(ctx, cfg, deploymentState.DisputeGameFactoryAddress, deploymentState.ComposeL2OutputOracleAddress)
+	deployedContracts, err := s.l2RuntimeOrchestrator.Execute(ctx, cfg, deploymentState.DisputeGameFactoryAddress, deploymentState.AnchorStateRegistryAddress)
 	if err != nil {
 		return fmt.Errorf("phase 3 failed: %w", err)
 	}

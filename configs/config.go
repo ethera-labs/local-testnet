@@ -39,6 +39,7 @@ type (
 		Flashblocks           FlashblocksConfig             `mapstructure:"flashblocks"`
 		Sidecar               SidecarConfig                 `mapstructure:"sidecar"`
 		Bundler               BundlerConfig                 `mapstructure:"bundler"`
+		CrossScout            CrossScoutConfig              `mapstructure:"cross-scout"`
 		Frontend              FrontendConfig                `mapstructure:"frontend"`
 		AltDA                 AltDAConfig                   `mapstructure:"alt-da"`
 		OPSuccinct            OPSuccinctConfig              `mapstructure:"op-succinct"`
@@ -93,6 +94,14 @@ type (
 		RollupBAPIPort int  `mapstructure:"rollup-b-api-port"`
 	}
 
+	CrossScoutConfig struct {
+		Enabled      bool `mapstructure:"enabled"`
+		APIPort      int  `mapstructure:"api-port"`
+		ExplorerPort int  `mapstructure:"explorer-port"`
+		PostgresPort int  `mapstructure:"postgres-port"`
+		RedisPort    int  `mapstructure:"redis-port"`
+	}
+
 	// AltDAConfig controls Alternative Data Availability (AltDA) mode for the OP Stack.
 	// When enabled, op-batcher publishes batches to the configured DA service instead of L1,
 	// and op-node derives from that service. In localnet this is modeled with one DA server
@@ -118,10 +127,6 @@ type (
 	}
 
 	DisputeConfig struct {
-		NetworkName                     string `mapstructure:"network-name"`
-		ExplorerURL                     string `mapstructure:"explorer-url"`
-		ExplorerAPIURL                  string `mapstructure:"explorer-api-url"`
-		VerifierAddress                 string `mapstructure:"verifier-address"`
 		OwnerAddress                    string `mapstructure:"owner-address"`
 		ProposerAddress                 string `mapstructure:"proposer-address"`
 		AggregationVkey                 string `mapstructure:"aggregation-vkey"`
@@ -167,6 +172,7 @@ const (
 	RepositoryNameAccountAbstraction RepositoryName = "account-abstraction"
 	RepositoryNameBundler            RepositoryName = "bundler"
 	RepositoryNameOPSuccinct         RepositoryName = "op-succinct"
+	RepositoryNameCrossScout         RepositoryName = "cross-scout"
 
 	ImageNameOpDeployer ImageName = "op-deployer"
 	ImageNameOpNode     ImageName = "op-node"
@@ -276,6 +282,9 @@ func (c *L2) Validate() error {
 			RepositoryNameAccountAbstraction,
 		)
 	}
+	if c.CrossScout.Enabled {
+		requiredRepos = append(requiredRepos, RepositoryNameCrossScout)
+	}
 
 	for _, name := range requiredRepos {
 		if err := validateRepositoryConfig(c.Repositories, name, true); err != nil {
@@ -351,12 +360,6 @@ func (c *L2) Validate() error {
 	}
 
 	// Validate dispute config
-	if c.Dispute.NetworkName == "" {
-		errs = append(errs, errors.New("l2.dispute.network-name is required"))
-	}
-	if c.Dispute.VerifierAddress == "" {
-		errs = append(errs, errors.New("l2.dispute.verifier-address is required"))
-	}
 	if c.Dispute.OwnerAddress == "" {
 		errs = append(errs, errors.New("l2.dispute.owner-address is required"))
 	}
@@ -387,6 +390,20 @@ func (c *L2) Validate() error {
 	}
 	if c.Frontend.Active() && (!c.Flashblocks.Enabled || !c.Sidecar.Enabled) {
 		errs = append(errs, errors.New("l2.frontend requires l2.flashblocks.enabled and l2.sidecar.enabled"))
+	}
+	if c.CrossScout.Enabled {
+		if c.CrossScout.APIPort <= 0 {
+			errs = append(errs, errors.New("l2.cross-scout.api-port must be positive"))
+		}
+		if c.CrossScout.ExplorerPort <= 0 {
+			errs = append(errs, errors.New("l2.cross-scout.explorer-port must be positive"))
+		}
+		if c.CrossScout.PostgresPort <= 0 {
+			errs = append(errs, errors.New("l2.cross-scout.postgres-port must be positive"))
+		}
+		if c.CrossScout.RedisPort <= 0 {
+			errs = append(errs, errors.New("l2.cross-scout.redis-port must be positive"))
+		}
 	}
 	switch c.ValidatorEL {
 	case "", ValidatorELOpReth:

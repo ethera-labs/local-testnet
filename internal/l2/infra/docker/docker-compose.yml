@@ -10,30 +10,20 @@ services:
     networks:
       - localnet-l2
     environment:
-      SERVER_LISTEN_ADDR: ":8080"
+      SERVER_LISTEN_ADDR: "0.0.0.0:8080"
+      API_LISTEN_ADDR: "0.0.0.0:8081"
       METRICS_ENABLED: "true"
-      METRICS_PORT: "8081"
       LOG_LEVEL: "debug"
       LOG_PRETTY: "true"
-      AUTH_ENABLED: "false"
-      PROOFS_ENABLED: "false"
-      PROOFS_REQUIRE_PROOF: "false"
+      PROOFS_PROVING_MODE: "mock"
       CONSENSUS_TIMEOUT: "20s"
       CONSENSUS_PERIOD_DURATION: "60s"
       CONSENSUS_PROOF_WINDOW: "600s"
-      L1_RPC_ENDPOINT: "${L1_EL_URL}"
-      L1_SUPERBLOCK_CONTRACT: "${SP_L1_SUPERBLOCK_CONTRACT}"
-      L1_SHARED_PUBLISHER_PK_HEX: "${SP_L1_SHARED_PUBLISHER_PK_HEX:-${WALLET_PRIVATE_KEY}}"
-      L1_FROM_ADDRESS: "${SP_L1_FROM_ADDRESS:-${WALLET_ADDRESS}}"
-      L1_DISPUTE_GAME_FACTORY: "${SP_L1_DISPUTE_GAME_FACTORY}"
-      L1_CHAIN_ID: "${L1_CHAIN_ID}"
-      L1_ETHERA_NETWORK_NAME: "${ETHERA_NETWORK_NAME}"
-      REGISTRY_PATH: "/workspace/.localnet/registry"  # Custom registry with local chain definitions
       SETTLEMENT_L1_RPC_URL: "${L1_EL_URL}"
-      SETTLEMENT_L2OO_ADDRESS: "${SP_L1_SUPERBLOCK_CONTRACT}"
+      SETTLEMENT_DISPUTE_GAME_FACTORY: "${SP_L1_DISPUTE_GAME_FACTORY}"
+      SETTLEMENT_ANCHOR_STATE_REGISTRY: "${SP_L1_ANCHOR_STATE_REGISTRY}"
       SETTLEMENT_PROPOSER_KEY: "${SP_L1_SHARED_PUBLISHER_PK_HEX:-${WALLET_PRIVATE_KEY}}"
-    volumes:
-      - ${ROOT_DIR}/.localnet/registry:/workspace/.localnet/registry:ro
+      SETTLEMENT_MOCK: "true"
     ports:
       - "18080:8080"
       - "18081:8081"
@@ -67,7 +57,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
+      test: [ "CMD", "/bin/sh", "-c", "/usr/bin/busybox netstat -ln | /usr/bin/busybox grep -q ':8545'" ]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -217,7 +207,7 @@ services:
         condition: on-failure
         max_attempts: 3
     healthcheck:
-      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8545" ]
+      test: [ "CMD", "/bin/sh", "-c", "/usr/bin/busybox netstat -ln | /usr/bin/busybox grep -q ':8545'" ]
       interval: 5s
       timeout: 3s
       retries: 12

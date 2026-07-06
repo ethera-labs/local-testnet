@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethera-labs/local-testnet/configs"
 	"github.com/ethera-labs/local-testnet/internal/l2/infra/docker"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethera-labs/local-testnet/internal/l2/l1deployment/dispute"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,23 @@ var deployCmd = &cobra.Command{
 		}
 
 		envBuilder := docker.NewEnvBuilder(rootDir, networksDir, servicesDir)
-		envVars, err := envBuilder.BuildComposeEnv(configs.Values.L2, common.Address{}, common.Address{})
+		etheraContractsDir, err := envBuilder.ResolveRepoPath(
+			configs.Values.L2.Repositories[configs.RepositoryNameEtheraContracts],
+			configs.RepositoryNameEtheraContracts,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to resolve ethera-contracts path: %w", err)
+		}
+		settlementContracts, err := dispute.NewService(etheraContractsDir, configs.Values.L2).LoadDeploymentContracts()
+		if err != nil {
+			return fmt.Errorf("failed to load settlement deployment contracts: %w", err)
+		}
+
+		envVars, err := envBuilder.BuildComposeEnv(
+			configs.Values.L2,
+			settlementContracts.DisputeGameFactoryAddress,
+			settlementContracts.AnchorStateRegistryAddress,
+		)
 		if err != nil {
 			return err
 		}

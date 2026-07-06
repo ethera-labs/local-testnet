@@ -32,9 +32,9 @@ func NewEnvBuilder(rootDir, networksDir, servicesDir string) *EnvBuilder {
 }
 
 // BuildComposeEnv builds environment variables for docker-compose.
-// gameFactoryAddr and composeL2OOAddr may be the zero address during bootstrap
-// before dispute-game contract addresses are known.
-func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address, composeL2OOAddr common.Address) (map[string]string, error) {
+// Settlement contract addresses may be zero during bootstrap before dispute
+// contracts are known.
+func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Address, anchorStateRegistryAddr common.Address) (map[string]string, error) {
 	env := make(map[string]string)
 
 	publisherPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNamePublisher], configs.RepositoryNamePublisher)
@@ -67,7 +67,6 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["ETHERA_NETWORK_NAME"] = cfg.EtheraNetworkName
 	env["COORDINATOR_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
-	env["SP_L1_SUPERBLOCK_CONTRACT"] = composeL2OOAddr.Hex()
 
 	env["PUBLISHER_PATH"] = publisherPath
 
@@ -129,6 +128,30 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		}
 		env["BUNDLER_PATH"] = bundlerPath
 	}
+	if cfg.CrossScout.Enabled {
+		crossScoutPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameCrossScout], configs.RepositoryNameCrossScout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve cross-scout path: %w", err)
+		}
+		env["CROSS_SCOUT_PATH"] = crossScoutPath
+		env["CROSS_SCOUT_API_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.APIPort)
+		env["CROSS_SCOUT_EXPLORER_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.ExplorerPort)
+		env["CROSS_SCOUT_POSTGRES_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.PostgresPort)
+		env["CROSS_SCOUT_REDIS_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.RedisPort)
+		env["CROSS_SCOUT_URL"] = fmt.Sprintf("http://localhost:%d", cfg.CrossScout.ExplorerPort)
+		env["CROSS_SCOUT_DATABASE_URL"] = "postgres://crossscout:crossscout@cross-scout-postgres:5432/crossscout"
+		env["CROSS_SCOUT_REDIS_URL"] = "redis://cross-scout-redis:6379"
+		env["CROSS_SCOUT_MAILBOX_ADDRESS"] = (common.Address{}).Hex()
+		env["CROSS_SCOUT_BRIDGE_ADDRESSES"] = (common.Address{}).Hex()
+		env["CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS"] = anchorStateRegistryAddr.Hex()
+		env["CROSS_SCOUT_CHAIN_NAMES"] = fmt.Sprintf(
+			"%d=Rollup A,%d=Rollup B",
+			cfg.ChainConfigs[configs.L2ChainNameRollupA].ID,
+			cfg.ChainConfigs[configs.L2ChainNameRollupB].ID,
+		)
+		env["CROSS_SCOUT_EL_RPC_URLS"] = b.crossScoutELRPCURLs(cfg)
+		env["CROSS_SCOUT_FLASHBLOCKS_WS_URLS"] = b.crossScoutFlashblocksWSURLs(cfg)
+	}
 	if cfg.AltDA.Enabled {
 		composeContractsPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameEtheraContracts], configs.RepositoryNameEtheraContracts)
 		if err != nil {
@@ -168,6 +191,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	}
 
 	env["SP_L1_DISPUTE_GAME_FACTORY"] = gameFactoryAddr.Hex()
+	env["SP_L1_ANCHOR_STATE_REGISTRY"] = anchorStateRegistryAddr.Hex()
 
 	env["OP_BATCHER_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpBatcher].Tag
 	env["OP_NODE_IMAGE_TAG"] = cfg.Images[configs.ImageNameOpNode].Tag
@@ -224,11 +248,27 @@ func (b *EnvBuilder) ResolveRepoPath(repo configs.Repository, name configs.Repos
 // deployment (no-op when contracts.json is missing) and again after
 // deployment to pick up the freshly-written values.
 func (b *EnvBuilder) MergePostDeployEnv(env map[string]string) {
-	if ma := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA); ma != "" {
-		env["MAILBOX_A"] = ma
+	mailboxA := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupA)
+	mailboxB := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB)
+	if mailboxA != "" {
+		env["MAILBOX_A"] = mailboxA
 	}
-	if mb := b.readUniversalBridgeMailboxAddress(configs.L2ChainNameRollupB); mb != "" {
-		env["MAILBOX_B"] = mb
+	if mailboxB != "" {
+		env["MAILBOX_B"] = mailboxB
+	}
+	// CrossScout takes a single mailbox address and applies it to every rollup
+	// it ingests; localnet deploys the mailbox at the same address on both
+	// chains, so either chain's value works.
+	if mailboxA != "" {
+		env["CROSS_SCOUT_MAILBOX_ADDRESS"] = mailboxA
+	} else if mailboxB != "" {
+		env["CROSS_SCOUT_MAILBOX_ADDRESS"] = mailboxB
+	}
+	if bridges := joinUniqueAddresses(
+		b.readContractAddress(configs.L2ChainNameRollupA, "ComposeL2ToL2Bridge"),
+		b.readContractAddress(configs.L2ChainNameRollupB, "ComposeL2ToL2Bridge"),
+	); bridges != "" {
+		env["CROSS_SCOUT_BRIDGE_ADDRESSES"] = bridges
 	}
 	if ep := b.readContractAddress(configs.L2ChainNameRollupA, "EntryPoint"); ep != "" {
 		env["ENTRYPOINT_A"] = ep
@@ -242,6 +282,25 @@ func (b *EnvBuilder) MergePostDeployEnv(env map[string]string) {
 	if f := b.readContractAddress(configs.L2ChainNameRollupB, "SimpleAccountFactory"); f != "" {
 		env["SIMPLE_ACCOUNT_FACTORY_B"] = f
 	}
+}
+
+// joinUniqueAddresses joins non-empty addresses into a comma-separated list,
+// dropping case-insensitive duplicates.
+func joinUniqueAddresses(addrs ...string) string {
+	seen := make(map[string]struct{}, len(addrs))
+	unique := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		if addr == "" {
+			continue
+		}
+		key := strings.ToLower(addr)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		unique = append(unique, addr)
+	}
+	return strings.Join(unique, ",")
 }
 
 // readUniversalBridgeMailboxAddress reads the deployed UniversalBridgeMailbox
@@ -263,6 +322,27 @@ func (b *EnvBuilder) readUniversalBridgeMailboxAddress(chainName configs.L2Chain
 	}
 
 	return strings.TrimSpace(cf.Addresses["UniversalBridgeMailbox"])
+}
+
+func (b *EnvBuilder) crossScoutELRPCURLs(cfg configs.L2) string {
+	rollupA := cfg.ChainConfigs[configs.L2ChainNameRollupA]
+	rollupB := cfg.ChainConfigs[configs.L2ChainNameRollupB]
+	rollupAURL := "http://validator-el-a:8545"
+	rollupBURL := "http://validator-el-b:8545"
+	if cfg.Flashblocks.Enabled {
+		rollupAURL = "http://op-rbuilder-a:8545"
+		rollupBURL = "http://op-rbuilder-b:8545"
+	}
+	return fmt.Sprintf("%d=%s,%d=%s", rollupA.ID, rollupAURL, rollupB.ID, rollupBURL)
+}
+
+func (b *EnvBuilder) crossScoutFlashblocksWSURLs(cfg configs.L2) string {
+	if !cfg.Flashblocks.Enabled {
+		return ""
+	}
+	rollupA := cfg.ChainConfigs[configs.L2ChainNameRollupA]
+	rollupB := cfg.ChainConfigs[configs.L2ChainNameRollupB]
+	return fmt.Sprintf("%d=ws://op-rbuilder-a:1111,%d=ws://op-rbuilder-b:1111", rollupA.ID, rollupB.ID)
 }
 
 // readContractAddress reads a named contract address from the chain's

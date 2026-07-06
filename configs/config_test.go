@@ -72,6 +72,42 @@ func TestL2ValidateAllowsOpSuccinctRepositoryWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestL2ValidateRequiresCrossScoutRepositoryWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.CrossScout.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error when cross-scout is enabled without repository config")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "l2.repositories.cross-scout is required") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestL2ValidateAllowsCrossScoutRepositoryWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := validL2Config()
+	cfg.CrossScout = CrossScoutConfig{
+		Enabled:      true,
+		APIPort:      3001,
+		ExplorerPort: 3002,
+		PostgresPort: 15432,
+		RedisPort:    16379,
+	}
+	cfg.Repositories[RepositoryNameCrossScout] = Repository{
+		LocalPath: "../cross-scout",
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected validation to succeed, got: %v", err)
+	}
+}
+
 func TestL2ValidateRequiresOpRbuilderRepositoryWhenFlashblocksEnabled(t *testing.T) {
 	t.Parallel()
 
@@ -185,10 +221,6 @@ func validL2Config() L2 {
 		DeploymentTarget:  "live",
 		GenesisBalanceWei: "1000000000000000000",
 		Dispute: DisputeConfig{
-			NetworkName:                     "hoodi",
-			ExplorerURL:                     "https://explorer.example",
-			ExplorerAPIURL:                  "https://explorer.example/api",
-			VerifierAddress:                 "0x456",
 			OwnerAddress:                    "0x789",
 			ProposerAddress:                 "0xabc",
 			AggregationVkey:                 "0xdef",
