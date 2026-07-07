@@ -143,7 +143,9 @@ services:
       context: ${CROSS_SCOUT_PATH}
       dockerfile: Dockerfile.explorer
       args:
-        VITE_API_URL: "http://localhost:${CROSS_SCOUT_API_PORT:-3001}"
+        # Host is resolved at runtime from wherever the explorer is opened; only
+        # the api port needs to be known at build time.
+        VITE_API_PORT: "${CROSS_SCOUT_API_PORT:-3001}"
         VITE_CHAIN_NAMES: "${CROSS_SCOUT_CHAIN_NAMES}"
     image: local/cross-scout-explorer:dev
     container_name: cross-scout-explorer
