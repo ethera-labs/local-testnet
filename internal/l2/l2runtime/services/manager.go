@@ -140,9 +140,18 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		"op-node-b",
 		"op-batcher-a",
 		"op-batcher-b",
-		"op-proposer-a",
-		"op-proposer-b",
 	)
+
+	// op-succinct's validity proposer replaces the standard fault-proof
+	// op-proposer. The OP DisputeGameFactory has no game-type-1 implementation
+	// registered, so keeping op-proposer running only crash-loops it on
+	// NoImplementation; skip it when op-succinct owns proposing.
+	if !m.opSuccinctEnabled {
+		services = append(services,
+			"op-proposer-a",
+			"op-proposer-b",
+		)
+	}
 
 	if m.flashblocksEnabled && m.flashblocksDockerFilePath != "" {
 		dockerFiles = append(dockerFiles, m.flashblocksDockerFilePath)

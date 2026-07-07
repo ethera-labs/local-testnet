@@ -2,6 +2,19 @@
 # Runs with OP_SUCCINCT_MOCK=true; not a substitute for the production proving network.
 
 services:
+  # The validity proposer maps each L2 range to the L1 block its batch landed in
+  # via op-node's SafeDB (optimism_safeHeadAtL1Block). Without it the proposer
+  # falls back to timestamp-based L1-head estimation, which fails to derive on
+  # this stack and pins every range proof to the genesis output root. Persisted
+  # in the existing /data volume, so a clean start records it from genesis.
+  op-node-a:
+    environment:
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
+
+  op-node-b:
+    environment:
+      OP_NODE_SAFEDB_PATH: "/data/safedb"
+
   op-succinct-postgres:
     image: postgres:15
     container_name: op-succinct-postgres
@@ -67,8 +80,8 @@ services:
       ENABLE_AGGREGATION: "true"
       RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
       SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
-      # op-node here runs without SafeDB enabled; let op-succinct fall back to the
-      # (more expensive) on-demand safe-head lookup instead of erroring out.
+      # Belt-and-suspenders: SafeDB is enabled on op-node above, so this
+      # timestamp-estimation fallback should never actually be exercised.
       SAFE_DB_FALLBACK: "true"
       LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
       SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
@@ -128,8 +141,8 @@ services:
       ENABLE_AGGREGATION: "true"
       RANGE_PROOF_INTERVAL: "${OP_SUCCINCT_RANGE_PROOF_INTERVAL:-10}"
       SUBMISSION_INTERVAL: "${OP_SUCCINCT_SUBMISSION_INTERVAL:-30}"
-      # op-node here runs without SafeDB enabled; let op-succinct fall back to the
-      # (more expensive) on-demand safe-head lookup instead of erroring out.
+      # Belt-and-suspenders: SafeDB is enabled on op-node above, so this
+      # timestamp-estimation fallback should never actually be exercised.
       SAFE_DB_FALLBACK: "true"
       LOOP_INTERVAL: "${OP_SUCCINCT_LOOP_INTERVAL:-10}"
       SHARED_PUBLISHER_URL: "http://publisher:8081/v1/proofs/op-succinct"
