@@ -97,7 +97,6 @@ func TestL2ValidateAllowsCrossScoutRepositoryWhenEnabled(t *testing.T) {
 		APIPort:      3001,
 		ExplorerPort: 3002,
 		PostgresPort: 15432,
-		RedisPort:    16379,
 	}
 	cfg.Repositories[RepositoryNameCrossScout] = Repository{
 		LocalPath: "../cross-scout",

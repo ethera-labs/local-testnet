@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: 3000,
+      allowedHosts: ['host.docker.internal'],
       proxy: {
         '/api': {
           target: 'http://localhost:17090',

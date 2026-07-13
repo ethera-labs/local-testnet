@@ -1,4 +1,4 @@
-# CrossScout overlay: per-rollup cross-chain indexers plus a shared API and explorer.
+# CrossScout overlay: per-rollup indexers plus the API-hosted explorer app.
 # Build context is resolved from l2.repositories.cross-scout.
 
 services:
@@ -23,24 +23,6 @@ services:
       timeout: 3s
       retries: 10
 
-  cross-scout-redis:
-    image: redis:7-alpine
-    container_name: cross-scout-redis
-    labels:
-      - "stack=localnet-l2"
-    networks:
-      - localnet-l2
-    command: [ "redis-server", "--appendonly", "yes" ]
-    ports:
-      - "${CROSS_SCOUT_REDIS_PORT:-16379}:6379"
-    volumes:
-      - cross-scout-redis:/data
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   cross-scout-indexer-a:
     build:
       context: ${CROSS_SCOUT_PATH}
@@ -54,16 +36,14 @@ services:
     depends_on:
       cross-scout-postgres:
         condition: service_healthy
-      cross-scout-redis:
-        condition: service_healthy
     environment:
       HOST_CHAIN_ID: "${ROLLUP_A_CHAIN_ID}"
       L1_CHAIN_ID: "${L1_CHAIN_ID}"
       DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
-      REDIS_URL: "${CROSS_SCOUT_REDIS_URL}"
       EL_RPC_URLS: "${CROSS_SCOUT_EL_RPC_URLS}"
       FLASHBLOCKS_WS_URLS: "${CROSS_SCOUT_FLASHBLOCKS_WS_URLS:-}"
       L1_RPC_URL: "${L1_EL_URL}"
+      PUBLISHER_URL: "http://publisher:8081"
       MAILBOX_ADDRESS: "${CROSS_SCOUT_MAILBOX_ADDRESS}"
       BRIDGE_ADDRESSES: "${CROSS_SCOUT_BRIDGE_ADDRESSES}"
       DISPUTE_GAME_FACTORY_ADDRESS: "${SP_L1_DISPUTE_GAME_FACTORY}"
@@ -71,7 +51,7 @@ services:
       COMPOSE_GAME_TYPE: "${CROSS_SCOUT_COMPOSE_GAME_TYPE:-5555}"
       EL_START_BLOCK: "${CROSS_SCOUT_EL_START_BLOCK:-latest}"
       L1_START_BLOCK: "${CROSS_SCOUT_L1_START_BLOCK:-latest}"
-      LOG_MAX_RANGE: "${CROSS_SCOUT_LOG_MAX_RANGE:-5000}"
+      ETH_GET_LOGS_MAX_BLOCKS: "${CROSS_SCOUT_ETH_GET_LOGS_MAX_BLOCKS:-2000}"
       STALL_TIMEOUT_SECONDS: "${CROSS_SCOUT_STALL_TIMEOUT_SECONDS:-3840}"
       RUST_LOG: "${CROSS_SCOUT_RUST_LOG:-info}"
     restart: unless-stopped
@@ -86,16 +66,14 @@ services:
     depends_on:
       cross-scout-postgres:
         condition: service_healthy
-      cross-scout-redis:
-        condition: service_healthy
     environment:
       HOST_CHAIN_ID: "${ROLLUP_B_CHAIN_ID}"
       L1_CHAIN_ID: "${L1_CHAIN_ID}"
       DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
-      REDIS_URL: "${CROSS_SCOUT_REDIS_URL}"
       EL_RPC_URLS: "${CROSS_SCOUT_EL_RPC_URLS}"
       FLASHBLOCKS_WS_URLS: "${CROSS_SCOUT_FLASHBLOCKS_WS_URLS:-}"
       L1_RPC_URL: "${L1_EL_URL}"
+      PUBLISHER_URL: "http://publisher:8081"
       MAILBOX_ADDRESS: "${CROSS_SCOUT_MAILBOX_ADDRESS}"
       BRIDGE_ADDRESSES: "${CROSS_SCOUT_BRIDGE_ADDRESSES}"
       DISPUTE_GAME_FACTORY_ADDRESS: "${SP_L1_DISPUTE_GAME_FACTORY}"
@@ -103,17 +81,19 @@ services:
       COMPOSE_GAME_TYPE: "${CROSS_SCOUT_COMPOSE_GAME_TYPE:-5555}"
       EL_START_BLOCK: "${CROSS_SCOUT_EL_START_BLOCK:-latest}"
       L1_START_BLOCK: "${CROSS_SCOUT_L1_START_BLOCK:-latest}"
-      LOG_MAX_RANGE: "${CROSS_SCOUT_LOG_MAX_RANGE:-5000}"
+      ETH_GET_LOGS_MAX_BLOCKS: "${CROSS_SCOUT_ETH_GET_LOGS_MAX_BLOCKS:-2000}"
       STALL_TIMEOUT_SECONDS: "${CROSS_SCOUT_STALL_TIMEOUT_SECONDS:-3840}"
       RUST_LOG: "${CROSS_SCOUT_RUST_LOG:-info}"
     restart: unless-stopped
 
-  cross-scout-api:
+  cross-scout-app:
     build:
       context: ${CROSS_SCOUT_PATH}
-      dockerfile: Dockerfile.api
-    image: local/cross-scout-api:dev
-    container_name: cross-scout-api
+      dockerfile: Dockerfile.app
+      args:
+        VITE_CHAIN_NAMES: "${CROSS_SCOUT_CHAIN_NAMES}"
+    image: local/cross-scout-app:dev
+    container_name: cross-scout-app
     labels:
       - "stack=localnet-l2"
     networks:
@@ -121,16 +101,15 @@ services:
     depends_on:
       cross-scout-postgres:
         condition: service_healthy
-      cross-scout-redis:
-        condition: service_healthy
     environment:
       HOST_CHAIN_ID: "${ROLLUP_A_CHAIN_ID}"
       DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
-      REDIS_URL: "${CROSS_SCOUT_REDIS_URL}"
       API_HOST: "0.0.0.0"
       API_PORT: "3001"
+      EXPLORER_URL: "${CROSS_SCOUT_URL}"
     ports:
       - "${CROSS_SCOUT_API_PORT:-3001}:3001"
+      - "${CROSS_SCOUT_EXPLORER_PORT:-3002}:3001"
     healthcheck:
       test: [ "CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health" ]
       interval: 10s
@@ -138,33 +117,5 @@ services:
       retries: 5
     restart: unless-stopped
 
-  cross-scout-explorer:
-    build:
-      context: ${CROSS_SCOUT_PATH}
-      dockerfile: Dockerfile.explorer
-      args:
-        # Host is resolved at runtime from wherever the explorer is opened; only
-        # the api port needs to be known at build time.
-        VITE_API_PORT: "${CROSS_SCOUT_API_PORT:-3001}"
-        VITE_CHAIN_NAMES: "${CROSS_SCOUT_CHAIN_NAMES}"
-    image: local/cross-scout-explorer:dev
-    container_name: cross-scout-explorer
-    labels:
-      - "stack=localnet-l2"
-    networks:
-      - localnet-l2
-    depends_on:
-      cross-scout-api:
-        condition: service_healthy
-    ports:
-      - "${CROSS_SCOUT_EXPLORER_PORT:-3002}:3000"
-    healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
 volumes:
   cross-scout-postgres:
-  cross-scout-redis:

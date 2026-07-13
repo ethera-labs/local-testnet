@@ -99,7 +99,6 @@ type (
 		APIPort      int  `mapstructure:"api-port"`
 		ExplorerPort int  `mapstructure:"explorer-port"`
 		PostgresPort int  `mapstructure:"postgres-port"`
-		RedisPort    int  `mapstructure:"redis-port"`
 	}
 
 	// AltDAConfig controls Alternative Data Availability (AltDA) mode for the OP Stack.
@@ -400,9 +399,6 @@ func (c *L2) Validate() error {
 		}
 		if c.CrossScout.PostgresPort <= 0 {
 			errs = append(errs, errors.New("l2.cross-scout.postgres-port must be positive"))
-		}
-		if c.CrossScout.RedisPort <= 0 {
-			errs = append(errs, errors.New("l2.cross-scout.redis-port must be positive"))
 		}
 	}
 	switch c.ValidatorEL {

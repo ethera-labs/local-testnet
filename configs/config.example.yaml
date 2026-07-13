@@ -40,7 +40,6 @@ l2:
     api-port: 3001
     explorer-port: 3002
     postgres-port: 15432
-    redis-port: 16379
   alt-da:
     enabled: false  # Route batches through AltDA servers instead of posting calldata to L1
     # Requires repositories.ethera-contracts to resolve to a checkout that contains op-alt-da.

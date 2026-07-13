@@ -101,7 +101,6 @@ var (
 		{"cross-scout-api-port", "l2.cross-scout.api-port", 3001, "CrossScout API host port"},
 		{"cross-scout-explorer-port", "l2.cross-scout.explorer-port", 3002, "CrossScout explorer host port"},
 		{"cross-scout-postgres-port", "l2.cross-scout.postgres-port", 15432, "CrossScout Postgres host port"},
-		{"cross-scout-redis-port", "l2.cross-scout.redis-port", 16379, "CrossScout Redis host port"},
 
 		// Dispute config
 		{"dispute-proof-maturity-delay-seconds", "l2.dispute.proof-maturity-delay-seconds", 604800, "Proof maturity delay in seconds (default: 7 days)"},

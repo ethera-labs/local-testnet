@@ -251,7 +251,7 @@ func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env m
 	return nil
 }
 
-// StartCrossScout builds and starts the CrossScout datastores, indexers, API, and explorer.
+// StartCrossScout builds and starts the CrossScout datastore, indexers, and API-hosted explorer.
 // Must be called after contract deployment so the indexers start with real mailbox and bridge addresses.
 func (m *Manager) StartCrossScout(ctx context.Context, dockerFiles []string, env map[string]string) error {
 	if !m.crossScoutEnabled || m.crossScoutDockerFilePath == "" {
@@ -261,15 +261,13 @@ func (m *Manager) StartCrossScout(ctx context.Context, dockerFiles []string, env
 	allFiles := append(dockerFiles, m.crossScoutDockerFilePath)
 	services := []string{
 		"cross-scout-postgres",
-		"cross-scout-redis",
 		"cross-scout-indexer-a",
 		"cross-scout-indexer-b",
-		"cross-scout-api",
-		"cross-scout-explorer",
+		"cross-scout-app",
 	}
 
 	m.logger.With("services", services).Info("building and starting CrossScout")
-	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "cross-scout-indexer-a", "cross-scout-api", "cross-scout-explorer"); err != nil {
+	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "cross-scout-indexer-a", "cross-scout-app"); err != nil {
 		return fmt.Errorf("failed to build cross-scout services: %w", err)
 	}
 	if err := docker.ComposeUpMultiFile(ctx, allFiles, env, services...); err != nil {

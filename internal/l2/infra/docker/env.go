@@ -137,10 +137,8 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 		env["CROSS_SCOUT_API_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.APIPort)
 		env["CROSS_SCOUT_EXPLORER_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.ExplorerPort)
 		env["CROSS_SCOUT_POSTGRES_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.PostgresPort)
-		env["CROSS_SCOUT_REDIS_PORT"] = fmt.Sprintf("%d", cfg.CrossScout.RedisPort)
 		env["CROSS_SCOUT_URL"] = fmt.Sprintf("http://localhost:%d", cfg.CrossScout.ExplorerPort)
 		env["CROSS_SCOUT_DATABASE_URL"] = "postgres://crossscout:crossscout@cross-scout-postgres:5432/crossscout"
-		env["CROSS_SCOUT_REDIS_URL"] = "redis://cross-scout-redis:6379"
 		env["CROSS_SCOUT_MAILBOX_ADDRESS"] = (common.Address{}).Hex()
 		env["CROSS_SCOUT_BRIDGE_ADDRESSES"] = (common.Address{}).Hex()
 		env["CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS"] = anchorStateRegistryAddr.Hex()
