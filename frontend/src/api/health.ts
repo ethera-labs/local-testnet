@@ -24,6 +24,7 @@ export type ServiceKind =
   | 'op-alt-da'
   | 'op-succinct'
   | 'op-succinct-postgres'
+  | 'cross-scout'
   | 'frontend'
 
 // "missing" = optional feature disabled (container absent); "down" =

@@ -35,6 +35,11 @@ l2:
     enabled: false  # requires flashblocks
     rollup-a-api-port: 17082
     rollup-b-api-port: 27082
+  cross-scout:
+    enabled: false
+    api-port: 3001
+    explorer-port: 3002
+    postgres-port: 15432
   alt-da:
     enabled: false  # Route batches through AltDA servers instead of posting calldata to L1
     # Requires repositories.ethera-contracts to resolve to a checkout that contains op-alt-da.
@@ -123,11 +128,13 @@ l2:
       branch: ssvlabs/altda-data-source-rebase
       # For local development:
       # local-path: ../op-succinct
+    # Used only when l2.cross-scout.enabled=true.
+    cross-scout:
+      url: https://github.com/ethera-labs/cross-scout.git
+      branch: main
+      # For local development:
+      # local-path: ../cross-scout
   dispute:
-    network-name: network-name # e.g. hoodi
-    explorer-url: http://127.0.0.1:8080 # e.g. http://hoodi.etherscan.io
-    explorer-api-url: http://127.0.0.1:8080/api # e.g. http://hoodi.etherscan.io/api
-    verifier-address: "0x0000000000000000000000000000000000000000000" # SP1 verifier contract address
     owner-address: "0x0000000000000000000000000000000000000000000" # Owner address (can be equal to wallet.address)
     proposer-address: "0x0000000000000000000000000000000000000000000" # Proposer address (can be equal to wallet.address)
     aggregation-vkey: "0x0000000000000000000000000000000000000000000000000000000000000000" # Aggregation verification key

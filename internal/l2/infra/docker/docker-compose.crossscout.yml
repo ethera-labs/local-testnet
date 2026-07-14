@@ -1,0 +1,121 @@
+# CrossScout overlay: per-rollup indexers plus the API-hosted explorer app.
+# Build context is resolved from l2.repositories.cross-scout.
+
+services:
+  cross-scout-postgres:
+    image: postgres:16-alpine
+    container_name: cross-scout-postgres
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    environment:
+      POSTGRES_USER: crossscout
+      POSTGRES_PASSWORD: crossscout
+      POSTGRES_DB: crossscout
+    ports:
+      - "${CROSS_SCOUT_POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - cross-scout-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U crossscout" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cross-scout-indexer-a:
+    build:
+      context: ${CROSS_SCOUT_PATH}
+      dockerfile: Dockerfile.indexer
+    image: local/cross-scout-indexer:dev
+    container_name: cross-scout-indexer-a
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      cross-scout-postgres:
+        condition: service_healthy
+    environment:
+      HOST_CHAIN_ID: "${ROLLUP_A_CHAIN_ID}"
+      L1_CHAIN_ID: "${L1_CHAIN_ID}"
+      DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
+      EL_RPC_URLS: "${CROSS_SCOUT_EL_RPC_URLS}"
+      FLASHBLOCKS_WS_URLS: "${CROSS_SCOUT_FLASHBLOCKS_WS_URLS:-}"
+      L1_RPC_URL: "${L1_EL_URL}"
+      PUBLISHER_URL: "http://publisher:8081"
+      MAILBOX_ADDRESS: "${CROSS_SCOUT_MAILBOX_ADDRESS}"
+      BRIDGE_ADDRESSES: "${CROSS_SCOUT_BRIDGE_ADDRESSES}"
+      DISPUTE_GAME_FACTORY_ADDRESS: "${SP_L1_DISPUTE_GAME_FACTORY}"
+      ANCHOR_STATE_REGISTRY_ADDRESS: "${CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS:-}"
+      COMPOSE_GAME_TYPE: "${CROSS_SCOUT_COMPOSE_GAME_TYPE:-5555}"
+      EL_START_BLOCK: "${CROSS_SCOUT_EL_START_BLOCK:-latest}"
+      L1_START_BLOCK: "${CROSS_SCOUT_L1_START_BLOCK:-latest}"
+      ETH_GET_LOGS_MAX_BLOCKS: "${CROSS_SCOUT_ETH_GET_LOGS_MAX_BLOCKS:-2000}"
+      STALL_TIMEOUT_SECONDS: "${CROSS_SCOUT_STALL_TIMEOUT_SECONDS:-3840}"
+      RUST_LOG: "${CROSS_SCOUT_RUST_LOG:-info}"
+    restart: unless-stopped
+
+  cross-scout-indexer-b:
+    image: local/cross-scout-indexer:dev
+    container_name: cross-scout-indexer-b
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      cross-scout-postgres:
+        condition: service_healthy
+    environment:
+      HOST_CHAIN_ID: "${ROLLUP_B_CHAIN_ID}"
+      L1_CHAIN_ID: "${L1_CHAIN_ID}"
+      DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
+      EL_RPC_URLS: "${CROSS_SCOUT_EL_RPC_URLS}"
+      FLASHBLOCKS_WS_URLS: "${CROSS_SCOUT_FLASHBLOCKS_WS_URLS:-}"
+      L1_RPC_URL: "${L1_EL_URL}"
+      PUBLISHER_URL: "http://publisher:8081"
+      MAILBOX_ADDRESS: "${CROSS_SCOUT_MAILBOX_ADDRESS}"
+      BRIDGE_ADDRESSES: "${CROSS_SCOUT_BRIDGE_ADDRESSES}"
+      DISPUTE_GAME_FACTORY_ADDRESS: "${SP_L1_DISPUTE_GAME_FACTORY}"
+      ANCHOR_STATE_REGISTRY_ADDRESS: "${CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS:-}"
+      COMPOSE_GAME_TYPE: "${CROSS_SCOUT_COMPOSE_GAME_TYPE:-5555}"
+      EL_START_BLOCK: "${CROSS_SCOUT_EL_START_BLOCK:-latest}"
+      L1_START_BLOCK: "${CROSS_SCOUT_L1_START_BLOCK:-latest}"
+      ETH_GET_LOGS_MAX_BLOCKS: "${CROSS_SCOUT_ETH_GET_LOGS_MAX_BLOCKS:-2000}"
+      STALL_TIMEOUT_SECONDS: "${CROSS_SCOUT_STALL_TIMEOUT_SECONDS:-3840}"
+      RUST_LOG: "${CROSS_SCOUT_RUST_LOG:-info}"
+    restart: unless-stopped
+
+  cross-scout-app:
+    build:
+      context: ${CROSS_SCOUT_PATH}
+      dockerfile: Dockerfile.app
+      args:
+        VITE_CHAIN_NAMES: "${CROSS_SCOUT_CHAIN_NAMES}"
+    image: local/cross-scout-app:dev
+    container_name: cross-scout-app
+    labels:
+      - "stack=localnet-l2"
+    networks:
+      - localnet-l2
+    depends_on:
+      cross-scout-postgres:
+        condition: service_healthy
+    environment:
+      HOST_CHAIN_ID: "${ROLLUP_A_CHAIN_ID}"
+      DATABASE_URL: "${CROSS_SCOUT_DATABASE_URL}"
+      API_HOST: "0.0.0.0"
+      API_PORT: "3001"
+      EXPLORER_URL: "${CROSS_SCOUT_URL}"
+    ports:
+      - "${CROSS_SCOUT_API_PORT:-3001}:3001"
+      - "${CROSS_SCOUT_EXPLORER_PORT:-3002}:3001"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  cross-scout-postgres:

@@ -9,7 +9,7 @@ import TransactionPanel, {
 import { statusOf, useTransactionStore } from './stores/transactionStore'
 import { CHAIN_A_ID, CHAIN_A_BLOCKSCOUT, CHAIN_B_BLOCKSCOUT, getProvider } from './api/rollup'
 import { fetchServices, indexById, type ServiceStatus } from './api/health'
-import { BUNDLER_TEST_AVAILABLE, FLASHBLOCKS_ENABLED } from './config/chains'
+import { BUNDLER_TEST_AVAILABLE, CROSS_SCOUT_URL, FLASHBLOCKS_ENABLED } from './config/chains'
 
 function StatusChip({ status, label }: { status: ServiceStatus; label: string }) {
   const palette: Record<ServiceStatus, { dot: string; pulse: boolean }> = {
@@ -187,6 +187,16 @@ function App() {
                 <StatusChip status={headerStatuses.opSuccinctA} label="op-succinct A" />
                 <StatusChip status={headerStatuses.opSuccinctB} label="op-succinct B" />
               </>
+            )}
+            {CROSS_SCOUT_URL && (
+              <a
+                href={CROSS_SCOUT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center border border-cyan/40 px-2 py-0.5 bg-cyan/5 font-display text-[10px] tracking-widest uppercase text-cyan hover:border-cyan transition-colors"
+              >
+                CrossScout
+              </a>
             )}
             {FLASHBLOCKS_ENABLED && (
               <div className="hidden sm:flex items-center gap-1.5 border border-amber/40 px-2 py-0.5 bg-amber/5">

@@ -13,13 +13,11 @@ import (
 
 const (
 	fileName   = "opsuccinct.env"
-	l2ooKey    = "L2OO_ADDRESS"
 	dgfKey     = "DGF_ADDRESS"
 	mailboxKey = "MAILBOX_ADDRESS"
 )
 
 type envConfig struct {
-	l2ooAddress    string
 	dgfAddress     string
 	mailboxAddress string
 }
@@ -36,19 +34,15 @@ func NewGenerator() *Generator {
 	}
 }
 
-// Generate writes opsuccinct.env to path with the L2 output oracle and dispute game factory addresses.
-func (g *Generator) Generate(l2OutputOracleAddr, disputeGameFactoryAddr common.Address, path string) error {
-	if l2OutputOracleAddr == (common.Address{}) {
-		return fmt.Errorf("could not generate %s, l2OutputOracleAddr cannot be empty", fileName)
-	}
+// Generate writes opsuccinct.env to path with the dispute game factory address.
+func (g *Generator) Generate(disputeGameFactoryAddr common.Address, path string) error {
 	if disputeGameFactoryAddr == (common.Address{}) {
 		return fmt.Errorf("could not generate %s, disputeGameFactoryAddr cannot be empty", fileName)
 	}
 
 	opsuccinctFilePath := filepath.Join(path, fileName)
 	cfg := envConfig{
-		l2ooAddress: l2OutputOracleAddr.Hex(),
-		dgfAddress:  disputeGameFactoryAddr.Hex(),
+		dgfAddress: disputeGameFactoryAddr.Hex(),
 	}
 	if err := writeFile(opsuccinctFilePath, cfg); err != nil {
 		return fmt.Errorf("failed to write %s: %w", fileName, err)
@@ -97,8 +91,6 @@ func readFile(path string) (envConfig, error) {
 			continue
 		}
 		switch key {
-		case l2ooKey:
-			cfg.l2ooAddress = value
 		case dgfKey:
 			cfg.dgfAddress = value
 		case mailboxKey:
@@ -110,10 +102,7 @@ func readFile(path string) (envConfig, error) {
 }
 
 func writeFile(path string, cfg envConfig) error {
-	lines := make([]string, 0, 3)
-	if cfg.l2ooAddress != "" {
-		lines = append(lines, fmt.Sprintf("%s=%s", l2ooKey, cfg.l2ooAddress))
-	}
+	lines := make([]string, 0, 2)
 	if cfg.dgfAddress != "" {
 		lines = append(lines, fmt.Sprintf("%s=%s", dgfKey, cfg.dgfAddress))
 	}

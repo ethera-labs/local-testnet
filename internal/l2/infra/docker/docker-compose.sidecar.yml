@@ -1,5 +1,9 @@
 # Build context is resolved from l2.repositories.sidecar.
 services:
+  publisher:
+    environment:
+      PROOFS_COLLECTOR_REQUIRED_CHAIN_IDS: "${ROLLUP_A_CHAIN_ID},${ROLLUP_B_CHAIN_ID}"
+
   sidecar-a:
     build:
       context: ${SIDECAR_PATH}

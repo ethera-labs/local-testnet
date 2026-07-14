@@ -16,6 +16,7 @@ type Manager struct {
 	flashblocksDockerFilePath string
 	sidecarDockerFilePath     string
 	bundlerDockerFilePath     string
+	crossScoutDockerFilePath  string
 	frontendDockerFilePath    string
 	frontendDevDockerFilePath string
 	altDADockerFilePath       string
@@ -24,6 +25,7 @@ type Manager struct {
 	flashblocksEnabled        bool
 	sidecarEnabled            bool
 	bundlerEnabled            bool
+	crossScoutEnabled         bool
 	frontendEnabled           bool
 	altDAEnabled              bool
 	opSuccinctEnabled         bool
@@ -65,6 +67,13 @@ func (m *Manager) WithSidecar(sidecarDockerFilePath string) *Manager {
 func (m *Manager) WithBundler(bundlerDockerFilePath string) *Manager {
 	m.bundlerDockerFilePath = bundlerDockerFilePath
 	m.bundlerEnabled = true
+	return m
+}
+
+// WithCrossScout enables CrossScout with the specified docker file.
+func (m *Manager) WithCrossScout(crossScoutDockerFilePath string) *Manager {
+	m.crossScoutDockerFilePath = crossScoutDockerFilePath
+	m.crossScoutEnabled = true
 	return m
 }
 
@@ -131,9 +140,18 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		"op-node-b",
 		"op-batcher-a",
 		"op-batcher-b",
-		"op-proposer-a",
-		"op-proposer-b",
 	)
+
+	// op-succinct's validity proposer replaces the standard fault-proof
+	// op-proposer. The OP DisputeGameFactory has no game-type-1 implementation
+	// registered, so keeping op-proposer running only crash-loops it on
+	// NoImplementation; skip it when op-succinct owns proposing.
+	if !m.opSuccinctEnabled {
+		services = append(services,
+			"op-proposer-a",
+			"op-proposer-b",
+		)
+	}
 
 	if m.flashblocksEnabled && m.flashblocksDockerFilePath != "" {
 		dockerFiles = append(dockerFiles, m.flashblocksDockerFilePath)
@@ -161,10 +179,12 @@ func (m *Manager) StartAll(ctx context.Context, env map[string]string) error {
 		)
 	}
 
-	// Frontend (ethera-console) is started separately after contract deployment
+	// Frontend (ethera-console) is started separately after contract deployment.
+	// CrossScout is also started separately after contract deployment because
+	// it needs deployed mailbox and bridge addresses.
 
 	if len(dockerFiles) > 1 {
-		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "bundler", m.bundlerEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
+		m.logger.With("services", services, "flashblocks", m.flashblocksEnabled, "sidecar", m.sidecarEnabled, "bundler", m.bundlerEnabled, "cross_scout", m.crossScoutEnabled, "altDA", m.altDAEnabled, "op_succinct", m.opSuccinctEnabled).Info("starting L2 services")
 
 		if err := docker.ComposeUpMultiFile(ctx, dockerFiles, env, services...); err != nil {
 			return fmt.Errorf("failed to start services: %w", err)
@@ -228,5 +248,32 @@ func (m *Manager) StartFrontend(ctx context.Context, dockerFiles []string, env m
 	}
 
 	m.logger.Info("Ethera Labs Console started successfully")
+	return nil
+}
+
+// StartCrossScout builds and starts the CrossScout datastore, indexers, and API-hosted explorer.
+// Must be called after contract deployment so the indexers start with real mailbox and bridge addresses.
+func (m *Manager) StartCrossScout(ctx context.Context, dockerFiles []string, env map[string]string) error {
+	if !m.crossScoutEnabled || m.crossScoutDockerFilePath == "" {
+		return fmt.Errorf("cross-scout not enabled or docker file not set")
+	}
+
+	allFiles := append(dockerFiles, m.crossScoutDockerFilePath)
+	services := []string{
+		"cross-scout-postgres",
+		"cross-scout-indexer-a",
+		"cross-scout-indexer-b",
+		"cross-scout-app",
+	}
+
+	m.logger.With("services", services).Info("building and starting CrossScout")
+	if err := docker.ComposeBuildMultiFile(ctx, allFiles, env, "cross-scout-indexer-a", "cross-scout-app"); err != nil {
+		return fmt.Errorf("failed to build cross-scout services: %w", err)
+	}
+	if err := docker.ComposeUpMultiFile(ctx, allFiles, env, services...); err != nil {
+		return fmt.Errorf("failed to start cross-scout services: %w", err)
+	}
+
+	m.logger.Info("CrossScout started successfully")
 	return nil
 }

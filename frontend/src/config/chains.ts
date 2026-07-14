@@ -56,6 +56,7 @@ export const HEALTH_API_ENABLED = HEALTH_API_URL.length > 0
 
 export const CHAIN_A_BLOCKSCOUT = env.VITE_CHAIN_A_BLOCKSCOUT_URL?.trim() || 'http://localhost:19000'
 export const CHAIN_B_BLOCKSCOUT = env.VITE_CHAIN_B_BLOCKSCOUT_URL?.trim() || 'http://localhost:29000'
+export const CROSS_SCOUT_URL = env.VITE_CROSS_SCOUT_URL?.trim() || ''
 
 export const CHAIN_A_BRIDGE_ADDRESS = env.VITE_CHAIN_A_BRIDGE_ADDRESS || ''
 export const CHAIN_B_BRIDGE_ADDRESS = env.VITE_CHAIN_B_BRIDGE_ADDRESS || ''

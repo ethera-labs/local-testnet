@@ -72,10 +72,6 @@ l2:
       url: https://github.com/eth-infinitism/account-abstraction.git
       branch: releases/v0.7
   dispute:
-    network-name: sepolia
-    explorer-url: https://sepolia.etherscan.io/
-    explorer-api-url: https://api-sepolia.etherscan.io/api
-    verifier-address: 0xC75715a3F0E026272A9Cf66089bd9B3F00651B87
     owner-address: 0x2251Ae69680A4F78078c95C602835B9368622Af7
     proposer-address: 0x2251Ae69680A4F78078c95C602835B9368622Af7
     aggregation-vkey: "0x0000000000000000000000000000000000000000000000000000000000000001"

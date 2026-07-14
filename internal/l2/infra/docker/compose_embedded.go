@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.bundler.yml docker-compose.frontend.yml docker-compose.frontend.dev.yml docker-compose.altda.yml docker-compose.opsuccinct.yml docker-compose.opbesu.yml
+//go:embed docker-compose.yml docker-compose.flashblocks.yml docker-compose.sidecar.yml docker-compose.bundler.yml docker-compose.frontend.yml docker-compose.frontend.dev.yml docker-compose.altda.yml docker-compose.opsuccinct.yml docker-compose.opbesu.yml docker-compose.crossscout.yml
 var embeddedComposeFS embed.FS
 
 const (
@@ -20,6 +20,7 @@ const (
 	composeAltDAFileName       = "docker-compose.altda.yml"
 	composeOPSuccinctFileName  = "docker-compose.opsuccinct.yml"
 	composeOpBesuFileName      = "docker-compose.opbesu.yml"
+	composeCrossScoutFileName  = "docker-compose.crossscout.yml"
 )
 
 // ensureEmbeddedFile writes the named embedded compose file to localnetDir and returns its path.
@@ -84,4 +85,9 @@ func EnsureOPSuccinctComposeFile(localnetDir string) (string, error) {
 // EnsureOpBesuComposeFile writes the embedded docker-compose.opbesu.yml to localnetDir and returns its path.
 func EnsureOpBesuComposeFile(localnetDir string) (string, error) {
 	return ensureEmbeddedFile(localnetDir, composeOpBesuFileName)
+}
+
+// EnsureCrossScoutComposeFile writes the embedded docker-compose.crossscout.yml to localnetDir and returns its path.
+func EnsureCrossScoutComposeFile(localnetDir string) (string, error) {
+	return ensureEmbeddedFile(localnetDir, composeCrossScoutFileName)
 }

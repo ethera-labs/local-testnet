@@ -16,7 +16,6 @@ func TestGenerateWritesOpsuccinctEnv(t *testing.T) {
 	generator := NewGenerator()
 
 	err := generator.Generate(
-		common.HexToAddress("0x1111111111111111111111111111111111111111"),
 		common.HexToAddress("0x2222222222222222222222222222222222222222"),
 		dir,
 	)
@@ -30,11 +29,11 @@ func TestGenerateWritesOpsuccinctEnv(t *testing.T) {
 	}
 
 	content := string(data)
-	if !strings.Contains(content, "L2OO_ADDRESS=0x1111111111111111111111111111111111111111") {
-		t.Fatalf("missing L2 output oracle address in file: %s", content)
-	}
 	if !strings.Contains(content, "DGF_ADDRESS=0x2222222222222222222222222222222222222222") {
 		t.Fatalf("missing dispute game factory address in file: %s", content)
+	}
+	if strings.Contains(content, "L2OO_ADDRESS=") {
+		t.Fatalf("unexpected L2 output oracle address in file: %s", content)
 	}
 }
 
@@ -45,7 +44,6 @@ func TestSetMailboxAddressUpdatesOpsuccinctEnv(t *testing.T) {
 	generator := NewGenerator()
 
 	if err := generator.Generate(
-		common.HexToAddress("0x1111111111111111111111111111111111111111"),
 		common.HexToAddress("0x2222222222222222222222222222222222222222"),
 		dir,
 	); err != nil {

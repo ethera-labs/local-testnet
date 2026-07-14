@@ -16,7 +16,6 @@ import (
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/opsuccinct"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2config/secrets"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/contracts"
-	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/registry"
 	"github.com/ethera-labs/local-testnet/internal/l2/l2runtime/services"
 	"github.com/ethera-labs/local-testnet/internal/logger"
 	"github.com/ethereum/go-ethereum/common"
@@ -55,19 +54,15 @@ type overlayPaths struct {
 	flashblocks string
 	sidecar     string
 	bundler     string
+	crossScout  string
 	frontend    string
 	frontendDev string
 	opBesu      string
 }
 
 // Execute runs Phase 3: Build images, start services, deploy contracts
-func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryAddr common.Address, composeL2OOAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
+func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryAddr common.Address, anchorStateRegistryAddr common.Address) (map[configs.L2ChainName]map[contracts.ContractName]common.Address, error) {
 	o.logger.Info("Phase 3: Starting L2 runtime operations")
-
-	publisherConfig := registry.NewConfigurator()
-	if err := publisherConfig.SetupRegistry(o.localnetDir, cfg, gameFactoryAddr); err != nil {
-		return nil, fmt.Errorf("failed to setup publisher registry: %w", err)
-	}
 
 	dockerPath, err := docker.EnsureComposeFile(o.localnetDir)
 	if err != nil {
@@ -75,7 +70,7 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	}
 
 	envBuilder := docker.NewEnvBuilder(o.rootDir, o.networksDir, o.servicesDir)
-	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr, composeL2OOAddr)
+	envVars, err := envBuilder.BuildComposeEnv(cfg, gameFactoryAddr, anchorStateRegistryAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +117,10 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 	if overlays.bundler != "" {
 		o.logger.Info("bundler enabled, configuring ERC-4337 v0.7 ethera-bundler services")
 		serviceManager.WithBundler(overlays.bundler)
+	}
+	if overlays.crossScout != "" {
+		o.logger.Info("cross-scout enabled, configuring CrossScout services")
+		serviceManager.WithCrossScout(overlays.crossScout)
 	}
 	if overlays.frontend != "" {
 		if overlays.frontendDev != "" {
@@ -210,6 +209,17 @@ func (o *Orchestrator) Execute(ctx context.Context, cfg configs.L2, gameFactoryA
 		}
 	}
 
+	if overlays.crossScout != "" {
+		o.logger.Info("building and starting CrossScout")
+		chainContracts := deployedContracts[configs.L2ChainNameRollupA]
+		envVars["CROSS_SCOUT_MAILBOX_ADDRESS"] = chainContracts[contracts.ContractNameUniversalBridgeMailbox].Hex()
+		envVars["CROSS_SCOUT_BRIDGE_ADDRESSES"] = chainContracts[contracts.ContractNameComposeL2ToL2Bridge].Hex()
+
+		if err := serviceManager.StartCrossScout(ctx, []string{dockerPath}, envVars); err != nil {
+			return nil, fmt.Errorf("failed to start CrossScout: %w", err)
+		}
+	}
+
 	o.logger.Info("Phase 3: L2 runtime operations completed successfully")
 
 	return deployedContracts, nil
@@ -268,6 +278,13 @@ func (o *Orchestrator) resolveOverlayPaths(cfg configs.L2) (overlayPaths, error)
 		paths.bundler, err = docker.EnsureBundlerComposeFile(o.localnetDir)
 		if err != nil {
 			return overlayPaths{}, fmt.Errorf("failed to prepare bundler docker file: %w", err)
+		}
+	}
+
+	if cfg.CrossScout.Enabled {
+		paths.crossScout, err = docker.EnsureCrossScoutComposeFile(o.localnetDir)
+		if err != nil {
+			return overlayPaths{}, fmt.Errorf("failed to prepare cross-scout docker file: %w", err)
 		}
 	}
 

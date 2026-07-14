@@ -15,6 +15,7 @@ interface ImportMetaEnv {
   readonly VITE_HEALTH_API_URL?: string
   readonly VITE_CHAIN_A_BLOCKSCOUT_URL?: string
   readonly VITE_CHAIN_B_BLOCKSCOUT_URL?: string
+  readonly VITE_CROSS_SCOUT_URL?: string
   readonly VITE_CHAIN_A_BRIDGE_ADDRESS?: string
   readonly VITE_CHAIN_B_BRIDGE_ADDRESS?: string
   readonly VITE_CHAIN_A_TOKEN_ADDRESS?: string
