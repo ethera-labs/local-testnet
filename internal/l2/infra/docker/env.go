@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/ethera-labs/local-testnet/configs"
@@ -44,6 +45,10 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 
 	rollupAConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupA))
 	rollupBConfigPath := filepath.Join(b.networksDir, string(configs.L2ChainNameRollupB))
+	publisherGenesisTime, err := b.publisherGenesisUnixSeconds()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve publisher genesis time: %w", err)
+	}
 
 	rollupAHost, err := path.GetHostPath(rollupAConfigPath)
 	if err != nil {
@@ -69,6 +74,7 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	env["SEQUENCER_PRIVATE_KEY"] = cfg.CoordinatorPrivateKey
 
 	env["PUBLISHER_PATH"] = publisherPath
+	env["PUBLISHER_GENESIS_UNIX_SECONDS"] = strconv.FormatUint(publisherGenesisTime, 10)
 
 	if cfg.OPSuccinct.Enabled {
 		opSuccinctPath, err := b.ResolveRepoPath(cfg.Repositories[configs.RepositoryNameOPSuccinct], configs.RepositoryNameOPSuccinct)
@@ -203,6 +209,42 @@ func (b *EnvBuilder) BuildComposeEnv(cfg configs.L2, gameFactoryAddr common.Addr
 	b.MergePostDeployEnv(env)
 
 	return env, nil
+}
+
+func (b *EnvBuilder) publisherGenesisUnixSeconds() (uint64, error) {
+	rollupA, err := b.readRollupGenesisTime(configs.L2ChainNameRollupA)
+	if err != nil {
+		return 0, err
+	}
+	rollupB, err := b.readRollupGenesisTime(configs.L2ChainNameRollupB)
+	if err != nil {
+		return 0, err
+	}
+	if rollupA != rollupB {
+		return 0, fmt.Errorf("rollup genesis times differ: rollup-a=%d rollup-b=%d", rollupA, rollupB)
+	}
+	return rollupA, nil
+}
+
+func (b *EnvBuilder) readRollupGenesisTime(chainName configs.L2ChainName) (uint64, error) {
+	rollupPath := filepath.Join(b.networksDir, string(chainName), "rollup.json")
+	data, err := os.ReadFile(rollupPath)
+	if err != nil {
+		return 0, fmt.Errorf("read %s: %w", rollupPath, err)
+	}
+
+	var rollup struct {
+		Genesis struct {
+			L2Time uint64 `json:"l2_time"`
+		} `json:"genesis"`
+	}
+	if err := json.Unmarshal(data, &rollup); err != nil {
+		return 0, fmt.Errorf("decode %s: %w", rollupPath, err)
+	}
+	if rollup.Genesis.L2Time == 0 {
+		return 0, fmt.Errorf("%s has no genesis.l2_time", rollupPath)
+	}
+	return rollup.Genesis.L2Time, nil
 }
 
 // ResolveRepoPath resolves the repository path for a given repository configuration.

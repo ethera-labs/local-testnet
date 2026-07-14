@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,9 @@ func TestBuildComposeEnvOmitsCrossScoutWhenDisabled(t *testing.T) {
 
 	rootDir := t.TempDir()
 	cfg := composeEnvTestConfig()
-	builder := NewEnvBuilder(rootDir, filepath.Join(rootDir, "networks"), filepath.Join(rootDir, ".localnet", "services"))
+	networksDir := filepath.Join(rootDir, "networks")
+	writeRollupGenesisTimes(t, networksDir, 1_700_000_000, 1_700_000_000)
+	builder := NewEnvBuilder(rootDir, networksDir, filepath.Join(rootDir, ".localnet", "services"))
 
 	gameFactory := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	anchorStateRegistry := common.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -56,6 +59,9 @@ func TestBuildComposeEnvOmitsCrossScoutWhenDisabled(t *testing.T) {
 	if _, ok := env["SP_L1_SUPERBLOCK_CONTRACT"]; ok {
 		t.Fatal("expected SP_L1_SUPERBLOCK_CONTRACT to be omitted")
 	}
+	if got := env["PUBLISHER_GENESIS_UNIX_SECONDS"]; got != "1700000000" {
+		t.Fatalf("PUBLISHER_GENESIS_UNIX_SECONDS = %q, want %q", got, "1700000000")
+	}
 }
 
 func TestBuildComposeEnvAddsCrossScoutWhenEnabled(t *testing.T) {
@@ -71,7 +77,9 @@ func TestBuildComposeEnvAddsCrossScoutWhenEnabled(t *testing.T) {
 	}
 	cfg.Repositories[configs.RepositoryNameCrossScout] = configs.Repository{LocalPath: "../cross-scout"}
 
-	builder := NewEnvBuilder(rootDir, filepath.Join(rootDir, "networks"), filepath.Join(rootDir, ".localnet", "services"))
+	networksDir := filepath.Join(rootDir, "networks")
+	writeRollupGenesisTimes(t, networksDir, 1_700_000_000, 1_700_000_000)
+	builder := NewEnvBuilder(rootDir, networksDir, filepath.Join(rootDir, ".localnet", "services"))
 	anchorStateRegistry := common.HexToAddress("0x2222222222222222222222222222222222222222")
 	env, err := builder.BuildComposeEnv(cfg, common.Address{}, anchorStateRegistry)
 	if err != nil {
@@ -89,6 +97,37 @@ func TestBuildComposeEnvAddsCrossScoutWhenEnabled(t *testing.T) {
 	}
 	if got := env["CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS"]; got != anchorStateRegistry.Hex() {
 		t.Fatalf("CROSS_SCOUT_ANCHOR_STATE_REGISTRY_ADDRESS = %q, want %q", got, anchorStateRegistry.Hex())
+	}
+}
+
+func TestPublisherGenesisUnixSecondsRejectsMismatchedRollups(t *testing.T) {
+	t.Parallel()
+
+	networksDir := t.TempDir()
+	writeRollupGenesisTimes(t, networksDir, 1_700_000_000, 1_700_000_001)
+	builder := NewEnvBuilder("", networksDir, "")
+
+	_, err := builder.publisherGenesisUnixSeconds()
+	if err == nil {
+		t.Fatal("expected mismatched rollup genesis times to fail")
+	}
+}
+
+func writeRollupGenesisTimes(t *testing.T, networksDir string, rollupA, rollupB uint64) {
+	t.Helper()
+
+	for chain, genesisTime := range map[configs.L2ChainName]uint64{
+		configs.L2ChainNameRollupA: rollupA,
+		configs.L2ChainNameRollupB: rollupB,
+	} {
+		chainDir := filepath.Join(networksDir, string(chain))
+		if err := os.MkdirAll(chainDir, 0755); err != nil {
+			t.Fatalf("failed to create chain dir: %v", err)
+		}
+		content := []byte(fmt.Sprintf(`{"genesis":{"l2_time":%d}}`, genesisTime))
+		if err := os.WriteFile(filepath.Join(chainDir, "rollup.json"), content, 0644); err != nil {
+			t.Fatalf("failed to write rollup.json: %v", err)
+		}
 	}
 }
 
